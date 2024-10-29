@@ -107,7 +107,7 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/create-preference', [MercadoPagoController::class, 'createPaymentPreference']);
 Route::get('/mercadopago/success', [MercadoPagoController::class, 'success'])->name('mercadopago.success');
 Route::get('/mercadopago/failed', [MercadoPagoController::class, 'failed'])->name('mercadopago.failed');
-Route::get('/order/success/{orderId}', [OrderController::class, 'success'])->name('order.success');
+Route::get('/order/success/{orderId}', [OrderController::class, 'success'])->name('order.id');
 
 
 
