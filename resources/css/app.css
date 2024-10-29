@@ -1,0 +1,71 @@
+/*:root {
+    --primary-color: #f4c2c2; 
+    --secondary-color: #ff9800; 
+    --text-color: #333; 
+    --background-color: #f9f9f9;
+}
+
+body {
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+.navbar {
+    background-color: var(--primary-color);
+}
+
+.navbar .nav-link {
+    color: white !important;
+}
+
+.navbar .nav-link:hover {
+    color: var(--secondary-color) !important;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.jumbotron {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-img-top {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.card-footer {
+    background-color: white;
+    border-top: none;
+}*/
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+#cart-summary {
+    position: absolute;
+    top: 50px; /* Ajusta la posición superior */
+    right: 0;
+    width: 300px; /* Ajusta el ancho si es necesario */
+    z-index: 1000;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
