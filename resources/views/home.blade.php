@@ -8,15 +8,15 @@
             <div id="carousel" class="relative w-full h-full">
                 <!-- Imagen 1 -->
                 <div class="carousel-item-hero absolute w-full h-full transition-opacity duration-1000 ease-in-out opacity-100">
-                    <img src="{{ asset('images/A3.jpg') }}" alt="Background Image 1" class="w-full h-full object-cover">
+                    <img src="{{ asset('images/A3.webp') }}" alt="Background Image 1" class="w-full h-full object-cover">
                 </div>
                 <!-- Imagen 2 -->
                 <div class="carousel-item-hero absolute w-full h-full transition-opacity duration-1000 ease-in-out opacity-0">
-                    <img src="{{ asset('images/A2.jpeg') }}" alt="Background Image 2" class="w-full h-full object-cover">
+                    <img src="{{ asset('images/A2.webp') }}" alt="Background Image 2" class="w-full h-full object-cover">
                 </div>
                 <!-- Imagen 3 -->
                 <div class="carousel-item-hero absolute w-full h-full transition-opacity duration-1000 ease-in-out opacity-0">
-                    <img src="{{ asset('images/A1.jpeg') }}" alt="Background Image 3" class="w-full h-full object-cover">
+                    <img src="{{ asset('images/A1.webp') }}" alt="Background Image 3" class="w-full h-full object-cover">
                 </div>
             </div>
         </div>
