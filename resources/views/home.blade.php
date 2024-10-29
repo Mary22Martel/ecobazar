@@ -32,13 +32,13 @@
                 línea comida local de calidad.
             </p>
             <div class="flex space-x-8 justify-center">
-                <a href="#" class="bg-green-600 hover:bg-green-700 text-white font-ligth py-3 px-6 rounded-full inline-flex items-center space-x-2">
+                <!-- <a href="#" class="bg-green-600 hover:bg-green-700 text-white font-ligth py-3 px-6 rounded-full inline-flex items-center space-x-2">
                     Mirar Video
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-5.197-3.482A1 1 0 008 8.481v7.038a1 1 0 001.555.832l5.197-3.482a1 1 0 000-1.664z" />
                     </svg>
-                </a>
-                <a href="#" class="bg-green-600 hover:bg-green-700 text-white font-ligth py-3 px-6 rounded-full inline-flex items-center space-x-2">
+                </a> -->
+                <a href="tienda" class="bg-green-600 hover:bg-green-700 text-white font-ligth py-3 px-6 rounded-full inline-flex items-center space-x-2">
                     Comprar Ahora
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5 ml-2">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
