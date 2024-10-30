@@ -29,8 +29,9 @@ Route::get('/buscar-productos/ajax', [ProductoController::class, 'buscarProducto
 
 
 Route::get('/auth-check', function () {
-    return response()->json(['authenticated' => auth()->check()]);
+    return response()->json(['authenticated' => Auth::check()]);
 })->name('auth.check');
+
 
 
 
@@ -57,6 +58,18 @@ Route::middleware(['auth'])->group(function () {
 
 // Grupo de rutas para la administración de categorías y medidas (solo admin)
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+    Route::get('/admin/repartidor/create', [AdminController::class, 'createRepartidor'])->name('repartidor.create_repartidor');
+    Route::post('/admin/repartidor/store', [AdminController::class, 'storeRepartidor'])->name('repartidor.store_repartidor');
+    // Ruta para cargar la vista de asignación de repartidor (GET)
+    Route::get('/admin/asignar-repartidor', [AdminController::class, 'asignarRepartidorVista'])
+    ->name('repartidor.asignar_repartidor_vista');
+
+    // Ruta para procesar la asignación de repartidor (POST)
+    Route::post('/admin/pedido/{id}/asignar-repartidor', [AdminController::class, 'asignarRepartidor'])
+    ->name('repartidor.asignar_repartidor');
+
+
+
     // Rutas para categorías
     Route::resource('categorias', CategoriaController::class);
     
@@ -70,6 +83,14 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::get('/pedidos', [OrderController::class, 'todosLosPedidos'])->name('pedidos.index');
     Route::get('/pedido/{id}', [OrderController::class, 'detallePedidoAdmin'])->name('pedido.detalle');
     Route::post('/pedido/{id}/actualizar-estado', [OrderController::class, 'actualizarEstado'])->name('pedido.actualizar_estado');
+
+     // Rutas para crear y gestionar repartidores
+     Route::get('/repartidores', [AdminController::class, 'listRepartidores'])->name('repartidor.list');
+     Route::get('/repartidor/crear', [AdminController::class, 'createRepartidor'])->name('repartidor.create');
+     Route::post('/repartidor/crear', [AdminController::class, 'storeRepartidor'])->name('repartidor.store');
+     Route::get('/repartidor/{id}/editar', [AdminController::class, 'editRepartidor'])->name('repartidor.edit');
+     Route::post('/repartidor/{id}/actualizar', [AdminController::class, 'updateRepartidor'])->name('repartidor.update');
+     Route::delete('/repartidor/{id}', [AdminController::class, 'deleteRepartidor'])->name('repartidor.delete');
 });
 
 
@@ -109,6 +130,13 @@ Route::get('/mercadopago/success', [MercadoPagoController::class, 'success'])->n
 Route::get('/mercadopago/failed', [MercadoPagoController::class, 'failed'])->name('mercadopago.failed');
 Route::get('/order/success/{orderId}', [OrderController::class, 'success'])->name('order.id');
 
+//repartidor
+Route::middleware(['auth'])->group(function () {
+    Route::get('/repartidor/pedidos-pendientes', [RepartidorController::class, 'pedidosPendientes'])
+        ->name('repartidor.pedidos_pendientes');
+    Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])
+        ->name('repartidor.pedido.entregado');
+});
 
 
 

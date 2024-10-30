@@ -10,17 +10,9 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'nombre',
-        'apellido',
-        'empresa',
-        'email',
-        'telefono',
-        'delivery',
-        'direccion',
-        'distrito',
-        'pago',
-        'total',
+        'user_id', 'nombre', 'apellido', 'empresa', 'email', 'telefono', 
+        'delivery', 'direccion', 'distrito', 'pago', 'total', 'estado', 
+        'envio', 'repartidor_id' // Asegúrate de que repartidor_id esté aquí
     ];
 
     // Relación con el usuario que realizó la orden
@@ -33,5 +25,10 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function repartidor()
+    {
+        return $this->belongsTo(User::class, 'repartidor_id');
     }
 }

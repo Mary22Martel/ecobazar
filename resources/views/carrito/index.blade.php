@@ -83,6 +83,8 @@
                 <!-- Botón para volver a la tienda -->
                 <a href="{{ route('tienda') }}" class="block text-center mt-4 text-gray-500 hover:underline">Volver a la Tienda</a>
             </div>
+
+            
         </div>
         @else
         <p class="text-center text-xl mt-20">No hay productos en tu carrito.</p>

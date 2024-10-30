@@ -47,10 +47,33 @@
                 <h2 class="text-2xl font-bold text-gray-700 mb-4">Gestionar Pedidos</h2>
                 <p class="text-gray-600 mb-6">Ver, actualizar y gestionar los pedidos realizados.</p>
                 <div class="flex flex-col space-y-4">
-                <a href="{{ route('admin.pedidos.index') }}" class="bg-green-500 text-white py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300 ease-in-out text-center">
-                    Gestionar Pedidos
-                </a>
+                    <a href="{{ route('admin.pedidos.index') }}" class="bg-green-500 text-white py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300 ease-in-out text-center">
+                        Gestionar Pedidos
+                    </a>
                 </div>
+            </div>
+
+            <!-- Card para gestionar repartidores -->
+            <div class="bg-white shadow-md hover:shadow-lg rounded-lg p-6 text-center transform hover:scale-105 transition-transform duration-300">
+                <h2 class="text-2xl font-bold text-gray-700 mb-4">Gestionar Repartidores</h2>
+                <p class="text-gray-600 mb-6">Crear y administrar cuentas de repartidores.</p>
+                <div class="flex flex-col space-y-4">
+                    <a href="{{ route('admin.repartidor.list') }}" class="bg-purple-500 text-white py-3 px-6 rounded-lg hover:bg-purple-600 transition duration-300 ease-in-out text-center">
+                        Ver Repartidores
+                    </a>
+                    <a href="{{ route('admin.repartidor.create_repartidor') }}" class="bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition duration-300 ease-in-out text-center">
+                        Crear Repartidor
+                    </a>
+                </div>
+            </div>
+
+            <!-- Nueva tarjeta para asignar repartidor a pedidos -->
+            <div class="bg-white shadow-md hover:shadow-lg rounded-lg p-6 text-center transform hover:scale-105 transition-transform duration-300">
+                <h2 class="text-2xl font-bold text-gray-700 mb-4">Asignar Repartidor</h2>
+                <p class="text-gray-600 mb-6">Asigna un repartidor a los pedidos pendientes de entrega.</p>
+                <a href="{{ route('admin.repartidor.asignar_repartidor_vista') }}" class="block bg-indigo-500 text-white font-semibold px-5 py-3 rounded-lg hover:bg-indigo-600 transition-colors duration-300">
+                    Asignar Repartidor
+                </a>
             </div>
         </div>
     </div>

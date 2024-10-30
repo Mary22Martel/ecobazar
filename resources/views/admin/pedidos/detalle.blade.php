@@ -12,6 +12,15 @@
         <p><strong>Dirección:</strong> {{ $pedido->direccion }}</p>
         <p><strong>Distrito:</strong> {{ $pedido->distrito }}</p>
 
+        @if ($pedido->repartidor)
+            <h2 class="text-2xl font-bold mt-6 mb-4">Repartidor Asignado</h2>
+            <p><strong>Nombre:</strong> {{ $pedido->repartidor->name }}</p>
+            <p><strong>Email:</strong> {{ $pedido->repartidor->email }}</p>
+        @else
+            <h2 class="text-2xl font-bold mt-6 mb-4">Repartidor Asignado</h2>
+            <p>No hay repartidor asignado aún.</p>
+        @endif
+
         <h2 class="text-2xl font-bold mt-6 mb-4">Productos del Pedido</h2>
         <table class="min-w-full bg-white border border-gray-200 shadow-sm rounded-lg mx-auto">
             <thead>
@@ -24,7 +33,6 @@
             </thead>
             <tbody class="divide-y divide-gray-200">
             @foreach($pedido->items as $item)
-                
                 <tr>
                     <td class="py-4 px-6">{{ $item->product->nombre }}</td>
                     <td class="py-4 px-6">{{ $item->cantidad }}</td>
@@ -38,7 +46,6 @@
                     </td>
                 </tr>
             @endforeach
-
             </tbody>
         </table>
 
