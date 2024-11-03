@@ -137,6 +137,7 @@ public function asignarRepartidor(Request $request, $id)
     $pedido->repartidor_id = $request->repartidor_id;
     $pedido->save();
 
+
     return redirect()->route('admin.repartidor.asignar_repartidor_vista')
                      ->with('success', 'Repartidor asignado exitosamente.');
 }

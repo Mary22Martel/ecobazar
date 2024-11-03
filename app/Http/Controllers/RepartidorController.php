@@ -35,18 +35,20 @@ class RepartidorController extends Controller
        // dd(Auth::id()); // Verificar el ID del usuario autenticado
     
         $repartidorId = Auth::id();
-//dd($repartidorId); // Verificar si se obtiene el ID del usuario autenticado correctamente
+        //dd($repartidorId); // Verificar si se obtiene el ID del usuario autenticado correctamente
 
-$pedidos = Order::where('repartidor_id', $repartidorId)
-               ->where('estado', 'pendiente')
-               ->get();
+        // $pedidos = Order::where('repartidor_id', $repartidorId)
+        //             ->where('estado', 'pendiente')
+        //             ->get();
+        $pedidos = Order::where('repartidor_id', $repartidorId)->get();
 
-//dd($pedidos); // Verificar si se obtienen los pedidos correctamente
 
-    
-        return view('repartidor.pedidos_pendientes', compact('pedidos'));
-    }
-    
+        //dd($pedidos); // Verificar si se obtienen los pedidos correctamente
+
+            
+                return view('repartidor.pedidos_pendientes', compact('pedidos'));
+            }
+            
     
 
     public function marcarComoEntregado($id)
