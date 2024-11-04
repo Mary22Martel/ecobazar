@@ -75,6 +75,7 @@
                 <span>Total:</span>
                 <span>S/{{ number_format($carrito->total() + 8.00, 2) }}</span>
             </div>
+
         </div>
     </div>
 </div>
@@ -82,69 +83,70 @@
 
 @section('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const paymentOptions = document.querySelectorAll('input[name="pago"]');
-        const checkoutForm = document.getElementById('checkout-form');
+   document.addEventListener('DOMContentLoaded', function() {
+    const checkoutForm = document.getElementById('checkout-form');
 
-        let selectedPaymentOption = null;
+    checkoutForm.addEventListener('submit', function(event) {
+        event.preventDefault(); // Evita el envío estándar del formulario
 
-        paymentOptions.forEach(option => {
-            option.addEventListener('change', function() {
-                selectedPaymentOption = this.value;
+        // Obtener datos del formulario
+        const formData = new FormData(checkoutForm);
+        const orderData = {
+            nombre: formData.get('nombre'),
+            apellido: formData.get('apellido'),
+            empresa: formData.get('empresa'),
+            email: formData.get('email'),
+            telefono: formData.get('telefono'),
+            delivery: formData.get('delivery'),
+            direccion: formData.get('direccion'),
+            distrito: formData.get('distrito'),
+            pago: formData.get('pago')
+        };
+
+        // Obtener los datos del carrito desde los elementos HTML
+        const carritoItems = document.querySelectorAll('.carrito-item');
+        orderData.carrito = []; // Crear un array para los items
+
+        carritoItems.forEach(item => {
+            orderData.carrito.push({
+                id: item.dataset.id,
+                title: item.dataset.title,
+                quantity: parseInt(item.dataset.quantity),
+                unit_price: parseFloat(item.dataset.price)
             });
         });
 
-        checkoutForm.addEventListener('submit', function(event) {
-            if (selectedPaymentOption === 'sistema') {
-                event.preventDefault(); // Evitar el envío del formulario por defecto
-
-                // Obtener datos del carrito desde los elementos HTML con clase "carrito-item"
-                const carritoItems = document.querySelectorAll('.carrito-item');
-                const products = [];
-
-                carritoItems.forEach(item => {
-                    products.push({
-                        id: item.dataset.id,
-                        title: item.dataset.title,
-                        description: 'Producto del carrito',
-                        currency_id: 'PEN',
-                        quantity: parseInt(item.dataset.quantity),
-                        unit_price: parseFloat(item.dataset.price)
-                    });
-                });
-
-                // Datos del comprador y del pedido
-                const formData = new FormData(checkoutForm);
-                const orderData = {
-                    product: products,
-                    name: formData.get('nombre'),
-                    surname: formData.get('apellido'),
-                    email: formData.get('email'),
-                    phone: formData.get('telefono'),
-                    total: parseFloat("{{ $carrito->total() + 8.00 }}")
-                };
-
-                fetch("{{ url('/create-preference') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                    },
-                    body: JSON.stringify(orderData)
-                })
-                .then(response => response.json())
-                .then(preference => {
-                    if (preference.error) {
-                        throw new Error(preference.error);
-                    }
-                    // Redirigir al pago de Mercado Pago
-                    window.location.href = preference.init_point;
-                })
-                .catch(error => {
-                    console.error('Error al crear la preferencia:', error);
-                });
+        // Hacer una petición POST a OrderController@store
+        fetch("{{ route('order.store') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify(orderData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
             }
+            
+            // Si data contiene init_point, significa que el pago es "sistema" y tenemos una URL de pago
+            if (data.init_point) {
+    // Redirigir a la URL de Mercado Pago
+    window.location.href = data.init_point;
+} else {
+    // Si no es un pago por sistema, redirigir a la página de éxito
+    window.location.href = data.redirect_url;
+}
+
+        })
+        .catch(error => {
+            console.error('Error al crear la orden:', error);
+            alert('Hubo un problema al procesar tu orden. Inténtalo de nuevo.');
         });
     });
+});
+
 </script>
 @endsection

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.app2')
 
 @section('content')
 <div class="container mx-auto p-6">
@@ -31,13 +31,21 @@
                         <td class="py-4 px-6">{{ $pedido->direccion ?? 'N/A' }}</td>
                         <td class="py-4 px-6">S/{{ number_format($pedido->total, 2) }}</td>
                         <td class="py-4 px-6">
+                            <a href="{{ route('repartidor.pedido.detalle', $pedido->id) }}" 
+                               class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-all">
+                                Ver Detalles
+                            </a>
+
                             @if($pedido->estado !== 'entregado')
-                                <form action="{{ route('repartidor.pedido.entregado', $pedido->id) }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-all">
-                                        Marcar como Entregado
-                                    </button>
-                                </form>
+                            <form action="{{ route('repartidor.pedido.entregado', $pedido->id) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-all mt-3"
+                                        onclick="console.log('Botón de Entregado clickeado');">
+                                    Entregado
+                                </button>
+                            </form>
+
+
                             @else
                                 <button type="button" class="bg-gray-500 text-white py-2 px-4 rounded-lg cursor-not-allowed" disabled>
                                     Pedido Entregado

@@ -40,9 +40,9 @@
                     <li>
                         <a href="{{ route('tienda') }}" class="{{ request()->is('tienda') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Tienda</a>
                     </li>
-                    <li>
+                    <!-- <li>
                         <a href="#" class="{{ request()->is('canastas') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Canastas</a>
-                    </li>
+                    </li> -->
                
                     @auth
                         @if(Auth::user()->role == 'repartidor')
@@ -58,9 +58,9 @@
                                 <a class="nav-link" href="{{ route('admin.dashboard') }}">{{ __('Admin Dashboard') }}</a>
                             </li>
                         @elseif(Auth::user()->role == 'cliente')
-                            <li class="nav-item">
+                            <!-- <li class="nav-item">
                                 <a class="nav-link" href="{{ route('cliente.dashboard') }}">{{ __('Cliente Dashboard') }}</a>
-                            </li>
+                            </li> -->
                         @endif
                     @endauth
                 </ul>

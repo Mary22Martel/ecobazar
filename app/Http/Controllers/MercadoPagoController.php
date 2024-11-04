@@ -99,7 +99,7 @@ class MercadoPagoController extends Controller
     // Método para manejar el éxito del pago
     public function success(Request $request)
     {
-        return view('payment.success', ['payment_info' => $request->all()]);
+        return view('order.success', ['payment_info' => $request->all()]);
     }
 
     // Método para manejar el fallo del pago

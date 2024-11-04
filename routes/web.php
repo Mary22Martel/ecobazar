@@ -108,6 +108,8 @@ Route::middleware(['auth'])->group(function () {
    // Route::post('/carrito/agregar/{id}', [CarritoController::class, 'add'])->name('carrito.add');
     Route::get('/carrito/details', [CarritoController::class, 'getDetails'])->name('carrito.getDetails');
     Route::get('/checkout', [CarritoController::class, 'checkout'])->name('checkout');
+    Route::get('/carrito/checkout', [CarritoController::class, 'checkout'])->name('carrito.checkout');
+
 
 });
 
@@ -116,6 +118,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orden', [OrderController::class, 'store'])->name('order.store');
     Route::get('/orden-exito/{orderId}', [OrderController::class, 'success'])->name('order.success');
     Route::get('/orden-voucher/{orderId}', [OrderController::class, 'downloadVoucher'])->name('order.voucher');
+    Route::get('/order/failed', [OrderController::class, 'failed'])->name('order.failed');
+
 
     // Rutas para los agricultores relacionadas con pedidos
     Route::get('/agricultor/pedidos-pendientes', [OrderController::class, 'mostrarPedidosPendientes'])->name('agricultor.pedidos_pendientes');
@@ -134,8 +138,10 @@ Route::get('/order/success/{orderId}', [OrderController::class, 'success'])->nam
 Route::middleware(['auth'])->group(function () {
     Route::get('/repartidor/pedidos-pendientes', [RepartidorController::class, 'pedidosPendientes'])
         ->name('repartidor.pedidos_pendientes');
-    Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])
-        ->name('repartidor.pedido.entregado');
+    Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])->name('repartidor.pedido.entregado');
+
+    Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
+
 });
 
 

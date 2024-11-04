@@ -58,7 +58,6 @@ class CarritoController extends Controller
         ]);
     }
     
-
     // Controlador para cargar el carrito en la vista
     public function loadCartData()
     {
@@ -81,38 +80,38 @@ class CarritoController extends Controller
     }
 
     public function getDetails()
-{
-    $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
+    {
+        $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
 
-    if (!$carrito) {
+        if (!$carrito) {
+            return response()->json([
+                'items' => [],
+                'totalPrice' => 0.00,
+                'totalItems' => 0,
+            ]);
+        }
+
+        $items = $carrito->items->map(function ($item) {
+            return [
+                'nombre' => $item->product->nombre,
+                'cantidad' => $item->cantidad,
+                'subtotal' => $item->product->precio * $item->cantidad,
+                'imagen_url' => $item->product->imagen ? asset('storage/productos/' . $item->product->imagen) : asset('images/default-product.png'),
+            ];
+        });
+
+        $totalPrice = $carrito->items->sum(function ($item) {
+            return $item->product->precio * $item->cantidad;
+        });
+
+        $totalItems = $carrito->items->sum('cantidad');
+
         return response()->json([
-            'items' => [],
-            'totalPrice' => 0.00,
-            'totalItems' => 0,
+            'items' => $items,
+            'totalPrice' => $totalPrice,
+            'totalItems' => $totalItems,
         ]);
     }
-
-    $items = $carrito->items->map(function ($item) {
-        return [
-            'nombre' => $item->product->nombre,
-            'cantidad' => $item->cantidad,
-            'subtotal' => $item->product->precio * $item->cantidad,
-            'imagen_url' => $item->product->imagen ? asset('storage/productos/' . $item->product->imagen) : asset('images/default-product.png'),
-        ];
-    });
-
-    $totalPrice = $carrito->items->sum(function ($item) {
-        return $item->product->precio * $item->cantidad;
-    });
-
-    $totalItems = $carrito->items->sum('cantidad');
-
-    return response()->json([
-        'items' => $items,
-        'totalPrice' => $totalPrice,
-        'totalItems' => $totalItems,
-    ]);
-}
 
     public function remove($itemId)
     {
@@ -123,49 +122,47 @@ class CarritoController extends Controller
     }
 
     public function update(Request $request, $itemId)
-{
-    $item = CarritoItem::findOrFail($itemId);
-    $item->cantidad = $request->input('cantidad');
-    $item->save();
+    {
+        $item = CarritoItem::findOrFail($itemId);
+        $item->cantidad = $request->input('cantidad');
+        $item->save();
 
-    // Calcula el subtotal del producto actualizado
-    $itemSubtotal = $item->product->precio * $item->cantidad;
+        // Calcula el subtotal del producto actualizado
+        $itemSubtotal = $item->product->precio * $item->cantidad;
 
-    // Calcula el nuevo subtotal y total del carrito
-    $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
-    $cartSubtotal = $carrito->items->sum(function ($item) {
-        return $item->product->precio * $item->cantidad;
-    });
-    $cartTotal = $cartSubtotal; // Puedes agregar costos de envío si es necesario
+        // Calcula el nuevo subtotal y total del carrito
+        $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
+        $cartSubtotal = $carrito->items->sum(function ($item) {
+            return $item->product->precio * $item->cantidad;
+        });
+        $cartTotal = $cartSubtotal; // Puedes agregar costos de envío si es necesario
 
-    // Devolver la respuesta en JSON
-    return response()->json([
-        'itemSubtotal' => $itemSubtotal,
-        'cartSubtotal' => $cartSubtotal,
-        'cartTotal' => $cartTotal,
-    ]);
-}
-
-public function checkout()
-{
-    $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
-
-    if (!$carrito || $carrito->items->isEmpty()) {
-        return redirect()->route('carrito.index')->with('error', 'El carrito está vacío.');
+        // Devolver la respuesta en JSON
+        return response()->json([
+            'itemSubtotal' => $itemSubtotal,
+            'cartSubtotal' => $cartSubtotal,
+            'cartTotal' => $cartTotal,
+        ]);
     }
 
-    return view('carrito.checkout', compact('carrito'));
-}
+    public function checkout()
+    {
+        $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
 
-public function clear()
-{
-    $carrito = Carrito::where('user_id', Auth::id())->first();
-    if ($carrito) {
-        $carrito->items()->delete();
-        $carrito->delete();
+        if (!$carrito || $carrito->items->isEmpty()) {
+            return redirect()->route('carrito.index')->with('error', 'El carrito está vacío.');
+        }
+
+        return view('carrito.checkout', compact('carrito'));
     }
-}
 
-
+    public function clear()
+    {
+        $carrito = Carrito::where('user_id', Auth::id())->first();
+        if ($carrito) {
+            $carrito->items()->delete();
+            $carrito->delete();
+        }
+    }
     
 }

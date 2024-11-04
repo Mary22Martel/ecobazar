@@ -14,6 +14,9 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
+    'app2' => [
+        'name' => env('APP2_NAME', 'Admin Dashboard'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
