@@ -17,6 +17,7 @@ class OrderController extends Controller
 {
     public function store(Request $request)
 {
+    try {
     Log::info('Entrando en el método store del controlador OrderController');
 
     // Validar los datos de la solicitud
@@ -27,10 +28,13 @@ class OrderController extends Controller
         'email' => 'required|email',
         'telefono' => 'required|string|max:20',
         'delivery' => 'required|string',
-        'direccion' => 'required_if:delivery,delivery|string|max:255',
-        'distrito' => 'required_if:delivery,delivery|string|max:255',
+       'direccion' => 'nullable|string|max:255|required_if:delivery,delivery',
+        'distrito' => 'nullable|string|max:255|required_if:delivery,delivery',
+
         'pago' => 'required|string',
     ]);
+    Log::info('Datos de entrada:', $request->all());
+
 
     // Obtener el carrito del usuario
     $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
@@ -137,7 +141,16 @@ $carrito->items()->delete();
     }
 
     // Retorna éxito para otro tipo de pago
-    return response()->json(['success' => true, 'message' => 'Pedido creado exitosamente.']);
+    return response()->json([
+        'success' => true,
+        'message' => 'Pedido creado exitosamente.',
+        'redirect_url' => route('order.success', ['orderId' => $order->id]) // Agrega esta línea
+    ]);
+} catch (\Exception $e) {
+    Log::error('Error al crear la orden: ' . $e->getMessage());
+    return response()->json(['error' => 'Hubo un problema al crear la orden: ' . $e->getMessage()], 500);
+}
+    
 }
 
 

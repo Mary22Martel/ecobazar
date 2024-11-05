@@ -1,15 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex justify-center items-center min-h-screen">
+<div class="flex justify-center items-center min-h-screen bg-gray-100 px-4">
     <div class="w-full max-w-6xl mx-auto py-8">
-        <h2 class="text-4xl font-bold mb-10 text-center">Mi Carrito de Compras</h2>
+        <!-- Title with Cart Icon -->
+        <h2 class="text-4xl sm:text-5xl font-bold mb-10 text-green-600 text-center flex items-center justify-center">
+            🛒 Carrito de Compras
+        </h2>
 
         @if($carrito && $carrito->items->count())
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            <!-- Tabla de productos del carrito -->
-            <div class="col-span-2 bg-white p-8 shadow-lg rounded-lg">
-                <table class="w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Cart Items Table -->
+            <div class="col-span-2 bg-white p-6 shadow-lg rounded-lg overflow-x-auto">
+                <table class="w-full min-w-[600px]">
                     <thead>
                         <tr class="border-b">
                             <th class="py-4 text-left">Producto</th>
@@ -22,18 +25,13 @@
                     <tbody>
                         @foreach ($carrito->items as $item)
                         <tr class="border-b" data-item-id="{{ $item->id }}">
-                            <!-- Imagen del producto y detalles -->
                             <td class="py-6 flex items-center space-x-4">
                                 <img src="{{ asset('storage/' . $item->product->imagen) }}" alt="{{ $item->product->nombre }}" class="w-16 h-16 object-cover rounded">
                                 <div>
                                     <p class="font-semibold">{{ $item->product->nombre }}</p>
                                 </div>
                             </td>
-
-                            <!-- Precio unitario -->
                             <td class="py-6 text-center">S/{{ number_format($item->product->precio, 2) }}</td>
-
-                            <!-- Modificar cantidad -->
                             <td class="py-6 text-center">
                                 <div class="flex items-center justify-center">
                                     <button type="button" class="text-gray-600 px-2 update-quantity" data-action="decrement">
@@ -45,11 +43,7 @@
                                     </button>
                                 </div>
                             </td>
-
-                            <!-- Total por producto -->
                             <td class="py-6 text-right font-bold item-subtotal">S/{{ number_format($item->product->precio * $item->cantidad, 2) }}</td>
-
-                            <!-- Botón para eliminar -->
                             <td class="py-6 text-center">
                                 <form action="{{ route('carrito.remove', $item->id) }}" method="POST">
                                     @csrf
@@ -64,32 +58,31 @@
                 </table>
             </div>
 
-            <!-- Resumen del carrito -->
-            <div class="bg-white p-8 shadow-lg rounded-lg">
-                <h3 class="text-2xl font-bold mb-6">Resumen de tu compra</h3>
-                <!-- Subtotal -->
+            <!-- Cart Summary -->
+            <div class="bg-white p-6 shadow-lg rounded-lg">
+                <h3 class="text-2xl font-bold mb-6 text-gray-700">Resumen de tu compra</h3>
                 <div class="flex justify-between mb-4">
                     <span class="text-lg">Subtotal:</span>
                     <span class="text-lg font-bold" id="cart-subtotal">S/{{ number_format($carrito->total(), 2) }}</span>
                 </div>
-                <!-- Total -->
                 <div class="flex justify-between border-t border-gray-200 pt-4 mb-6">
                     <span class="text-xl font-bold">Total:</span>
-                    <span class="text-xl font-bold" id="cart-total">S/{{ number_format($carrito->total(), 2) }}</span>
+                    <span class="text-xl font-bold text-green-500" id="cart-total">S/{{ number_format($carrito->total(), 2) }}</span>
                 </div>
-                <!-- Botón de checkout -->
-                <a href="{{ route('checkout') }}" class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg hover:bg-green-600 transition duration-200 text-center inline-block">Realizar pedido</a>
-
-                <!-- Botón para volver a la tienda -->
-                <a href="{{ route('tienda') }}" class="block text-center mt-4 text-gray-500 hover:underline">Volver a la Tienda</a>
+                <!-- Checkout Button -->
+                <a href="{{ route('checkout') }}" class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg hover:bg-green-600 transition duration-200 text-center inline-block">Proceder a comprar</a>
+                <!-- Return to Store Button -->
+                <a href="{{ route('tienda') }}" class="block text-center mt-4 text-gray-500 hover:underline items-center justify-center">
+                    <span class="mr-2">←</span> Ver más productos
+                </a>
             </div>
-
-            
         </div>
         @else
         <p class="text-center text-xl mt-20">No hay productos en tu carrito.</p>
         <div class="flex justify-center mt-8">
-            <a href="{{ route('tienda') }}" class="bg-green-500 text-white px-8 py-3 rounded-lg">Volver a la tienda</a>
+            <a href="{{ route('tienda') }}" class="bg-green-500 text-white px-8 py-3 rounded-lg flex items-center">
+                <span class="mr-2">←</span> Volver a la tienda
+            </a>
         </div>
         @endif
     </div>

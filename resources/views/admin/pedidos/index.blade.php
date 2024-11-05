@@ -22,7 +22,8 @@
                     <tr class="hover:bg-gray-50">
                         <td class="py-4 px-6">{{ $pedido->id }}</td>
                         <td class="py-4 px-6">{{ $pedido->nombre }} {{ $pedido->apellido }}</td>
-                        <td class="py-4 px-6">{{ ucfirst($pedido->estado) }}</td>
+                        <td class="py-4 px-6">{{ ucfirst($pedido->estado === 'pendiente de pago' ? 'Pagado' : 'Pendiente en Puesto') }}</td>
+
                         <td class="py-4 px-6">{{ $pedido->created_at->format('d/m/Y H:i') }}</td>
                         <td class="py-4 px-6">
                             <a href="{{ route('admin.pedido.detalle', $pedido->id) }}" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Ver Detalle</a>
