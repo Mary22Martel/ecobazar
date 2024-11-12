@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Carrito;
 use App\Models\CarritoItem;
 use App\Models\Product;
+use App\Models\Zone;
 use Illuminate\Support\Facades\Auth;
 
 
@@ -144,16 +145,21 @@ class CarritoController extends Controller
             'cartTotal' => $cartTotal,
         ]);
     }
-
     public function checkout()
     {
+        // Obtener el carrito del usuario
         $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
 
+        // Verificar si el carrito está vacío
         if (!$carrito || $carrito->items->isEmpty()) {
             return redirect()->route('carrito.index')->with('error', 'El carrito está vacío.');
         }
 
-        return view('carrito.checkout', compact('carrito'));
+        // Obtener todas las zonas de la base de datos
+        $zones = Zone::all();
+
+        // Pasar el carrito y las zonas a la vista de checkout
+        return view('carrito.checkout', compact('carrito', 'zones'));
     }
 
     public function clear()
@@ -164,5 +170,7 @@ class CarritoController extends Controller
             $carrito->delete();
         }
     }
+
+    
     
 }

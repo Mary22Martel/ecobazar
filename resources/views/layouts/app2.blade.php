@@ -45,10 +45,6 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ route('agricultor.dashboard') }}">{{ __('Agricultor Dashboard ') }}</a>
                             </li>
-                        @elseif(Auth::user()->role == 'admin')
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('admin.dashboard') }}">{{ __('Admin Dashboard') }}</a>
-                            </li>
                         @elseif(Auth::user()->role == 'cliente')
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ route('cliente.dashboard') }}">{{ __('Cliente Dashboard') }}</a>

@@ -54,4 +54,15 @@ class User extends Authenticatable
     {
         return $this->role === $role;
     }
+
+    public function setPasswordAttribute($value)
+    {
+        $this->attributes['password'] = bcrypt($value);
+    }
+
+    public function zones()
+    {
+        return $this->belongsToMany(Zone::class, 'zone_user'); 
+    }
+
 }

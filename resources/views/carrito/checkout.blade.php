@@ -33,7 +33,13 @@
                 <div id="delivery-fields" class="space-y-4 mb-6 hidden">
                     <input type="text" name="direccion" placeholder="Nombre de la calle y número de casa" class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
                     <input type="text" name="direccion_opcional" placeholder="Dpto., piso, unidad, bloque (opcional)" class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
-                    <input type="text" name="distrito" placeholder="Distrito" class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
+                    <select name="distrito" class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
+    <option value="">Seleccione una zona</option>
+    @foreach($zones as $zone)
+        <option value="{{ $zone->id }}" data-cost="{{ $zone->delivery_cost }}">{{ $zone->name }} - S/{{ $zone->delivery_cost }}</option>
+    @endforeach
+</select>
+
                 </div>
 
                 <h3 class="text-xl font-bold my-6 text-gray-700">Opción de Pago</h3>
@@ -85,54 +91,59 @@
 document.addEventListener('DOMContentLoaded', function() {
     const deliveryFields = document.getElementById('delivery-fields');
     const deliveryOptions = document.querySelectorAll('input[name="delivery"]');
-    const deliveryRadios = document.querySelectorAll('input[name="delivery"]');
-    const direccionFields = document.getElementById('delivery-fields');
+    const zoneSelect = document.querySelector('select[name="distrito"]');
+    const envioSpan = document.getElementById('envio');
+    const totalSpan = document.getElementById('total');
+    const subtotalSpan = document.getElementById('subtotal');
+    const checkoutForm = document.getElementById('checkout-form');
 
-    deliveryRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.value === 'delivery') {
-                direccionFields.style.display = 'block';
-                direccionFields.querySelectorAll('input').forEach(input => input.required = true);
-            } else {
-                direccionFields.style.display = 'none';
-                direccionFields.querySelectorAll('input').forEach(input => input.required = false);
-            }
-        });
+    // Inicialmente ocultar los campos de dirección y quitar el "required" del campo "distrito"
+    deliveryFields.style.display = 'none';
+    zoneSelect.required = false;
+
+    // Actualizar el costo de envío basado en la zona seleccionada
+    zoneSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const envioCost = parseFloat(selectedOption.getAttribute('data-cost') || 0);
+        const subtotal = parseFloat(subtotalSpan.innerText.replace('S/', ''));
+        envioSpan.innerText = `S/${envioCost.toFixed(2)}`;
+        totalSpan.innerText = `S/${(subtotal + envioCost).toFixed(2)}`;
     });
 
-    // Ocultar los campos de dirección inicialmente
-    deliveryFields.style.display = 'none';
-
+    // Manejar cambios en las opciones de entrega (mostrar u ocultar campos de dirección)
     deliveryOptions.forEach(option => {
         option.addEventListener('change', function() {
             if (this.value === 'delivery') {
                 deliveryFields.style.display = 'block';
                 deliveryFields.querySelectorAll('input').forEach(input => input.required = true);
+                zoneSelect.required = true;
             } else {
                 deliveryFields.style.display = 'none';
                 deliveryFields.querySelectorAll('input').forEach(input => input.required = false);
+                zoneSelect.required = false;
             }
         });
     });
 
-    const checkoutForm = document.getElementById('checkout-form');
-
+    // Enviar el formulario con datos en formato JSON
     checkoutForm.addEventListener('submit', function(event) {
         event.preventDefault(); // Evita el envío estándar del formulario
 
         // Obtener datos del formulario
         const formData = new FormData(checkoutForm);
         const orderData = {
-            nombre: formData.get('nombre'),
-            apellido: formData.get('apellido'),
-            empresa: formData.get('empresa'),
-            email: formData.get('email'),
-            telefono: formData.get('telefono'),
-            delivery: formData.get('delivery'),
-            direccion: formData.get('direccion') || '', // Valor vacío si no es requerido
-            distrito: formData.get('distrito') || '',   // Valor vacío si no es requerido
-            pago: formData.get('pago')
-        };
+        nombre: formData.get('nombre'),
+        apellido: formData.get('apellido'),
+        empresa: formData.get('empresa'),
+        email: formData.get('email'),
+        telefono: formData.get('telefono'),
+        delivery: formData.get('delivery'),
+        direccion: formData.get('delivery') === 'delivery' ? formData.get('direccion') : '', // Solo enviar si es delivery
+        distrito: formData.get('delivery') === 'delivery' ? formData.get('distrito') : '',   // Solo enviar si es delivery
+        pago: formData.get('pago')
+    };
+
+    
 
         // Obtener los datos del carrito desde los elementos HTML
         const carritoItems = document.querySelectorAll('.carrito-item');
@@ -163,29 +174,30 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
-    if (data.error) {
-        throw new Error(data.error);
-    }
-    
-    // Si data contiene init_point, significa que el pago es "sistema" y tenemos una URL de pago
-    if (data.init_point) {
-        // Redirigir a la URL de Mercado Pago
-        window.location.href = data.init_point;
-    } else if (data.redirect_url) {
-        // Si no es un pago por sistema, redirigir a la página de éxito
-        window.location.href = data.redirect_url;
-    } else {
-        console.error("Error: No se proporcionó una URL de redirección.");
-        alert("Hubo un problema al procesar tu orden. Inténtalo de nuevo.");
-    }
-})
+            if (data.error) {
+                throw new Error(data.error);
+            }
 
+            // Redirigir según el método de pago
+            if (data.init_point) {
+                // Redirigir a la URL de Mercado Pago
+                window.location.href = data.init_point;
+            } else if (data.redirect_url) {
+                // Redirigir a la página de éxito
+                window.location.href = data.redirect_url;
+            } else {
+                console.error("Error: No se proporcionó una URL de redirección.");
+                alert("Hubo un problema al procesar tu orden. Inténtalo de nuevo.");
+            }
+        })
         .catch(error => {
             console.error('Error al crear la orden:', error);
             alert('Hubo un problema al procesar tu orden. Inténtalo de nuevo.');
         });
     });
 });
+
 </script>
+
 
 @endsection

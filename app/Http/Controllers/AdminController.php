@@ -1,13 +1,11 @@
 <?php
-
+/*
 namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Canasta;
 use App\Models\Categoria;
 use App\Models\Order;
 use Illuminate\Support\Facades\Hash;
-
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -36,10 +34,8 @@ class AdminController extends Controller
         }
     }
 
- 
     public function detallePedido()
     {
-        // Obtener todos los pedidos
         $pedidos = Order::with('items.product')->get();
 
         return view('admin.pedido.index', compact('pedidos'));
@@ -68,7 +64,7 @@ class AdminController extends Controller
             'role' => 'repartidor',
         ]);
 
-        return redirect()->route('admin.dashboard')->with('success', 'Repartidor creado con éxito.');
+        return redirect()->route('admin.repartidor.list')->with('success', 'Repartidor creado con éxito.');
     }
 
     public function listRepartidores()
@@ -117,39 +113,49 @@ class AdminController extends Controller
         return redirect()->route('admin.repartidor.list')->with('success', 'Repartidor eliminado con éxito.');
     }
 
-   // AdminController.php
+    public function asignarRepartidorVista()
+    {
+        $pedidos = Order::whereNull('repartidor_id')
+                        ->where('estado', 'pagado')
+                        ->get();
 
-public function asignarRepartidorVista()
-{
-    $pedidos = Order::whereNull('repartidor_id')->get(); // Obtener pedidos sin repartidor asignado
-    $repartidores = User::where('role', 'repartidor')->get(); // Obtener todos los repartidores
+        $repartidores = User::where('role', 'repartidor')->get();
 
-    return view('admin.repartidor.asignar_repartidor', compact('pedidos', 'repartidores'));
+        return view('admin.repartidor.asignar_repartidor', compact('pedidos', 'repartidores'));
+    }
+
+    public function asignarRepartidor(Request $request, $id)
+    {
+        $request->validate([
+            'repartidor_id' => 'required|exists:users,id',
+        ]);
+
+        $pedido = Order::findOrFail($id);
+        $pedido->repartidor_id = $request->repartidor_id;
+        $pedido->save();
+
+        return redirect()->route('admin.repartidor.asignar_repartidor_vista')
+                         ->with('success', 'Repartidor asignado exitosamente.');
+    }
+
+    public function detallePedidoAdmin($id)
+    {
+        $pedido = Order::with(['items.product', 'repartidor'])->findOrFail($id);
+        return view('admin.pedido.detalle', compact('pedido'));
+    }
+
+    public function todosLosPedidos()
+    {
+        $pedidosPagados = Order::with(['items.product', 'user'])
+            ->whereIn('estado', ['pagado', 'entregado'])
+            ->get();
+
+        $pedidosPendientesEnPuesto = Order::with(['items.product', 'user'])
+            ->where('estado', 'pendiente en puesto')
+            ->get();
+
+        return view('admin.pedidos.index', compact('pedidosPagados', 'pedidosPendientesEnPuesto'));
+    }
 }
-
-public function asignarRepartidor(Request $request, $id)
-{
-    $request->validate([
-        'repartidor_id' => 'required|exists:users,id',
-    ]);
-
-    $pedido = Order::findOrFail($id);
-    $pedido->repartidor_id = $request->repartidor_id;
-    $pedido->save();
-
-
-    return redirect()->route('admin.repartidor.asignar_repartidor_vista')
-                     ->with('success', 'Repartidor asignado exitosamente.');
-}
-
-public function detallePedidoAdmin($id)
-{
-    // Cargar los detalles del pedido junto con los items, el producto y el repartidor
-    $pedido = Order::with(['items.product', 'repartidor'])->findOrFail($id);
-    return view('admin.pedido.detalle', compact('pedido'));
-}
-
-    
-
-}
-
+*/
+?>

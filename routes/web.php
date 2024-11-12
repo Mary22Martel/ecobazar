@@ -2,15 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\RepartidorController;
 use App\Http\Controllers\AgricultorController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\Auth\AgricultorRegisterController;
-use App\Http\Controllers\CategoriaController;
-use App\Http\Controllers\MedidaController;
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\CanastaController;
 use App\Http\Controllers\OrderController;
@@ -32,14 +29,17 @@ Route::get('/auth-check', function () {
     return response()->json(['authenticated' => Auth::check()]);
 })->name('auth.check');
 
+//Login y Register para Agricultor
+Route::get('/agricultor/register', [AgricultorRegisterController::class, 'showRegistrationForm'])->name('agricultor.register');
+Route::post('/agricultor/register', [AgricultorRegisterController::class, 'register'])->name('agricultor.register.submit');
+
 
 
 
 Auth::routes();
 
 Route::middleware(['auth'])->group(function () {
-    
-    Route::get('/admin', [AdminController::class, 'index'])->name('admin.dashboard');
+
     Route::get('/repartidor', [RepartidorController::class, 'index'])->name('repartidor.dashboard');
     Route::get('/agricultor', [AgricultorController::class, 'index'])->name('agricultor.dashboard');
     Route::get('/cliente', [ClienteController::class, 'index'])->name('cliente.dashboard');
@@ -56,47 +56,20 @@ Route::middleware(['auth'])->group(function () {
 
 });
 
-// Grupo de rutas para la administración de categorías y medidas (solo admin)
+
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
-    Route::get('/admin/repartidor/create', [AdminController::class, 'createRepartidor'])->name('repartidor.create_repartidor');
-    Route::post('/admin/repartidor/store', [AdminController::class, 'storeRepartidor'])->name('repartidor.store_repartidor');
-    // Ruta para cargar la vista de asignación de repartidor (GET)
-    Route::get('/admin/asignar-repartidor', [AdminController::class, 'asignarRepartidorVista'])
-    ->name('repartidor.asignar_repartidor_vista');
-
-    // Ruta para procesar la asignación de repartidor (POST)
-    Route::post('/admin/pedido/{id}/asignar-repartidor', [AdminController::class, 'asignarRepartidor'])
-    ->name('repartidor.asignar_repartidor');
-
-
-
-    // Rutas para categorías
-    Route::resource('categorias', CategoriaController::class);
     
-    // Rutas para medidas
-    Route::resource('medidas', MedidaController::class);
-
     // Rutas para canastas
     Route::resource('canastas', CanastaController::class);
 
     // Rutas para pedidos (nota: sin repetir 'admin/')
-    Route::get('/pedidos', [OrderController::class, 'todosLosPedidos'])->name('pedidos.index');
+    //Route::get('/pedidos', [OrderController::class, 'todosLosPedidos'])->name('pedidos.index');
     Route::get('/pedido/{id}', [OrderController::class, 'detallePedidoAdmin'])->name('pedido.detalle');
+   // Route::get('/pedidos', [AdminController::class, 'todosLosPedidos'])->name('pedidos.index');
+
     Route::post('/pedido/{id}/actualizar-estado', [OrderController::class, 'actualizarEstado'])->name('pedido.actualizar_estado');
 
-     // Rutas para crear y gestionar repartidores
-     Route::get('/repartidores', [AdminController::class, 'listRepartidores'])->name('repartidor.list');
-     Route::get('/repartidor/crear', [AdminController::class, 'createRepartidor'])->name('repartidor.create');
-     Route::post('/repartidor/crear', [AdminController::class, 'storeRepartidor'])->name('repartidor.store');
-     Route::get('/repartidor/{id}/editar', [AdminController::class, 'editRepartidor'])->name('repartidor.edit');
-     Route::post('/repartidor/{id}/actualizar', [AdminController::class, 'updateRepartidor'])->name('repartidor.update');
-     Route::delete('/repartidor/{id}', [AdminController::class, 'deleteRepartidor'])->name('repartidor.delete');
 });
-
-
-//Login y Register para Agricultor
-Route::get('/agricultor/register', [AgricultorRegisterController::class, 'showRegistrationForm'])->name('agricultor.register');
-Route::post('/agricultor/register', [AgricultorRegisterController::class, 'register'])->name('agricultor.register.submit');
 
 
 // Rutas del carrito
@@ -119,8 +92,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/orden-exito/{orderId}', [OrderController::class, 'success'])->name('order.success');
     Route::get('/orden-voucher/{orderId}', [OrderController::class, 'downloadVoucher'])->name('order.voucher');
     Route::get('/order/failed', [OrderController::class, 'failed'])->name('order.failed');
-
-
+    Route::post('/mercadopago/webhook', [OrderController::class, 'mercadoPagoWebhook']);
+    
     // Rutas para los agricultores relacionadas con pedidos
     Route::get('/agricultor/pedidos-pendientes', [OrderController::class, 'mostrarPedidosPendientes'])->name('agricultor.pedidos_pendientes');
     Route::get('/agricultor/pedido/{id}', [OrderController::class, 'detallePedido'])->name('agricultor.pedido.detalle');
@@ -143,6 +116,3 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
 
 });
-
-
-

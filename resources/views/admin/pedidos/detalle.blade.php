@@ -60,6 +60,7 @@
                     <option value="listo" {{ $pedido->estado == 'listo' ? 'selected' : '' }}>Listo</option>
                     <option value="enviando" {{ $pedido->estado == 'enviando' ? 'selected' : '' }}>Enviando</option>
                     <option value="entregado" {{ $pedido->estado == 'entregado' ? 'selected' : '' }}>Entregado</option>
+                    <option value="entregado" {{ $pedido->estado == 'entregado' ? 'selected' : '' }}>Cancelar</option>
                 </select>
                 <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Actualizar Estado</button>
             </div>

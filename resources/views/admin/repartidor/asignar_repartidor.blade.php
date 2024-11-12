@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.app2')
 
 @section('content')
 <div class="container mx-auto my-10 px-4">
@@ -10,7 +10,8 @@
                 <div class="p-6">
                     <h5 class="text-2xl font-semibold text-gray-800 mb-2">Pedido #{{ $pedido->id }}</h5>
                     <p class="text-gray-600"><strong>Cliente:</strong> {{ $pedido->nombre }} {{ $pedido->apellido }}</p>
-                    <p class="text-gray-600 mb-4"><strong>Dirección:</strong> {{ $pedido->direccion }}</p>
+                    <p class="text-gray-600"><strong>Dirección:</strong> {{ $pedido->direccion }}</p>
+                    <p class="text-gray-600 mb-4"><strong>Distrito:</strong> {{ $pedido->distrito }}</p>
 
                     <form action="{{ route('admin.repartidor.asignar_repartidor', ['id' => $pedido->id]) }}" method="POST">
                         @csrf

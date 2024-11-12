@@ -42,7 +42,7 @@ class RegisterController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', 'string', 'in:student,teacher,cliente,repartidor,agricultor'], // Añade esta validación
+            'role' => ['required', 'string', 'in:cliente,repartidor,agricultor'], // Añade esta validación
         ]);
     }
 

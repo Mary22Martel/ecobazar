@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers;
+/*namespace App\Http\Controllers;
 
 use App\Models\Medida;
 use Illuminate\Http\Request;
@@ -46,3 +46,4 @@ class MedidaController extends Controller
         return redirect()->route('admin.medidas.index')->with('success', 'Medida eliminada correctamente.');
     }
 }
+*/

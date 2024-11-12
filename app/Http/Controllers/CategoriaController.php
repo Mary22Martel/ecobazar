@@ -1,4 +1,5 @@
 <?php
+/*
 namespace App\Http\Controllers;
 
 
@@ -47,3 +48,4 @@ class CategoriaController extends Controller
         return redirect()->route('admin.categorias.index')->with('success', 'Categoría eliminada correctamente.');
     }
 }
+*/
