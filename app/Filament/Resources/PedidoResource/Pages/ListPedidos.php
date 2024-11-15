@@ -10,6 +10,16 @@ class ListPedidos extends ListRecords
 {
     protected static string $resource = PedidoResource::class;
 
+    public static function label(): string
+    {
+        return 'Pedido';
+    }
+
+    public static function pluralLabel(): string
+    {
+        return 'Pedidos';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

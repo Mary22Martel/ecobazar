@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\Carrito;
 use App\Models\Zone;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -17,151 +18,164 @@ use Exception;
 class OrderController extends Controller
 {
     public function store(Request $request)
-{
-    try {
-        Log::info('Entrando en el método store del controlador OrderController');
-
-        // Si la entrega no es "delivery", elimina el campo distrito de la solicitud
-        if ($request->input('delivery') !== 'delivery') {
-            $request->merge(['distrito' => null]);
-        }
-
-        // Validación de los datos de entrada
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'apellido' => 'required|string|max:255',
-            'empresa' => 'nullable|string|max:255',
-            'email' => 'required|email',
-            'telefono' => 'required|string|max:20',
-            'delivery' => 'required|string',
-            'direccion' => 'nullable|string|max:255|required_if:delivery,delivery',
-            'distrito' => 'nullable|required_if:delivery,delivery|exists:zones,id',
-            'pago' => 'required|string',
-        ]);
-
-        Log::info('Validación completada con éxito:', $request->all());
-
-        // Obtener carrito y verificar si está vacío
-        $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
-        if (!$carrito || $carrito->items->isEmpty()) {
-            Log::warning('Carrito vacío o no encontrado para el usuario ID: ' . Auth::id());
-            return response()->json(['error' => 'El carrito está vacío.'], 400);
-        }
-
-        // Calcular subtotal
-        $subtotal = $carrito->items->sum(fn($item) => $item->product->precio * $item->cantidad);
-        $envio = 0.00;
-        $zone = null;
-
-        // Calcular costo de envío si es delivery
-        if ($request->input('delivery') === 'delivery') {
-            $zone = Zone::find($request->input('distrito'));
-            if (!$zone) {
-                return response()->json(['error' => 'La zona seleccionada no es válida.'], 400);
+    {
+        try {
+            Log::info('Entrando en el método store del controlador OrderController');
+    
+            // Si la entrega no es "delivery", elimina el campo distrito de la solicitud
+            if ($request->input('delivery') !== 'delivery') {
+                $request->merge(['distrito' => null]);
             }
-            $envio = (float) $zone->delivery_cost;
-
-        }
-
-        $estado = $request->input('pago') === 'sistema' ? 'pendiente de pago' : 'pendiente en puesto';
-
-        // Crear el pedido
-        $order = Order::create([
-            'user_id' => Auth::id(),
-            'nombre' => $request->input('nombre'),
-            'apellido' => $request->input('apellido'),
-            'empresa' => $request->input('empresa'),
-            'email' => $request->input('email'),
-            'telefono' => $request->input('telefono'),
-            'delivery' => $request->input('delivery'),
-            'direccion' => $request->input('direccion'),
-            'distrito' => $zone->name ?? null,
-            'pago' => $request->input('pago'),
-            'total' => $subtotal + $envio,
-            'estado' => $estado,
-        ]);
-
-        Log::info("Pedido creado exitosamente con ID: {$order->id}");
-
-        // Preparar items para Mercado Pago
-        $itemsParaMercadoPago = [];
-        foreach ($carrito->items as $item) {
-            $order->items()->create([
-                'producto_id' => $item->producto_id,
-                'cantidad' => $item->cantidad,
-                'precio' => $item->product->precio,
+    
+            // Validación de los datos de entrada
+            $request->validate([
+                'nombre' => 'required|string|max:255',
+                'apellido' => 'required|string|max:255',
+                'empresa' => 'nullable|string|max:255',
+                'email' => 'required|email',
+                'telefono' => 'required|string|max:20',
+                'delivery' => 'required|string',
+                'direccion' => 'nullable|string|max:255|required_if:delivery,delivery',
+                'distrito' => 'nullable|required_if:delivery,delivery|exists:zones,id',
+                'pago' => 'required|string',
             ]);
-
-            // Item para Mercado Pago
-            $itemsParaMercadoPago[] = [
-                "title" => $item->product->nombre,
-                "quantity" => $item->cantidad,
-                "currency_id" => "PEN",
-                "unit_price" => floatval($item->product->precio),
-            ];
-
-            // Actualizar inventario
-            $producto = $item->product;
-            if ($producto->cantidad_disponible < $item->cantidad) {
-                return redirect()->route('carrito.index')->with('error', 'No hay suficiente stock para el producto: ' . $producto->nombre);
+    
+            Log::info('Validación completada con éxito:', $request->all());
+    
+            // Obtener carrito y verificar si está vacío
+            $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
+            if (!$carrito || $carrito->items->isEmpty()) {
+                Log::warning('Carrito vacío o no encontrado para el usuario ID: ' . Auth::id());
+                return response()->json(['error' => 'El carrito está vacío.'], 400);
             }
-            $producto->cantidad_disponible -= $item->cantidad;
-            $producto->save();
-        }
+    
+            // Calcular subtotal
+            $subtotal = $carrito->items->sum(fn($item) => $item->product->precio * $item->cantidad);
+            $envio = 0.00;
+            $zone = null;
+            $repartidor = null;
+    
+            // Calcular costo de envío y asignar repartidor si es delivery
+            if ($request->input('delivery') === 'delivery') {
+                $zone = Zone::find($request->input('distrito'));
+                if (!$zone) {
+                    return response()->json(['error' => 'La zona seleccionada no es válida.'], 400);
+                }
+                $envio = (float) $zone->delivery_cost;
+    
+                // Buscar un repartidor que esté asignado a esta zona
+                $repartidor = User::whereHas('zones', function ($query) use ($zone) {
+                    $query->where('zones.id', $zone->id);
+                })->first();
+    
+                if (!$repartidor) {
+                    Log::warning("No hay repartidores disponibles para la zona ID: {$zone->id}");
+                    return response()->json(['error' => 'No hay repartidores disponibles para esta zona.'], 400);
+                }
+    
+                Log::info("Repartidor asignado con ID: {$repartidor->id} para la zona ID: {$zone->id}");
+            }
+    
+            $estado = $request->input('pago') === 'sistema' ? 'pendiente de pago' : 'pendiente en puesto';
+    
+            // Crear el pedido
+            $order = Order::create([
+                'user_id' => Auth::id(),
+                'nombre' => $request->input('nombre'),
+                'apellido' => $request->input('apellido'),
+                'empresa' => $request->input('empresa'),
+                'email' => $request->input('email'),
+                'telefono' => $request->input('telefono'),
+                'delivery' => $request->input('delivery'),
+                'direccion' => $request->input('direccion'),
+                'distrito' => $zone->name ?? null,
+                'pago' => $request->input('pago'),
+                'total' => $subtotal + $envio,
+                'estado' => $estado,
+                'repartidor_id' => $repartidor ? $repartidor->id : null, // Asignación del repartidor
+            ]);
+    
+            Log::info("Pedido creado exitosamente con ID: {$order->id}" . ($repartidor ? " y asignado al repartidor ID: {$repartidor->id}" : ""));
 
-        $carrito->items()->delete();
-
-        // Si es pago en sistema, crear la preferencia de Mercado Pago
-        if ($request->input('pago') === 'sistema') {
-            try {
-                Log::info('Iniciando autenticación de Mercado Pago');
-                MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-                $client = new PreferenceClient();
-                Log::info('Cliente de preferencia creado correctamente');
-        
-                $requestData = [
-                    "items" => $itemsParaMercadoPago,
-                    "back_urls" => [
-                        "success" => route('order.success', ['orderId' => $order->id]),
-                        "failure" => route('order.failed'),
-                    ],
-                    "auto_return" => "approved",
-                    "shipments" => [
-    "cost" => $envio,  // Asegurarte de que sea un float
-    "mode" => "not_specified"
-]
-
+    
+            // Preparar items para Mercado Pago
+            $itemsParaMercadoPago = [];
+            foreach ($carrito->items as $item) {
+                $order->items()->create([
+                    'producto_id' => $item->producto_id,
+                    'cantidad' => $item->cantidad,
+                    'precio' => $item->product->precio,
+                ]);
+    
+                // Item para Mercado Pago
+                $itemsParaMercadoPago[] = [
+                    "title" => $item->product->nombre,
+                    "quantity" => $item->cantidad,
+                    "currency_id" => "PEN",
+                    "unit_price" => floatval($item->product->precio),
                 ];
-        
-                // Registrar requestData como JSON para evitar errores de tipo Array to string conversion
-                Log::info('Datos de la preferencia de Mercado Pago: ' . json_encode($requestData));
-        
-                $preference = $client->create($requestData);
-                Log::info('Preferencia creada con éxito, URL: ' . $preference->init_point);
-        
-                return response()->json(['init_point' => $preference->init_point]);
-            } catch (MPApiException $error) {
-                $errorMessage = 'Error de Mercado Pago API: ' . $error->getApiResponse()->getContent();
-                Log::error($errorMessage);
-                return response()->json(['error' => 'Error al procesar el pago: ' . $errorMessage], 500);
-            } catch (Exception $e) {
-                $errorMessage = 'Error de Mercado Pago General: ' . $e->getMessage();
-                Log::error($errorMessage);
-                return response()->json(['error' => 'Error al procesar el pago: ' . $errorMessage], 500);
+    
+                // Actualizar inventario
+                $producto = $item->product;
+                if ($producto->cantidad_disponible < $item->cantidad) {
+                    return redirect()->route('carrito.index')->with('error', 'No hay suficiente stock para el producto: ' . $producto->nombre);
+                }
+                $producto->cantidad_disponible -= $item->cantidad;
+                $producto->save();
             }
+    
+            $carrito->items()->delete();
+    
+            // Si es pago en sistema, crear la preferencia de Mercado Pago
+            if ($request->input('pago') === 'sistema') {
+                try {
+                    Log::info('Iniciando autenticación de Mercado Pago');
+                    MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+                    $client = new PreferenceClient();
+                    Log::info('Cliente de preferencia creado correctamente');
+            
+                    $requestData = [
+                        "items" => $itemsParaMercadoPago,
+                        "back_urls" => [
+                            "success" => route('order.success', ['orderId' => $order->id]),
+                            "failure" => route('order.failed'),
+                        ],
+                        "auto_return" => "approved",
+                        "shipments" => [
+                            "cost" => $envio, // Asegúrate de que sea un float
+                            "mode" => "not_specified"
+                        ]
+                    ];
+            
+                    // Registrar requestData como JSON para evitar errores de tipo Array to string conversion
+                    Log::info('Datos de la preferencia de Mercado Pago: ' . json_encode($requestData));
+            
+                    $preference = $client->create($requestData);
+                    Log::info('Preferencia creada con éxito, URL: ' . $preference->init_point);
+            
+                    return response()->json(['init_point' => $preference->init_point]);
+                } catch (MPApiException $error) {
+                    $errorMessage = 'Error de Mercado Pago API: ' . $error->getApiResponse()->getContent();
+                    Log::error($errorMessage);
+                    return response()->json(['error' => 'Error al procesar el pago: ' . $errorMessage], 500);
+                } catch (Exception $e) {
+                    $errorMessage = 'Error de Mercado Pago General: ' . $e->getMessage();
+                    Log::error($errorMessage);
+                    return response()->json(['error' => 'Error al procesar el pago: ' . $errorMessage], 500);
+                }
+            }
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido creado exitosamente.',
+                'redirect_url' => route('order.success', ['orderId' => $order->id]) 
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al crear la orden: ' . $e->getMessage());
+            return response()->json(['error' => 'Hubo un problema al crear la orden: ' . $e->getMessage()], 500);
         }
-        
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pedido creado exitosamente.',
-            'redirect_url' => route('order.success', ['orderId' => $order->id]) 
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Error al crear la orden: ' . $e->getMessage());
-        return response()->json(['error' => 'Hubo un problema al crear la orden: ' . $e->getMessage()], 500);
     }
-}
+    
 
 
     

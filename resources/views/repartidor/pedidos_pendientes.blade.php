@@ -19,6 +19,7 @@
                     <th class="py-4 px-6 text-left">ID del Pedido</th>
                     <th class="py-4 px-6 text-left">Cliente</th>
                     <th class="py-4 px-6 text-left">Dirección</th>
+                    <th class="py-4 px-6 text-left">Zona</th>
                     <th class="py-4 px-6 text-left">Total</th>
                     <th class="py-4 px-6 text-left">Acciones</th>
                 </tr>
@@ -29,6 +30,7 @@
                         <td class="py-4 px-6">{{ $pedido->id }}</td>
                         <td class="py-4 px-6">{{ $pedido->nombre }} {{ $pedido->apellido }}</td>
                         <td class="py-4 px-6">{{ $pedido->direccion ?? 'N/A' }}</td>
+                        <td class="py-4 px-6">{{ $pedido->distrito ?? 'N/A' }}</td>
                         <td class="py-4 px-6">S/{{ number_format($pedido->total, 2) }}</td>
                         <td class="py-4 px-6">
                             <a href="{{ route('repartidor.pedido.detalle', $pedido->id) }}" 

@@ -1,71 +1,72 @@
 @extends('layouts.app2')
 
 @section('content')
-<div class="container mx-auto mt-12 max-w-6xl">
-    <h1 class="text-4xl font-bold text-green-600 mb-8 text-center">Detalle del Pedido #{{ $pedido->id }}</h1>
+<div class="space-y-4">
+    <h3 class="text-2xl font-semibold text-green-600">Detalles del Pedido #{{ $pedido->id }}</h3>
 
-    <div class="bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-2xl font-bold mb-4">Información del Cliente</h2>
-        <p><strong>Nombre:</strong> {{ $pedido->nombre }} {{ $pedido->apellido }}</p>
-        <p><strong>Email:</strong> {{ $pedido->email }}</p>
+    <!-- Información del Cliente -->
+    <div class="mt-4">
+        <h4 class="text-lg font-semibold">Información del Cliente</h4>
+        <p><strong>Nombre:</strong> {{ $pedido->user->name }}</p>  <!-- Mostramos el nombre del cliente -->
+        <p><strong>Email:</strong> {{ $pedido->user->email }}</p>
         <p><strong>Teléfono:</strong> {{ $pedido->telefono }}</p>
         <p><strong>Dirección:</strong> {{ $pedido->direccion }}</p>
         <p><strong>Distrito:</strong> {{ $pedido->distrito }}</p>
+    </div>
 
-        @if ($pedido->repartidor)
-            <h2 class="text-2xl font-bold mt-6 mb-4">Repartidor Asignado</h2>
+    <!-- Repartidor Asignado -->
+    @if ($pedido->repartidor)
+        <div class="mt-4">
+            <h4 class="text-lg font-semibold">Repartidor Asignado</h4>
             <p><strong>Nombre:</strong> {{ $pedido->repartidor->name }}</p>
             <p><strong>Email:</strong> {{ $pedido->repartidor->email }}</p>
-        @else
-            <h2 class="text-2xl font-bold mt-6 mb-4">Repartidor Asignado</h2>
+        </div>
+    @else
+        <div class="mt-4">
+            <h4 class="text-lg font-semibold">Repartidor Asignado</h4>
             <p>No hay repartidor asignado aún.</p>
-        @endif
+        </div>
+    @endif
 
-        <h2 class="text-2xl font-bold mt-6 mb-4">Productos del Pedido</h2>
-        <table class="min-w-full bg-white border border-gray-200 shadow-sm rounded-lg mx-auto">
+    <!-- Productos del Pedido -->
+    <div class="mt-4">
+        <h4 class="text-lg font-semibold">Productos del Pedido</h4>
+        <table class="min-w-full bg-white border border-gray-200 shadow-sm rounded-lg">
             <thead>
                 <tr class="bg-gray-100 text-gray-600 text-left">
-                    <th class="py-4 px-6">Producto</th>
-                    <th class="py-4 px-6">Cantidad</th>
-                    <th class="py-4 px-6">Precio</th>
-                    <th class="py-4 px-6">Agricultor</th>
+                    <th class="py-2 px-4">Producto</th>
+                    <th class="py-2 px-4">Cantidad</th>
+                    <th class="py-2 px-4">Precio</th>
+                    <th class="py-2 px-4">Agricultor</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-            @foreach($pedido->items as $item)
-                <tr>
-                    <td class="py-4 px-6">{{ $item->product->nombre }}</td>
-                    <td class="py-4 px-6">{{ $item->cantidad }}</td>
-                    <td class="py-4 px-6">S/{{ number_format($item->precio, 2) }}</td>
-                    <td class="py-4 px-6">
-                        @if ($item->product->usuario)
-                            {{ $item->product->usuario->name }}
-                        @else
-                            N/A
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
+                @foreach($pedido->items as $item)
+                    <tr>
+                        <td class="py-2 px-4">{{ $item->product->nombre }}</td>
+                        <td class="py-2 px-4">{{ $item->cantidad }}</td>
+                        <td class="py-2 px-4">S/{{ number_format($item->precio, 2) }}</td>
+                        <td class="py-2 px-4">
+                            @if ($item->product->usuario)
+                                {{ $item->product->usuario->name }}
+                            @else
+                                N/A
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
             </tbody>
         </table>
+    </div>
 
-        <h2 class="text-2xl font-bold mt-6 mb-4">Estado del Pedido: {{ ucfirst($pedido->estado) }}</h2>
+    <!-- Estado del Pedido -->
+    <div class="mt-4">
+        <h4 class="text-lg font-semibold">Estado del Pedido: {{ ucfirst($pedido->estado) }}</h4>
+    </div>
 
-        <!-- Aquí añadimos el formulario para actualizar el estado del pedido -->
-        <form action="{{ route('admin.pedido.actualizar_estado', $pedido->id) }}" method="POST" class="mt-6">
-            @csrf
-            <div class="flex items-center space-x-4">
-                <select name="estado" class="border rounded-lg p-2">
-                    <option value="pendiente" {{ $pedido->estado == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
-                    <option value="listo" {{ $pedido->estado == 'listo' ? 'selected' : '' }}>Listo</option>
-                    <option value="enviando" {{ $pedido->estado == 'enviando' ? 'selected' : '' }}>Enviando</option>
-                    <option value="entregado" {{ $pedido->estado == 'entregado' ? 'selected' : '' }}>Entregado</option>
-                    <option value="entregado" {{ $pedido->estado == 'entregado' ? 'selected' : '' }}>Cancelar</option>
-                </select>
-                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Actualizar Estado</button>
-            </div>
-        </form>
-        <!-- Fin del formulario para actualizar el estado del pedido -->
+    <!-- Botón para cerrar el modal -->
+    <div class="mt-4 text-right">
+        <button wire:click="$emit('closeModal')" class="bg-gray-500 text-white px-4 py-2 rounded">Cerrar</button>
     </div>
 </div>
 @endsection

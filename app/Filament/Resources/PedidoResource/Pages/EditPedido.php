@@ -10,10 +10,14 @@ class EditPedido extends EditRecord
 {
     protected static string $resource = PedidoResource::class;
 
+
+
     protected function getHeaderActions(): array
     {
         return [
             Actions\DeleteAction::make(),
         ];
     }
+
+
 }

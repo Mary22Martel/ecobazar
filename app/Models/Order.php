@@ -12,7 +12,7 @@ class Order extends Model
     protected $fillable = [
         'user_id', 'nombre', 'apellido', 'empresa', 'email', 'telefono', 
         'delivery', 'direccion', 'distrito', 'pago', 'total', 'estado', 
-        'envio', 'repartidor_id' // Asegúrate de que repartidor_id esté aquí
+        'envio', 'repartidor_id' 
     ];
 
     // Relación con el usuario que realizó la orden
