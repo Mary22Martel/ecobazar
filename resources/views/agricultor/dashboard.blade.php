@@ -1,47 +1,56 @@
-@extends('layouts.app')
+@extends('layouts.app2')
 
 @section('content')
-<div class="container mx-auto mt-12 max-w-7xl">
-    <h1 class="text-6xl font-extrabold text-center text-green-500 mb-12">Dashboard del Agricultor</h1>
-
-    <div class="flex justify-center">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl">
-    <div class="bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg p-8">
-            <h4 class="text-2xl font-bold mb-4 text-gray-700">Gestionar Productos</h4>
-            <p class="text-gray-600 mb-6">Aquí puedes ver y gestionar todos tus productos fácilmente.</p>
-            <div class="flex flex-col space-y-4">
-                <a href="{{ route('productos.index') }}" class="bg-blue-500 text-white py-3 px-6 rounded-lg hover:bg-blue-600 transition duration-300 ease-in-out text-center">
-                    Ver Mis Productos
-                </a>
-                <a href="{{ route('productos.create') }}" class="bg-green-500 text-white py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300 ease-in-out text-center">
-                    Agregar Nuevo Producto
-                </a>
+<div class="container mx-auto mt-12 max-w-6xl px-4 grid grid-cols-1 lg:grid-cols-3 gap-10">
+    <!-- Bienvenida -->
+    <div class="lg:col-span-3 flex flex-col items-center mb-12">
+        <div class="w-full bg-gradient-to-r from-green-500 to-green-700 text-white shadow-xl rounded-3xl p-10 flex items-center justify-between transform hover:scale-105 transition-all">
+            <div class="flex-1">
+                <h2 class="text-5xl font-extrabold mb-4">Bienvenido, {{ Auth::user()->name ?? 'Agricultor' }}</h2>
+                <p class="text-white leading-relaxed text-lg">Gracias por ser parte de nuestra comunidad. Desde aquí puedes gestionar todos tus productos, revisar los pedidos pendientes y explorar nuevas funcionalidades que hemos preparado para ti.</p>
+            </div>
+            <div class="hidden md:block w-1/3">
+                <img src="{{ asset('images/agrix.svg') }}" alt="Imagen de Bienvenida" class="w-full rounded-2xl shadow-2xl transform scale-110">
             </div>
         </div>
+    </div>
 
-        <!-- Aquí puedes agregar más tarjetas en el futuro -->
-        <!-- Ejemplo de otra tarjeta para otras funcionalidades -->
-        <div class="bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg p-8">
-            <h4 class="text-2xl font-bold mb-4 text-gray-700">Otras Funcionalidades</h4>
-            <p class="text-gray-600 mb-6">Aquí puedes explorar otras funciones que se agregaran en el futuro.</p>
-            <a href="#" class="bg-yellow-500 text-white py-3 px-6 rounded-lg hover:bg-yellow-600 transition duration-300 ease-in-out text-center">
-                Ver Otras Funciones
+    <!-- Tarjetas de Funcionalidades -->
+    <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Gestionar Productos -->
+        <div class="bg-gray-50 border border-gray-200 shadow-sm hover:shadow-2xl rounded-lg p-6 transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col justify-between h-full">
+            <div>
+                <h4 class="text-xl font-semibold mb-2 text-gray-800">Gestionar Productos</h4>
+                <p class="text-gray-600 text-sm mb-4 leading-relaxed">Aquí puedes ver y gestionar todos tus productos fácilmente.</p>
+            </div>
+            <a href="{{ route('productos.index') }}" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-all duration-300 ease-in-out text-center transform hover:-translate-y-1">
+                Ver Mis Productos
             </a>
         </div>
 
-         <!-- Nueva tarjeta para gestionar pedidos -->
-         <div class="bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg p-8">
-                <h4 class="text-2xl font-bold mb-4 text-gray-700">Pedidos Pendientes</h4>
-                <p class="text-gray-600 mb-6">Aquí puedes ver y gestionar todos los pedidos que tienes pendientes.</p>
-                <div class="flex flex-col space-y-4">
-                    <a href="{{ route('agricultor.pedidos_pendientes') }}" class="bg-purple-500 text-white py-3 px-6 rounded-lg hover:bg-purple-600 transition duration-300 ease-in-out text-center">
-                        Ver Pedidos Pendientes
-                    </a>
-                </div>
+        <!-- Pedidos Pendientes -->
+        <div class="bg-gray-50 border border-gray-200 shadow-sm hover:shadow-2xl rounded-lg p-6 transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col justify-between h-full">
+            <div>
+                <h4 class="text-xl font-semibold mb-2 text-gray-800">Pedidos Pendientes</h4>
+                <p class="text-gray-600 text-sm mb-4 leading-relaxed">Aquí puedes ver y gestionar todos los pedidos que tienes pendientes.</p>
             </div>
+            <a href="{{ route('agricultor.pedidos_pendientes') }}" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-all duration-300 ease-in-out text-center transform hover:-translate-y-1">
+                Ver Pedidos Pendientes
+            </a>
+        </div>
 
+        <!-- Otras Funcionalidades -->
+        <div class="bg-gray-50 border border-gray-200 shadow-sm hover:shadow-2xl rounded-lg p-6 transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col justify-between h-full">
+            <div>
+                <h4 class="text-xl font-semibold mb-2 text-gray-800">Otras Funcionalidades</h4>
+                <p class="text-gray-600 text-sm mb-4 leading-relaxed">Aquí puedes explorar otras funciones que se agregaran en el futuro.</p>
+            </div>
+            <a href="{{ route('progreso') }}" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-all duration-300 ease-in-out text-center transform hover:-translate-y-1">
+                Ver Otras Funciones
+            </a>
+
+        </div>
     </div>
-</div>
 </div>
 <br>
 <br>

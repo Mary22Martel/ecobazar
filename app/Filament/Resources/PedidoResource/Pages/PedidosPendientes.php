@@ -27,6 +27,6 @@ class PedidosPendientes extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        return PedidoResource::getModel()::query()->where('estado', 'pendiente de pago');
+        return PedidoResource::getModel()::query()->where('estado', 'pendiente en puesto');
     }
 }

@@ -33,21 +33,15 @@
                 
                 <!-- Links de navegación -->
                 <ul class="flex space-x-8 text-gray-500">
-                    <li>
-                        <a href="{{ url('/') }}" class="{{ request()->is('/') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Home</a>
-                    </li>
+                    
                     @auth
                         @if(Auth::user()->role == 'repartidor')
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ route('repartidor.dashboard') }}">{{ __('Repartidor Dashboard') }}</a>
+                                <a class="nav-link" href="{{ route('repartidor.dashboard') }}">{{ __('Panel administrativo repartidor') }}</a>
                             </li>
                         @elseif(Auth::user()->role == 'agricultor')
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ route('agricultor.dashboard') }}">{{ __('Agricultor Dashboard ') }}</a>
-                            </li>
-                        @elseif(Auth::user()->role == 'cliente')
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('cliente.dashboard') }}">{{ __('Cliente Dashboard') }}</a>
+                                <a class="nav-link" href="{{ route('agricultor.dashboard') }}">{{ __('Panel administrativo agricultor') }}</a>
                             </li>
                         @endif
                     @endauth

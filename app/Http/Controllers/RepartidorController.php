@@ -37,26 +37,44 @@ class RepartidorController extends Controller
     }
 
     public function marcarComoEntregado($id)
-{
-    $this->authorizeRoles(['repartidor']);
-    
-    $pedido = Order::findOrFail($id);
-    
-    // if ($pedido->estado !== 'listo' && $pedido->estado !== 'pendiente') {
-    //     return redirect()->route('repartidor.pedidos_pendientes')->with('error', 'El pedido no está listo para ser entregado.');
-    // }
+    {
+        $this->authorizeRoles(['repartidor']);
+        
+        $pedido = Order::findOrFail($id);
+        
+        // if ($pedido->estado !== 'listo' && $pedido->estado !== 'pendiente') {
+        //     return redirect()->route('repartidor.pedidos_pendientes')->with('error', 'El pedido no está listo para ser entregado.');
+        // }
 
-    $pedido->estado = 'entregado';
-    $pedido->save();
+        $pedido->estado = 'entregado';
+        $pedido->save();
 
-    // Verificar si el estado cambió correctamente
-    if ($pedido->wasChanged('estado')) {
-        return redirect()->route('repartidor.pedidos_pendientes')->with('success', 'Pedido marcado como entregado.');
-    } else {
-        return redirect()->route('repartidor.pedidos_pendientes')->with('error', 'Hubo un problema al actualizar el pedido.');
+        // Verificar si el estado cambió correctamente
+        if ($pedido->wasChanged('estado')) {
+            return redirect()->route('repartidor.pedidos_pendientes')->with('success', 'Pedido marcado como entregado.');
+        } else {
+            return redirect()->route('repartidor.pedidos_pendientes')->with('error', 'Hubo un problema al actualizar el pedido.');
+        }
     }
-}
 
+    public function marcarEnProceso($id)
+    {
+        $this->authorizeRoles(['repartidor']);
+        
+        $pedido = Order::findOrFail($id);
+        
+        // Permitir el cambio solo si el estado es "pagado"
+        if (!in_array(strtolower($pedido->estado), ['pagado', 'pendiente'])) {
+            return redirect()->route('repartidor.pedidos_pendientes')->with('error', 'El pedido no puede ser marcado como "En Proceso".');
+        }
+
+        
+        $pedido->estado = 'en proceso';
+        $pedido->save();
+
+        return redirect()->route('repartidor.pedidos_pendientes')->with('success', 'El pedido se ha marcado como "En Proceso".');
+    }
+  
 
     public function detallePedido($id)
     {

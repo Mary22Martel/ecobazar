@@ -73,7 +73,6 @@ class PedidoResource extends Resource
                  Select::make('estado')
                      ->label('Estado')
                      ->options([
-                         'pendiente' => 'Pendiente',
                          'pagado' => 'Pagado',
                          'en_proceso' => 'En Proceso',
                          'entregado' => 'Entregado',

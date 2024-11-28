@@ -23,6 +23,14 @@ Route::get('/producto/{id}', [ProductoController::class, 'show'])->name('product
 Route::get('/productos/filtrar-precio', [ProductoController::class, 'filtrarPorPrecio'])->name('productos.filtrarPorPrecio');
 Route::get('/productos/productor/{id}', [ProductoController::class, 'filtrarPorProductor'])->name('productos.filtrarPorProductor');
 Route::get('/buscar-productos/ajax', [ProductoController::class, 'buscarProductosAjax'])->name('buscar.productos.ajax');
+Route::get('/progreso', function () {
+    return view('progreso');
+})->name('progreso');
+Route::get('/nosotros', function () {
+    return view('nosotros');
+})->name('nosotros');
+
+
 
 
 Route::get('/auth-check', function () {
@@ -112,6 +120,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/repartidor/pedidos-pendientes', [RepartidorController::class, 'pedidosPendientes'])
         ->name('repartidor.pedidos_pendientes');
     Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])->name('repartidor.pedido.entregado');
+    Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])->name('repartidor.pedido.proceso');
+
 
     Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
 

@@ -35,7 +35,7 @@
                         <a href="{{ url('/') }}" class="{{ request()->is('/') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Home</a>
                     </li>
                     <li>
-                        <a href="#" class="{{ request()->is('nosotros') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Nosotros</a>
+                        <a href="{{ route('nosotros') }}" class="{{ request()->is('nosotros') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Nosotros</a>
                     </li>
                     <li>
                         <a href="{{ route('tienda') }}" class="{{ request()->is('tienda') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Tienda</a>
@@ -157,82 +157,107 @@
             @yield('content')
         </main>
 
-        <!-- Footer -->
-        <footer class="bg-gray-100 text-gray-700 py-12 px-20">
-            <div class="container mx-auto grid grid-cols-1 md:grid-cols-5 gap-8 " >
-                <!-- Logo y Descripción -->
-                <div>
-                    <a href="#" class="flex items-center space-x-2 mb-4">
-                        <img src="{{ asset('images/Logo.png') }}" alt="Ecobazar Logo" class="w-34">
+        <!-- Footer --> 
+        <footer class="bg-gray-100 text-gray-700 py-20 px-8">
+    <div class="container mx-auto max-w-screen-xl px-4">
+        <!-- Grid para las columnas -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 text-center md:text-left">
+            <!-- Logo y descripción -->
+            <div class="flex flex-col items-center md:items-start space-y-8">
+                <a href="#" class="flex justify-center md:justify-start items-center">
+                    <img src="{{ asset('images/Logo.png') }}" alt="Ecobazar Logo" class="w-44">
+                </a>
+                <p class="text-gray-500 leading-relaxed text-center md:text-left">
+                    Somos tu mercado en línea para productos frescos y de calidad provenientes de ferias agrícolas locales. 
+                    ¡Compra directamente de los agricultores!
+                </p>
+                <div class="flex justify-center md:justify-start space-x-6">
+                    <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition transform hover:scale-110">
+                        <i class="fab fa-facebook-f"></i>
                     </a>
-                    <p class="text-gray-500">
-                        Somos tu mercado en línea para productos frescos y de calidad provenientes de ferias agrícolas locales. ¡Compra directamente de los agricultores!
-                    </p>
-                    <div class="flex space-x-4 mt-4">
-                        <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition-colors">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition-colors">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition-colors">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Categorías -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Categorías</h3>
-                    <ul class="space-y-2">
-                        <li><a href="{{ route('tienda') }}" class="text-gray-500 hover:text-green-500">Todo</a></li>
-                        @foreach($categorias as $cat)
-                            <li>
-                                <a href="{{ route('productos.filtrarPorCategoria', $cat->id) }}" class="text-gray-500 hover:text-green-500">
-                                    {{ $cat->nombre }}
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-
-                <!-- Enlaces útiles -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Enlaces Útiles</h3>
-                    <ul class="space-y-2">
-                        <li><a href="#" class="text-gray-500 hover:text-green-500">Inicio</a></li>
-                        <li><a href="#" class="text-gray-500 hover:text-green-500">Sobre Nosotros</a></li>
-                        <li><a href="#" class="text-gray-500 hover:text-green-500">Contacto</a></li>
-                        <li><a href="#" class="text-gray-500 hover:text-green-500">Términos y Condiciones</a></li>
-                    </ul>
-                </div>
-
-                <!-- Información de Contacto -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Contáctanos</h3>
-                    <p class="text-gray-500 mb-2">
-                        <i class="fas fa-phone-alt text-green-500"></i> Soporte 24/7: +51 999 999 999
-                    </p>
-                    <p class="text-gray-500 mb-2">
-                        <i class="fas fa-envelope text-green-500"></i> Email: contacto@ecobazar.com
-                    </p>
-                    <p class="text-gray-500 mb-2">
-                        <i class="fas fa-map-marker-alt text-green-500"></i> Dirección: Calle Ejemplo 123, Ciudad, País
-                    </p>
-                    
+                    <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition transform hover:scale-110">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition transform hover:scale-110">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="text-2xl text-gray-700 hover:text-green-500 transition transform hover:scale-110">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
                 </div>
             </div>
 
-            <!-- Payment and Credits -->
-            <div class="mt-8 border-t border-gray-200 pt-6">
-                <div class="container mx-auto flex flex-col md:flex-row justify-between items-center text-gray-500">
-                    <p class="mb-4 md:mb-0">Ecobazar eCommerce © 2024. Todos los derechos reservados</p>
-                    <div class="flex space-x-4">
-                        <img src="{{ asset('images/tarjetas.png') }}" alt="Métodos de pago" class="w-22">
-                    </div>
+            <!-- Categorías -->
+            <div class="flex flex-col items-center md:items-start space-y-8">
+                <h3 class="text-lg font-semibold text-gray-800">Categorías</h3>
+                <ul class="grid grid-cols-2 gap-y-4">
+                    <li><a href="{{ route('tienda') }}" class="text-gray-500 hover:text-green-500 transition hover:underline">Todo</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Vegetales</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Fruta</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Verduras de hojas</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Legumbres</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Queso</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Tubérculos</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Granos</a></li>
+                </ul>
+            </div>
+
+            <!-- Enlaces útiles -->
+            <div class="flex flex-col items-center md:items-start space-y-8">
+                <h3 class="text-lg font-semibold text-gray-800">Enlaces Útiles</h3>
+                <ul class="space-y-4">
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Inicio</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Sobre Nosotros</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Contacto</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Términos y Condiciones</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">Blog</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-green-500 transition hover:underline">FAQ</a></li>
+                </ul>
+            </div>
+
+            <!-- Información de contacto -->
+            <div class="flex flex-col items-center md:items-start space-y-8">
+                <h3 class="text-lg font-semibold text-gray-800">Contáctanos</h3>
+                <ul class="space-y-4">
+                    <li class="flex justify-center md:justify-start items-center space-x-3">
+                        <i class="fas fa-phone-alt text-green-500"></i>
+                        <span class="text-gray-500">+51 999 999 999</span>
+                    </li>
+                    <li class="flex justify-center md:justify-start items-center space-x-3">
+                        <i class="fas fa-envelope text-green-500"></i>
+                        <span class="text-gray-500">contacto@ecobazar.com</span>
+                    </li>
+                    <li class="flex justify-center md:justify-start items-center space-x-3">
+                        <i class="fas fa-map-marker-alt text-green-500"></i>
+                        <span class="text-gray-500">Calle Ejemplo 123, Ciudad, País</span>
+                    </li>
+                </ul>
+                <div class="mt-4">
+                    <a href="#" class="text-gray-500 hover:text-green-500 underline">Ver ubicación en el mapa</a>
                 </div>
             </div>
-        </footer>
+        </div>
+
+        <!-- Línea divisoria y créditos -->
+        <div class="mt-16 border-t border-gray-200 pt-8">
+            <div class="flex flex-col items-center space-y-4">
+                <p class="text-sm text-gray-500 text-center">Ecobazar eCommerce © 2024. Todos los derechos reservados</p>
+                <img src="{{ asset('images/tarjetas.png') }}" alt="Métodos de pago" class="w-36">
+            </div>
+        </div>
+    </div>
+</footer>
+
+
+
+
+
+
+
+
+
+
+
 
     </div>
 

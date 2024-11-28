@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -17,12 +16,22 @@ class LoginController extends Controller
      */
     protected function redirectTo()
     {
-        // Comprueba si el usuario autenticado es administrador
-        if (Auth::user()->is_admin) {
-            return '/admin'; // Redirige al panel de Filament para administradores
-        }
+        // Obtener el usuario autenticado
+        $user = Auth::user();
 
-        return '/home'; // Redirige a la ruta predeterminada para otros usuarios
+        // Redirigir según el rol del usuario
+        switch ($user->role) {
+            case 'admin':
+                return '/admin'; // Redirige al panel de administración para administradores
+            case 'repartidor':
+                return '/repartidor'; // Redirige al dashboard del repartidor
+            case 'agricultor':
+                return '/agricultor'; // Redirige al dashboard del agricultor
+            case 'cliente':
+                return '/home'; // Redirige a la página de inicio para clientes
+            default:
+                return '/home'; // Redirige a la página de inicio si el rol no coincide con ninguno
+        }
     }
 
     public function __construct()
