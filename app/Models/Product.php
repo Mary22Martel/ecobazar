@@ -3,10 +3,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class Product extends Model
 {
     use HasFactory;
+    protected $table = 'productos';
 
     // Campos que son asignables en masa
     protected $fillable = [
@@ -19,8 +21,6 @@ class Product extends Model
         'imagen',
         'categoria_id'
     ];
-
-    protected $table = 'productos';
 
     // Relación con el modelo User (agricultor)
     public function usuario()
@@ -42,6 +42,11 @@ class Product extends Model
                 ->withPivot('cantidad')
                 ->withTimestamps();
 }
+
+public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
    
 
 }

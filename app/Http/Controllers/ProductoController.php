@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Medida;
 use App\Models\Categoria;
+use App\Models\Mercado;
 
 class ProductoController extends Controller
 {
@@ -57,8 +58,6 @@ public function buscarProductosAjax(Request $request)
 
     return response()->json($productos);
 }
-
-
     
     public function show($id)
     {
@@ -66,7 +65,30 @@ public function buscarProductosAjax(Request $request)
         return view('productos.show', compact('producto'));
     }
     
+    public function tiendaPorMercado(Mercado $mercado)
+    {
+        // 1) Guardamos en sesión el mercado que el usuario está visitando
+        session(['mercado_actual' => $mercado->id]);
 
+        // 2) Traemos sólo los productos cuyos autores (users) pertenezcan a este mercado
+        $productos = Product::whereHas('user', function($q) use ($mercado) {
+            $q->where('mercado_id', $mercado->id);
+        })->paginate(12);
+
+        // 3) Cargamos todas las categorías para el sidebar
+        $categorias = Categoria::all();
+
+        // 4) Obtenemos los agricultores (productores) asignados a este mercado
+        $productores = User::where('mercado_id', $mercado->id)->get();
+
+        // 5) Devolvemos la vista con todas las variables
+        return view('mercados.tienda', compact(
+            'mercado',
+            'productos',
+            'categorias',
+            'productores'
+        ));
+    }
 
 
     // Función para autorizar roles
@@ -280,8 +302,10 @@ public function filtrarPorProductor($idProductor)
     // Retornar la vista con los productos filtrados, las categorías y los productores
     return view('tienda', compact('productos', 'categorias', 'productores'));
 }
-
-
-
+public function listadoMercados()
+{
+    $mercados = Mercado::all();
+    return view('mercados.index', compact('mercados'));
+}
 
 }

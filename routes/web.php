@@ -12,6 +12,9 @@ use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\CanastaController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\MercadoPagoController;
+use App\Http\Controllers\Admin\MercadoController;
+use App\Http\Controllers\Admin\UsuarioController;
+
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/home', [HomeController::class, 'index'])->name('homepage');
@@ -42,6 +45,13 @@ Route::get('/agricultor/register', [AgricultorRegisterController::class, 'showRe
 Route::post('/agricultor/register', [AgricultorRegisterController::class, 'register'])->name('agricultor.register.submit');
 
 
+// Listado público de ferias
+Route::get('/mercados', [ProductoController::class, 'listadoMercados'])
+     ->name('mercados.index');
+
+// Catálogo filtrado por feria
+Route::get('/mercados/{mercado}/tienda', [ProductoController::class, 'tiendaPorMercado'])
+     ->name('mercados.tienda');
 
 
 Auth::routes();
@@ -66,9 +76,13 @@ Route::middleware(['auth'])->group(function () {
 
 
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+
+    Route::resource('usuarios', UsuarioController::class)
+         ->only(['index','edit','update']);
     
     // Rutas para canastas
     Route::resource('canastas', CanastaController::class);
+    Route::resource('mercados', MercadoController::class);
 
     // Rutas para pedidos (nota: sin repetir 'admin/')
     //Route::get('/pedidos', [OrderController::class, 'todosLosPedidos'])->name('pedidos.index');

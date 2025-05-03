@@ -1,57 +1,86 @@
 @extends('layouts.app2')
 
 @section('content')
-<div class="container mx-auto mt-12 max-w-6xl px-4 grid grid-cols-1 lg:grid-cols-3 gap-10">
-    <!-- Bienvenida -->
-    <div class="lg:col-span-3 flex flex-col items-center mb-12">
-        <div class="w-full bg-gradient-to-r from-green-500 to-green-700 text-white shadow-xl rounded-3xl p-10 flex items-center justify-between transform hover:scale-105 transition-all">
-            <div class="flex-1">
-                <h2 class="text-5xl font-extrabold mb-4">Bienvenido, {{ Auth::user()->name ?? 'Agricultor' }}</h2>
-                <p class="text-white leading-relaxed text-lg">Gracias por ser parte de nuestra comunidad. Desde aquí puedes gestionar todos tus productos, revisar los pedidos pendientes y explorar nuevas funcionalidades que hemos preparado para ti.</p>
+<div class="container mx-auto mt-6 sm:mt-12 px-4 sm:px-6 lg:px-8 max-w-7xl">
+    <!-- Sección de Bienvenida -->
+    <div class="mb-8 sm:mb-16">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg rounded-2xl sm:rounded-3xl p-6 sm:p-10 flex flex-col lg:flex-row items-center justify-between transition-all duration-300 hover:shadow-xl">
+            <div class="flex-1 mb-8 lg:mb-0 lg:mr-10">
+                <h1 class="text-3xl sm:text-4xl xl:text-5xl font-bold mb-4 leading-tight">
+                    ¡Bienvenido, {{ Auth::user()->name ?? 'Agricultor' }}!
+                </h1>
+                <p class="text-sm sm:text-base lg:text-lg opacity-95 leading-relaxed">
+                    Gracias por ser parte de nuestra comunidad. Gestiona tus productos, revisa pedidos pendientes y descubre herramientas diseñadas para potenciar tu trabajo agrícola.
+                </p>
             </div>
-            <div class="hidden md:block w-1/3">
-                <img src="{{ asset('images/agrix.svg') }}" alt="Imagen de Bienvenida" class="w-full rounded-2xl shadow-2xl transform scale-110">
+            <div class="w-full lg:w-1/3 mt-8 lg:mt-0">
+                <img src="{{ asset('images/agrix.svg') }}" alt="Agricultor" 
+                     class="w-full h-48 sm:h-56 object-contain object-center transition-transform duration-500 hover:scale-105">
             </div>
         </div>
     </div>
 
     <!-- Tarjetas de Funcionalidades -->
-    <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Gestionar Productos -->
-        <div class="bg-gray-50 border border-gray-200 shadow-sm hover:shadow-2xl rounded-lg p-6 transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col justify-between h-full">
-            <div>
-                <h4 class="text-xl font-semibold mb-2 text-gray-800">Gestionar Productos</h4>
-                <p class="text-gray-600 text-sm mb-4 leading-relaxed">Aquí puedes ver y gestionar todos tus productos fácilmente.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Tarjeta Productos -->
+        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
+            <div class="mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800">Gestionar Productos</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Administra y actualiza tu catálogo de productos agrícolas de forma sencilla y organizada.</p>
             </div>
-            <a href="{{ route('productos.index') }}" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-all duration-300 ease-in-out text-center transform hover:-translate-y-1">
-                Ver Mis Productos
+            <a href="{{ route('productos.index') }}" 
+               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
+                <span>Administrar Productos</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
             </a>
         </div>
 
-        <!-- Pedidos Pendientes -->
-        <div class="bg-gray-50 border border-gray-200 shadow-sm hover:shadow-2xl rounded-lg p-6 transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col justify-between h-full">
-            <div>
-                <h4 class="text-xl font-semibold mb-2 text-gray-800">Pedidos Pendientes</h4>
-                <p class="text-gray-600 text-sm mb-4 leading-relaxed">Aquí puedes ver y gestionar todos los pedidos que tienes pendientes.</p>
+        <!-- Tarjeta Pedidos -->
+        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
+            <div class="mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800">Pedidos Pendientes</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Revisa y gestiona todos los pedidos actuales de tus productos.</p>
             </div>
-            <a href="{{ route('agricultor.pedidos_pendientes') }}" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-all duration-300 ease-in-out text-center transform hover:-translate-y-1">
-                Ver Pedidos Pendientes
+            <a href="{{ route('agricultor.pedidos_pendientes') }}" 
+               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
+                <span>Ver Pedidos</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
             </a>
         </div>
 
-        <!-- Otras Funcionalidades -->
-        <div class="bg-gray-50 border border-gray-200 shadow-sm hover:shadow-2xl rounded-lg p-6 transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col justify-between h-full">
-            <div>
-                <h4 class="text-xl font-semibold mb-2 text-gray-800">Otras Funcionalidades</h4>
-                <p class="text-gray-600 text-sm mb-4 leading-relaxed">Aquí puedes explorar otras funciones que se agregaran en el futuro.</p>
+        <!-- Tarjeta Funciones -->
+        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
+            <div class="mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800">Nuevas Funciones</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Descubre las próximas actualizaciones y mejoras en desarrollo.</p>
             </div>
-            <a href="{{ route('progreso') }}" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-all duration-300 ease-in-out text-center transform hover:-translate-y-1">
-                Ver Otras Funciones
+            <a href="{{ route('progreso') }}" 
+               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
+                <span>Explorar</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
             </a>
-
         </div>
     </div>
 </div>
-<br>
-<br>
 @endsection

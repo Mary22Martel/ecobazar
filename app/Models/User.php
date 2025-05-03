@@ -6,6 +6,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Mercado;
+
 
 class User extends Authenticatable
 {
@@ -21,6 +23,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role', 
+        'mercado_id',
     ];
 
     /**
@@ -63,6 +66,10 @@ class User extends Authenticatable
     public function zones()
     {
         return $this->belongsToMany(Zone::class, 'zone_user'); 
+    }
+    public function mercado()
+    {
+        return $this->belongsTo(Mercado::class, 'mercado_id');
     }
 
 }
