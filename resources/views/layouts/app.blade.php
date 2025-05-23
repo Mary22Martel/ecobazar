@@ -26,7 +26,8 @@
     <div class="container mx-auto flex flex-wrap md:flex-nowrap items-center px-4 md:px-20">
     <!-- Logo -->
     <a href="{{ url('/') }}" class="flex items-center">
-        <img src="{{ asset('images/Logo.png') }}" alt="Ecobazar Logo" class="w-36 md:w-52">
+        <img src="{{ asset('images/logox.png') }}" alt="Ecobazar Logo" class="h-12 w-auto">
+
     </a>
 
     <!-- Mobile Menu Button -->
@@ -153,7 +154,7 @@
                 <!-- Columna 1 - Logo y descripción -->
                 <div class="flex flex-col items-center md:items-start space-y-6">
                     <a href="#" class="mb-4 transition-transform hover:scale-105">
-                        <img src="{{ asset('images/Logo.png') }}" alt="Ecobazar Logo" class="w-40 md:w-44">
+                        <img src="{{ asset('images/logox.png') }}" alt="Ecobazar Logo" class="w-20 md:w-20">
                     </a>
                     <p class="text-gray-600 text-center md:text-left text-sm leading-relaxed">
                         Tu mercado en línea para productos frescos y de calidad provenientes de ferias agrícolas locales.<br>

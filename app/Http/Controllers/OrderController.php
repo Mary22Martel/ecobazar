@@ -175,11 +175,6 @@ class OrderController extends Controller
             return response()->json(['error' => 'Hubo un problema al crear la orden: ' . $e->getMessage()], 500);
         }
     }
-    
-
-
-    
-    
 
 public function success($orderId)
 {

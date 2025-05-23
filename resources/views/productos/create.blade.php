@@ -70,14 +70,26 @@
         <!-- Imagen del Producto con acceso a cámara o archivo -->
         <div>
             <label for="imagen" class="block text-lg font-semibold text-gray-700 mb-2">Imagen del Producto (JPG, PNG)</label>
-            <div class="flex space-x-4">
-                <button type="button" onclick="openCamera()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Abrir Cámara</button>
-                <input type="file" name="imagen" id="imagen" accept="image/*" class="block w-full p-4 border border-gray-300 rounded-lg focus:ring-green-400 focus:border-green-400">
+            <div class="flex space-x-4 mb-4">
+                <button type="button" onclick="openCamera()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Abrir Cámara</button>
+                <button type="button" onclick="capturePhoto()" id="captureBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" style="display:none;">Tomar Foto</button>
+                <button type="button" onclick="closeCamera()" id="closeBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" style="display:none;">Cerrar Cámara</button>
             </div>
-            <!-- Video para cámara y canvas para tomar la imagen -->
-            <video id="video" width="320" height="240" autoplay style="display:none;"></video>
-            <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-            <input type="hidden" id="imagen_base64" name="imagen_base64"> <!-- Campo oculto para almacenar la imagen base64 -->
+            <input type="file" name="imagen" id="imagen" accept="image/*" class="block w-full p-4 border border-gray-300 rounded-lg focus:ring-green-400 focus:border-green-400">
+            
+            <!-- Contenedor para la cámara -->
+            <div id="cameraContainer" style="display:none; margin-top: 1rem;">
+                <video id="video" width="320" height="240" autoplay muted playsinline class="border border-gray-300 rounded-lg"></video>
+                <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+            </div>
+            
+            <!-- Preview de la imagen capturada -->
+            <div id="imagePreview" style="display:none; margin-top: 1rem;">
+                <img id="capturedImage" width="320" height="240" class="border border-gray-300 rounded-lg">
+                <p class="text-sm text-gray-600 mt-2">Imagen capturada correctamente</p>
+            </div>
+            
+            <input type="hidden" id="imagen_base64" name="imagen_base64">
         </div>
 
         <!-- Botón de Guardar -->
@@ -90,78 +102,144 @@
 </div>
 
 <script>
+    let stream = null;
+    let video = null;
+    let canvas = null;
+    let context = null;
+
     function openCamera() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const imageInput = document.getElementById('imagen_base64');
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        context = canvas.getContext('2d');
+        
+        const cameraContainer = document.getElementById('cameraContainer');
+        const captureBtn = document.getElementById('captureBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const imagePreview = document.getElementById('imagePreview');
 
-        // Mostrar el video para usar la cámara
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(function(stream) {
-                video.style.display = 'block';
+        // Ocultar preview si existe
+        imagePreview.style.display = 'none';
+
+        // Configurar constrains para la cámara
+        const constraints = {
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'environment' // Usar cámara trasera si está disponible
+            }
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(mediaStream) {
+                stream = mediaStream;
                 video.srcObject = stream;
+                
+                // Mostrar la cámara y los botones
+                cameraContainer.style.display = 'block';
+                captureBtn.style.display = 'inline-block';
+                closeBtn.style.display = 'inline-block';
 
-                // Añadir evento para capturar una foto cuando el usuario lo desee
-                video.addEventListener('click', function() {
-                    // Dibujar la imagen del video en el canvas
-                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    // Convertir la imagen del canvas a base64
-                    const dataURL = canvas.toDataURL('image/jpeg');
-
-                    // Mostrar el canvas
-                    canvas.style.display = 'block';
-
-                    // Asignar el valor de la imagen base64 al campo oculto
-                    imageInput.value = dataURL;
-
-                    // Detener la cámara después de capturar la imagen
-                    const stream = video.srcObject;
-                    const tracks = stream.getTracks();
-
-                    tracks.forEach(function(track) {
-                        track.stop();
-                    });
-
-                    video.style.display = 'none';
+                // Asegurar que el video se reproduce
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
                 });
             })
             .catch(function(err) {
-                console.log("Error al acceder a la cámara: " + err);
+                console.error("Error al acceder a la cámara: ", err);
+                alert("No se pudo acceder a la cámara: " + err.message);
             });
     }
 
+    function capturePhoto() {
+        if (!video || !canvas || !context) {
+            console.error("Video o canvas no están disponibles");
+            return;
+        }
+
+        // Capturar la imagen del video
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convertir a base64
+        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Guardar en el campo oculto
+        document.getElementById('imagen_base64').value = dataURL;
+        
+        // Mostrar preview
+        const capturedImage = document.getElementById('capturedImage');
+        const imagePreview = document.getElementById('imagePreview');
+        capturedImage.src = dataURL;
+        imagePreview.style.display = 'block';
+        
+        // Cerrar la cámara
+        closeCamera();
+        
+        console.log("Imagen capturada correctamente");
+    }
+
+    function closeCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => {
+                track.stop();
+            });
+            stream = null;
+        }
+        
+        const cameraContainer = document.getElementById('cameraContainer');
+        const captureBtn = document.getElementById('captureBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        
+        cameraContainer.style.display = 'none';
+        captureBtn.style.display = 'none';
+        closeBtn.style.display = 'none';
+        
+        if (video) {
+            video.srcObject = null;
+        }
+    }
+
+    // Manejar el envío del formulario
     document.getElementById('productoForm').addEventListener('submit', function(event) {
         const imageBase64 = document.getElementById('imagen_base64').value;
-        if (imageBase64) {
-            event.preventDefault(); // Prevenir el envío del formulario
-
+        const fileInput = document.getElementById('imagen');
+        
+        if (imageBase64 && !fileInput.files.length) {
+            event.preventDefault();
+            
             // Convertir base64 a Blob
             const blob = dataURItoBlob(imageBase64);
-            const fileInput = document.getElementById('imagen');
-            const file = new File([blob], "captura.jpg", { type: 'image/jpeg' });
-
-            // Asignar el archivo al input de tipo file
+            const file = new File([blob], "captura_camara.jpg", { type: 'image/jpeg' });
+            
+            // Crear un DataTransfer para asignar el archivo
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);
             fileInput.files = dataTransfer.files;
-
-            // Reanudar el envío del formulario
-            this.submit();
+            
+            // Enviar el formulario
+            setTimeout(() => {
+                this.submit();
+            }, 100);
         }
     });
 
-    // Función para convertir una cadena base64 a un Blob
+    // Función para convertir dataURI a Blob
     function dataURItoBlob(dataURI) {
         const byteString = atob(dataURI.split(',')[1]);
         const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
         const ab = new ArrayBuffer(byteString.length);
         const ia = new Uint8Array(ab);
+        
         for (let i = 0; i < byteString.length; i++) {
             ia[i] = byteString.charCodeAt(i);
         }
+        
         return new Blob([ab], { type: mimeString });
     }
+
+    // Limpiar recursos al salir de la página
+    window.addEventListener('beforeunload', function() {
+        closeCamera();
+    });
 </script>
 
 @endsection

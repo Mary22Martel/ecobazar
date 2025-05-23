@@ -29,7 +29,7 @@
                 <div class="flex justify-between items-center">
                     <!-- Logo -->
                     <a href="{{ url('/') }}" class="flex items-center">
-                        <img src="{{ asset('images/Logo.png') }}" alt="Ecobazar Logo" class="w-32 md:w-52 transition-all duration-300">
+                        <img src="{{ asset('images/logox.png') }}" alt="Ecobazar Logo" class="h-12 w-auto">
                     </a>
 
                     <!-- Menú móvil -->

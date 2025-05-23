@@ -27,7 +27,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * The attributes that should be hidden for serialization
      *
      * @var array<int, string>
      */
@@ -45,7 +45,6 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
         ];
     }
     public function productos()
@@ -56,11 +55,6 @@ class User extends Authenticatable
     public function hasRole($role)
     {
         return $this->role === $role;
-    }
-
-    public function setPasswordAttribute($value)
-    {
-        $this->attributes['password'] = bcrypt($value);
     }
 
     public function zones()

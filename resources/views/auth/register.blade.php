@@ -67,7 +67,6 @@
                     class="{{ $errors->has('role') ? 'border-red-500' : 'border-gray-300' }} w-full px-4 py-3 border rounded-md focus:ring-green-500 focus:border-green-500" 
                     name="role" required>
                     <option value="" disabled selected>Seleccione un Rol</option>
-                    <option value="teacher">Profesor</option>
                     <option value="cliente">Cliente</option>
                     <option value="agricultor">Agricultor</option>
                     <option value="repartidor">Repartidor</option>
