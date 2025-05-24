@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Mercado;
+use App\Models\Order;
 
 
 class User extends Authenticatable
@@ -65,5 +66,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Mercado::class, 'mercado_id');
     }
+    public function orders()
+{
+    return $this->hasMany(Order::class);
+}
 
 }

@@ -121,6 +121,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agricultor/pedido/{id}', [OrderController::class, 'detallePedido'])->name('agricultor.pedido.detalle');
     Route::post('/agricultor/pedido/{id}/confirmar-listo', [OrderController::class, 'confirmarPedidoListo'])->name('agricultor.confirmar_pedido_listo');
     Route::get('/agricultor/pedidos-listos', [OrderController::class, 'pedidosListos'])->name('agricultor.pedidos_listos');
+    Route::get('/agricultor/pagos', [OrderController::class, 'pagosProductor'])
+         ->name('agricultor.pagos');
 });
 
 //mercado pago
@@ -135,7 +137,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('repartidor.pedidos_pendientes');
     Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])->name('repartidor.pedido.entregado');
     Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])->name('repartidor.pedido.proceso');
-
+    
 
     Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
 

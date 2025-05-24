@@ -9,6 +9,7 @@ use App\Models\Zone;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Arr; // Agregar esta línea
 use Barryvdh\DomPDF\Facade\Pdf;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Preference\PreferenceClient;
@@ -20,330 +21,404 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         try {
-            Log::info('Entrando en el método store del controlador OrderController');
-    
-            // Si la entrega no es "delivery", elimina el campo distrito de la solicitud
-            if ($request->input('delivery') !== 'delivery') {
-                $request->merge(['distrito' => null]);
-            }
-    
-            // Validación de los datos de entrada
-            $request->validate([
+            Log::info('=== INICIO CREACIÓN DE ORDEN ===');
+            Log::info('Usuario ID: ' . Auth::id());
+            
+            // Validar campos básicos
+            $validatedData = $request->validate([
                 'nombre' => 'required|string|max:255',
                 'apellido' => 'required|string|max:255',
                 'empresa' => 'nullable|string|max:255',
                 'email' => 'required|email',
-                'telefono' => 'required|string|max:20',
-                'delivery' => 'required|string',
-                'direccion' => 'nullable|string|max:255|required_if:delivery,delivery',
-                'distrito' => 'nullable|required_if:delivery,delivery|exists:zones,id',
-                'pago' => 'required|string',
+                'telefono' => 'required|string',
+                'delivery' => 'required|in:puesto,delivery',
+                'direccion' => 'required_if:delivery,delivery|nullable|string',
+                'distrito' => 'required_if:delivery,delivery|nullable|exists:zones,id',
+                'pago' => 'required|in:puesto,sistema'
             ]);
-    
-            Log::info('Validación completada con éxito:', $request->all());
-    
-            // Obtener carrito y verificar si está vacío
-            $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
-            if (!$carrito || $carrito->items->isEmpty()) {
-                Log::warning('Carrito vacío o no encontrado para el usuario ID: ' . Auth::id());
-                return response()->json(['error' => 'El carrito está vacío.'], 400);
-            }
-    
-            // Calcular subtotal
-            $subtotal = $carrito->items->sum(fn($item) => $item->product->precio * $item->cantidad);
-            $envio = 0.00;
-            $zone = null;
-            $repartidor = null;
-    
-            // Calcular costo de envío y asignar repartidor si es delivery
-            if ($request->input('delivery') === 'delivery') {
-                $zone = Zone::find($request->input('distrito'));
-                if (!$zone) {
-                    return response()->json(['error' => 'La zona seleccionada no es válida.'], 400);
-                }
-                $envio = (float) $zone->delivery_cost;
-    
-                // Buscar un repartidor que esté asignado a esta zona
-                $repartidor = User::whereHas('zones', function ($query) use ($zone) {
-                    $query->where('zones.id', $zone->id);
-                })->first();
-    
-                if (!$repartidor) {
-                    Log::warning("No hay repartidores disponibles para la zona ID: {$zone->id}");
-                    return response()->json(['error' => 'No hay repartidores disponibles para esta zona.'], 400);
-                }
-    
-                Log::info("Repartidor asignado con ID: {$repartidor->id} para la zona ID: {$zone->id}");
-            }
-    
-            $estado = $request->input('pago') === 'sistema' ? 'pendiente de pago' : 'pendiente en puesto';
-    
-            // Crear el pedido
-            $order = Order::create([
-                'user_id' => Auth::id(),
-                'nombre' => $request->input('nombre'),
-                'apellido' => $request->input('apellido'),
-                'empresa' => $request->input('empresa'),
-                'email' => $request->input('email'),
-                'telefono' => $request->input('telefono'),
-                'delivery' => $request->input('delivery'),
-                'direccion' => $request->input('direccion'),
-                'distrito' => $zone->name ?? null,
-                'pago' => $request->input('pago'),
-                'total' => $subtotal + $envio,
-                'estado' => $estado,
-                'repartidor_id' => $repartidor ? $repartidor->id : null, // Asignación del repartidor
-            ]);
-    
-            Log::info("Pedido creado exitosamente con ID: {$order->id}" . ($repartidor ? " y asignado al repartidor ID: {$repartidor->id}" : ""));
 
-    
-            // Preparar items para Mercado Pago
-            $itemsParaMercadoPago = [];
+            Log::info('Datos validados:', $validatedData);
+
+            // Obtener el carrito del usuario
+            $carrito = Carrito::with(['items.product.user'])
+                            ->where('user_id', Auth::id())
+                            ->first();
+
+            if (!$carrito || $carrito->items->isEmpty()) {
+                Log::warning('Carrito vacío para usuario: ' . Auth::id());
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Tu carrito está vacío'
+                ], 400);
+            }
+
+            Log::info('Carrito encontrado con ' . $carrito->items->count() . ' items');
+
+            // Verificar que todos los productos pertenezcan al mismo mercado
+            $mercadoActual = session('mercado_actual');
+            if (!$mercadoActual) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No hay un mercado seleccionado'
+                ], 400);
+            }
+
+            // Validar que todos los productos sean del mercado actual
             foreach ($carrito->items as $item) {
-                $order->items()->create([
+                if ($item->product->user->mercado_id != $mercadoActual) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Hay productos de diferentes mercados en tu carrito'
+                    ], 400);
+                }
+            }
+
+            // Calcular totales
+            $subtotal = 0;
+            foreach ($carrito->items as $item) {
+                $subtotal += ($item->product->precio * $item->cantidad);
+            }
+
+            $costoEnvio = 0;
+            $zonaInfo = null;
+            $repartidorId = null;
+
+            // Procesar información de delivery
+            if ($validatedData['delivery'] === 'delivery') {
+                $zona = Zone::find($validatedData['distrito']);
+                if (!$zona) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Zona de delivery no válida'
+                    ], 400);
+                }
+
+                $costoEnvio = $zona->delivery_cost;
+                $zonaInfo = $zona->name;
+
+                // Buscar repartidor disponible para esta zona
+                $repartidor = User::whereHas('zones', function($query) use ($zona) {
+                    $query->where('zones.id', $zona->id);
+                })->where('role', 'repartidor')->first();
+
+                if ($repartidor) {
+                    $repartidorId = $repartidor->id;
+                    Log::info('Repartidor asignado: ' . $repartidor->id);
+                }
+            }
+
+            $total = $subtotal + $costoEnvio;
+
+            Log::info("Totales calculados - Subtotal: {$subtotal}, Envío: {$costoEnvio}, Total: {$total}");
+
+            // Crear la orden
+            $orden = new Order();
+            $orden->user_id = Auth::id();
+            $orden->nombre = $validatedData['nombre'];
+            $orden->apellido = $validatedData['apellido'];
+            $orden->empresa = $validatedData['empresa'];
+            $orden->email = $validatedData['email'];
+            $orden->telefono = $validatedData['telefono'];
+            $orden->delivery = $validatedData['delivery'];
+            $orden->direccion = $validatedData['direccion'] ?? null;
+            $orden->distrito = $zonaInfo;
+            $orden->pago = $validatedData['pago'];
+            $orden->total = $total;
+            $orden->estado = ($validatedData['pago'] === 'sistema') ? 'pendiente_pago' : 'confirmado';
+            $orden->repartidor_id = $repartidorId;
+            $orden->save();
+
+            Log::info('Orden creada con ID: ' . $orden->id);
+
+            // Crear los items de la orden y actualizar inventario
+            foreach ($carrito->items as $item) {
+                // Verificar stock disponible
+                if ($item->product->cantidad_disponible < $item->cantidad) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => "Stock insuficiente para: {$item->product->nombre}"
+                    ], 400);
+                }
+
+                // Crear item de orden
+                $orden->items()->create([
                     'producto_id' => $item->producto_id,
                     'cantidad' => $item->cantidad,
-                    'precio' => $item->product->precio,
+                    'precio' => $item->product->precio
                 ]);
-    
-                // Item para Mercado Pago
-                $itemsParaMercadoPago[] = [
-                    "title" => $item->product->nombre,
-                    "quantity" => $item->cantidad,
-                    "currency_id" => "PEN",
-                    "unit_price" => floatval($item->product->precio),
-                ];
-    
-                // Actualizar inventario
-                $producto = $item->product;
-                if ($producto->cantidad_disponible < $item->cantidad) {
-                    return redirect()->route('carrito.index')->with('error', 'No hay suficiente stock para el producto: ' . $producto->nombre);
-                }
-                $producto->cantidad_disponible -= $item->cantidad;
-                $producto->save();
+
+                // Actualizar stock
+                $item->product->decrement('cantidad_disponible', $item->cantidad);
+                Log::info("Stock actualizado para producto {$item->product->nombre}");
             }
-    
+
+            // Limpiar carrito
             $carrito->items()->delete();
-    
-            // Si es pago en sistema, crear la preferencia de Mercado Pago
-            if ($request->input('pago') === 'sistema') {
-                try {
-                    Log::info('Iniciando autenticación de Mercado Pago');
-                    MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-                    $client = new PreferenceClient();
-                    Log::info('Cliente de preferencia creado correctamente');
-            
-                    $requestData = [
-                        "items" => $itemsParaMercadoPago,
-                        "back_urls" => [
-                            "success" => route('order.success', ['orderId' => $order->id]),
-                            "failure" => route('order.failed'),
-                        ],
-                        "auto_return" => "approved",
-                        "shipments" => [
-                            "cost" => $envio, // Asegúrate de que sea un float
-                            "mode" => "not_specified"
-                        ]
-                    ];
-            
-                    // Registrar requestData como JSON para evitar errores de tipo Array to string conversion
-                    Log::info('Datos de la preferencia de Mercado Pago: ' . json_encode($requestData));
-            
-                    $preference = $client->create($requestData);
-                    Log::info('Preferencia creada con éxito, URL: ' . $preference->init_point);
-            
-                    return response()->json(['init_point' => $preference->init_point]);
-                } catch (MPApiException $error) {
-                    $errorMessage = 'Error de Mercado Pago API: ' . $error->getApiResponse()->getContent();
-                    Log::error($errorMessage);
-                    return response()->json(['error' => 'Error al procesar el pago: ' . $errorMessage], 500);
-                } catch (Exception $e) {
-                    $errorMessage = 'Error de Mercado Pago General: ' . $e->getMessage();
-                    Log::error($errorMessage);
-                    return response()->json(['error' => 'Error al procesar el pago: ' . $errorMessage], 500);
-                }
+            $carrito->delete();
+            Log::info('Carrito limpiado');
+
+            // Procesar pago según el método elegido
+            if ($validatedData['pago'] === 'sistema') {
+                return $this->procesarPagoMercadoPago($orden, $subtotal, $costoEnvio);
+            } else {
+                // Pago en puesto - redirigir directamente
+                return response()->json([
+                    'success' => true,
+                    'redirect_url' => route('order.success', $orden->id)
+                ]);
             }
-    
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Error de validación:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'error' => 'Datos inválidos: ' . implode(', ', Arr::flatten($e->errors()))
+            ], 422);
+        } catch (Exception $e) {
+            Log::error('Error general en store: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error interno del servidor'
+            ], 500);
+        }
+    }
+
+   private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
+    {
+        try {
+            Log::info('=== INICIANDO MERCADO PAGO ===');
+            
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+            $client = new PreferenceClient();
+
+            // Preparar items para MercadoPago
+            $items = [];
+            
+            foreach ($orden->items as $item) {
+                $items[] = [
+                    "title" => $item->product->nombre,
+                    "quantity" => intval($item->cantidad),
+                    "currency_id" => "PEN",
+                    "unit_price" => floatval($item->precio)
+                ];
+            }
+
+            // Agregar costo de envío si existe
+            if ($costoEnvio > 0) {
+                $items[] = [
+                    "title" => "Costo de envío",
+                    "quantity" => 1,
+                    "currency_id" => "PEN", 
+                    "unit_price" => floatval($costoEnvio)
+                ];
+            }
+
+            // SOLUCIÓN: Usar URLs absolutas y eliminar auto_return si hay problemas
+            $preferenceData = [
+                "items" => $items,
+                "back_urls" => [
+                    "success" => url('/orden-exito/' . $orden->id), // URL absoluta
+                    "failure" => url('/order/failed'),              // URL absoluta
+                    "pending" => url('/orden-exito/' . $orden->id)  // URL absoluta
+                ],
+                // REMOVER auto_return temporalmente para evitar el error
+                // "auto_return" => "approved",
+                "external_reference" => strval($orden->id),
+                "statement_descriptor" => "ECOBAZAR"
+            ];
+
+            Log::info('Datos para MercadoPago:', $preferenceData);
+
+            $preference = $client->create($preferenceData);
+            
+            Log::info('Preferencia creada exitosamente');
+            Log::info('Init point: ' . $preference->init_point);
+
             return response()->json([
                 'success' => true,
-                'message' => 'Pedido creado exitosamente.',
-                'redirect_url' => route('order.success', ['orderId' => $order->id]) 
+                'init_point' => $preference->init_point
             ]);
-        } catch (\Exception $e) {
-            Log::error('Error al crear la orden: ' . $e->getMessage());
-            return response()->json(['error' => 'Hubo un problema al crear la orden: ' . $e->getMessage()], 500);
+
+        } catch (MPApiException $e) {
+            Log::error('Error MercadoPago API: ' . $e->getMessage());
+            
+            // Manejo seguro de la respuesta del error
+            try {
+                $apiResponse = $e->getApiResponse();
+                if ($apiResponse) {
+                    $content = $apiResponse->getContent();
+                    // Verificar si el contenido es un array y convertirlo a JSON para el log
+                    if (is_array($content)) {
+                        Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
+                    } elseif (is_string($content)) {
+                        Log::error('MercadoPago Response (String): ' . $content);
+                    } else {
+                        Log::error('MercadoPago Response (Other): ' . print_r($content, true));
+                    }
+                } else {
+                    Log::error('No se pudo obtener respuesta de MercadoPago API');
+                }
+            } catch (Exception $logException) {
+                Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
+            }
+            
+            // También verificar el código de estado HTTP si está disponible
+            try {
+                if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
+                    $statusCode = $e->getApiResponse()->getStatusCode();
+                    Log::error('MercadoPago HTTP Status Code: ' . $statusCode);
+                }
+            } catch (Exception $statusException) {
+                Log::error('Error obteniendo status code: ' . $statusException->getMessage());
+            }
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
+            ], 500);
+        } catch (Exception $e) {
+            Log::error('Error general MercadoPago: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al procesar el pago'
+            ], 500);
         }
     }
 
-public function success($orderId)
-{
-    $orden = Order::with('items.product')->findOrFail($orderId);
+    public function success($orderId)
+    {
+        try {
+            $orden = Order::with(['items.product', 'user'])->findOrFail($orderId);
+            
+            // Si viene de MercadoPago y aún está pendiente, marcar como pagado
+            if ($orden->estado === 'pendiente_pago') {
+                $orden->estado = 'pagado';
+                $orden->save();
+                Log::info("Orden {$orderId} marcada como pagada");
+            }
 
-    // Cambiar el estado a "pagado" si aún está en "pendiente de pago"
-    if ($orden->estado === 'pendiente de pago') {
-        $orden->estado = 'pagado';
-        $orden->save();
+            // Calcular subtotal y envío para la vista
+            $subtotal = $orden->items->sum(function($item) {
+                return $item->precio * $item->cantidad;
+            });
+
+            $costoEnvio = 0;
+            if ($orden->delivery === 'delivery' && $orden->distrito) {
+                $zona = Zone::where('name', $orden->distrito)->first();
+                if ($zona) {
+                    $costoEnvio = $zona->delivery_cost;
+                }
+            }
+
+            return view('order.success', compact('orden', 'subtotal', 'costoEnvio'));
+            
+        } catch (Exception $e) {
+            Log::error('Error en success: ' . $e->getMessage());
+            return redirect()->route('tienda')->with('error', 'Orden no encontrada');
+        }
     }
 
-    // Calcular subtotal y envío
-    $subtotal = $orden->items->sum(function ($item) {
-        return $item->precio * $item->cantidad;
-    });
-    
-    // Obtener el costo de envío en base a la zona si es "delivery"
-    $envio = $orden->delivery === 'delivery' ? Zone::where('name', $orden->distrito)->value('delivery_cost') : 0.00;
-
-    if (!$orden->subtotal || !$orden->envio) {
-        $orden->subtotal = $subtotal;
-        $orden->envio = $envio;
-        $orden->total = $subtotal + $envio;
-        $orden->save();
+    public function failed()
+    {
+        return view('order.failed');
     }
 
-    return view('order.success', compact('orden'));
-}
+    public function downloadVoucher($orderId)
+    {
+        try {
+            $orden = Order::with('items.product')->findOrFail($orderId);
 
-    
+            $subtotal = $orden->items->sum(function($item) {
+                return $item->precio * $item->cantidad;
+            });
 
-    
-    
-public function downloadVoucher($orderId)
-{
-    $orden = Order::with('items.product')->findOrFail($orderId);
+            $costoEnvio = 0;
+            if ($orden->delivery === 'delivery' && $orden->distrito) {
+                $zona = Zone::where('name', $orden->distrito)->first();
+                if ($zona) {
+                    $costoEnvio = $zona->delivery_cost;
+                }
+            }
 
-    $subtotal = $orden->items->sum(function($item) {
-        return $item->precio * $item->cantidad;
-    });
+            $total = $subtotal + $costoEnvio;
 
-    // Obtener el costo de envío en base a la zona si es "delivery"
-    $envio = $orden->delivery === 'delivery' ? Zone::where('name', $orden->distrito)->value('delivery_cost') : 0.00;
-    $total = $subtotal + $envio;
-
-    // Pasar los valores a la vista del PDF
-    $pdf = PDF::loadView('order.voucher', [
-        'orden' => $orden,
-        'subtotal' => $subtotal,
-        'envio' => $envio,
-        'total' => $total,
-    ]);
-
-    return $pdf->download('voucher_orden_' . $orderId . '.pdf');
-}
-
-    
-    
-public function voucher($orderId)
-{
-    $orden = Order::with('items.product')->findOrFail($orderId);
-
-    $subtotal = $orden->items->sum(function ($item) {
-        return $item->precio * $item->cantidad;
-    });
-
-    // Obtener el costo de envío en base a la zona si es "delivery"
-    $envio = $orden->delivery === 'delivery' ? Zone::where('name', $orden->distrito)->value('delivery_cost') : 0.00;
-
-    if (!$orden->subtotal || !$orden->envio) {
-        $orden->subtotal = $subtotal;
-        $orden->envio = $envio;
-        $orden->total = $subtotal + $envio;
-        $orden->save();
+            $pdf = PDF::loadView('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'));
+            
+            return $pdf->download("voucher_orden_{$orderId}.pdf");
+            
+        } catch (Exception $e) {
+            Log::error('Error generando voucher: ' . $e->getMessage());
+            return back()->with('error', 'Error al generar el voucher');
+        }
     }
 
-    $pdf = PDF::loadView('order.voucher', compact('orden'));
-    return $pdf->download('voucher_orden_' . $orderId . '.pdf');
-}
-
-
-
+    // Métodos para agricultores
     public function pedidosPendientes()
     {
-        // Verificar si el usuario es agricultor
         if (Auth::user()->role !== 'agricultor') {
-            abort(403, 'No tienes permiso para acceder a esta página.');
+            abort(403, 'No autorizado');
         }
 
-        // Obtener los pedidos relacionados a los productos de este agricultor
-        $pedidos = Order::whereHas('items.product', function ($query) {
+        $pedidos = Order::whereHas('items.product', function($query) {
             $query->where('user_id', Auth::id());
-        })->with('items.product')->get();
+        })->with(['items.product', 'user'])->orderBy('created_at', 'desc')->get();
 
         return view('agricultor.pedidos_pendientes', compact('pedidos'));
     }
 
     public function detallePedido($id)
     {
-        // Verificar si el usuario es agricultor
         if (Auth::user()->role !== 'agricultor') {
-            abort(403, 'No tienes permiso para acceder a esta página.');
+            abort(403, 'No autorizado');
         }
 
-        $pedido = Order::with('items.product')->findOrFail($id);
+        $pedido = Order::with(['items.product', 'user'])->findOrFail($id);
         
-        // Verificar si el agricultor tiene productos en este pedido
-        $productosAgricultor = $pedido->items->filter(function ($item) {
+        $productosAgricultor = $pedido->items->filter(function($item) {
             return $item->product->user_id == Auth::id();
         });
 
         if ($productosAgricultor->isEmpty()) {
-            abort(403, 'No tienes autorización para ver este pedido.');
+            abort(403, 'No autorizado para ver este pedido');
         }
 
         return view('agricultor.pedido_detalle', compact('pedido', 'productosAgricultor'));
-    }
-
-    public function mostrarPedidosPendientes()
-    {
-        // Verificar si el usuario es agricultor
-        if (Auth::user()->role !== 'agricultor') {
-            abort(403, 'No tienes permiso para acceder a esta página.');
-        }
-        $pedidos = Order::whereHas('items.product', function ($query) {
-            $query->where('user_id', Auth::id());
-        })->get();
-
-        return view('agricultor.pedidos_pendientes', compact('pedidos'));
     }
 
     public function confirmarPedidoListo($id)
     {
         $pedido = Order::findOrFail($id);
 
-        // Verificar si el agricultor tiene productos en este pedido
-        $productosAgricultor = $pedido->items->filter(function ($item) {
+        $productosAgricultor = $pedido->items->filter(function($item) {
             return $item->product->user_id == Auth::id();
         });
 
         if ($productosAgricultor->isEmpty()) {
-            abort(403, 'No tienes autorización para modificar este pedido.');
+            abort(403, 'No autorizado');
         }
 
-        // Cambiar el estado del pedido a 'listo'
         $pedido->estado = 'listo';
         $pedido->save();
 
-        return redirect()->route('agricultor.pedidos_pendientes')->with('success', 'Pedido confirmado como listo.');
+        return redirect()->route('agricultor.pedidos_pendientes')
+                        ->with('success', 'Pedido marcado como listo');
     }
 
-    public function pedidosListos()
-    {
-        $pedidos = Order::whereHas('items.product', function ($query) {
-            $query->where('user_id', Auth::id());
-        })->where('estado', 'listo')->get();
-
-        return view('agricultor.pedidos_listos', compact('pedidos'));
-    }
-
+    // Métodos para admin
     public function todosLosPedidos()
     {
-        $pedidos = Order::with(['items.product', 'user'])->get();
+        $pedidos = Order::with(['items.product', 'user'])
+                       ->orderBy('created_at', 'desc')
+                       ->get();
+                       
         return view('admin.pedidos.index', compact('pedidos'));
     }
 
     public function detallePedidoAdmin($id)
     {
-        $pedido = Order::with(['items.product.usuario', 'user'])->findOrFail($id);
+        $pedido = Order::with(['items.product.user', 'user'])->findOrFail($id);
         return view('admin.pedidos.detalle', compact('pedido'));
     }
 
@@ -353,12 +428,36 @@ public function voucher($orderId)
         $pedido->estado = $request->input('estado');
         $pedido->save();
 
-        return redirect()->route('admin.pedidos.index')->with('success', 'Estado del pedido actualizado correctamente.');
+        return redirect()->route('admin.pedidos.index')
+                        ->with('success', 'Estado actualizado correctamente');
     }
 
-    public function failed()
+    public function pagosProductor()
     {
-        return view('order.failed'); // Asegúrate de tener la vista 'order.failed' en tu carpeta de vistas
-    }
+        $pagos = \App\Models\OrderItem::whereHas('product', function($q) {
+                $q->where('user_id', Auth::id());
+            })
+            ->whereHas('order', function($q) {
+                $q->where('estado', 'listo');
+            })
+            ->get()
+            ->groupBy('producto_id')
+            ->map(function($items) {
+                $producto = $items->first()->product;
+                $cantidad = $items->sum('cantidad');
+                $monto = $items->sum(function($item) {
+                    return $item->cantidad * $item->precio;
+                });
+                return [
+                    'producto' => $producto,
+                    'cantidad' => $cantidad,
+                    'monto' => $monto,
+                ];
+            })
+            ->values();
 
+        $totalPagar = $pagos->sum('monto');
+
+        return view('agricultor.pagos', compact('pagos', 'totalPagar'));
+    }
 }

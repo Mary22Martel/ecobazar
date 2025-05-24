@@ -27,7 +27,7 @@
             <div class="mb-4">
                 <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2M14 4h2a2 2 0 12-4 0h2m0-2v2"/>
                     </svg>
                 </div>
                 <h3 class="text-xl font-semibold mb-2 text-gray-800">Gestionar Productos</h3>
@@ -47,7 +47,7 @@
             <div class="mb-4">
                 <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2m-4 0v2m0 0h.01M9 16h.01"/>
                     </svg>
                 </div>
                 <h3 class="text-xl font-semibold mb-2 text-gray-800">Pedidos Pendientes</h3>
@@ -62,7 +62,7 @@
             </a>
         </div>
 
-        <!-- Tarjeta Funciones -->
+        <!-- Tarjeta Nuevas Funciones -->
         <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
             <div class="mb-4">
                 <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
@@ -78,6 +78,26 @@
                 <span>Explorar</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+            </a>
+        </div>
+
+        <!-- Tarjeta Pagos al Productor -->
+        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
+            <div class="mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10v6m0 4v2m-1-1h2"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800">Pagos al Productor</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Visualiza el monto a pagar por las ventas de tus productos.</p>
+            </div>
+            <a href="{{ route('agricultor.pagos') }}" 
+               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
+                <span>Ver Pagos</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </a>
         </div>

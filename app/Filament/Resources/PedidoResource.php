@@ -123,6 +123,7 @@ class PedidoResource extends Resource
             'create' => Pages\CreatePedido::route('/create'),
             'pendientes' => Pages\PedidosPendientes::route('/pendientes'),
             'pagados' => Pages\PedidosPagados::route('/pagados'),
+            'pagos'     => Pages\PagosAgricultores::route('/pagos'),
             'edit' => Pages\EditPedido::route('/{record}/edit'),
         ];
     }
