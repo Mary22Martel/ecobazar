@@ -186,59 +186,59 @@ class OrderController extends Controller
 
    private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
     {
-        try {
-            Log::info('=== INICIANDO MERCADO PAGO ===');
-            
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-            $client = new PreferenceClient();
+         try {
+        Log::info('=== INICIANDO MERCADO PAGO ===');
+        
+        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+        $client = new PreferenceClient();
 
-            // Preparar items para MercadoPago
-            $items = [];
-            
-            foreach ($orden->items as $item) {
-                $items[] = [
-                    "title" => $item->product->nombre,
-                    "quantity" => intval($item->cantidad),
-                    "currency_id" => "PEN",
-                    "unit_price" => floatval($item->precio)
-                ];
-            }
+        // Preparar items para MercadoPago
+        $items = [];
+        
+        // Item principal con el total
+        $items[] = [
+            "title" => "Pedido ",
+            "quantity" => 1,
+            "currency_id" => "PEN",
+            "unit_price" => floatval($subtotal + $costoEnvio)
+        ];
 
-            // Agregar costo de envío si existe
-            if ($costoEnvio > 0) {
-                $items[] = [
-                    "title" => "Costo de envío",
-                    "quantity" => 1,
-                    "currency_id" => "PEN", 
-                    "unit_price" => floatval($costoEnvio)
-                ];
-            }
+        $preferenceData = [
+            "items" => $items,
+            "back_urls" => [
+                "success" => url('/orden-exito/' . $orden->id),
+                "failure" => url('/order/failed'),
+                "pending" => url('/orden-exito/' . $orden->id)
+            ],
+            "external_reference" => strval($orden->id),
+            "statement_descriptor" => "ECOBAZAR"
+        ];
 
-            // SOLUCIÓN: Usar URLs absolutas y eliminar auto_return si hay problemas
-            $preferenceData = [
-                "items" => $items,
-                "back_urls" => [
-                    "success" => url('/orden-exito/' . $orden->id), // URL absoluta
-                    "failure" => url('/order/failed'),              // URL absoluta
-                    "pending" => url('/orden-exito/' . $orden->id)  // URL absoluta
-                ],
-                // REMOVER auto_return temporalmente para evitar el error
-                // "auto_return" => "approved",
-                "external_reference" => strval($orden->id),
-                "statement_descriptor" => "ECOBAZAR"
+        // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
+        if ($costoEnvio > 0) {
+            $preferenceData["differential_pricing"] = [
+                "id" => 1
             ];
-
-            Log::info('Datos para MercadoPago:', $preferenceData);
-
-            $preference = $client->create($preferenceData);
             
-            Log::info('Preferencia creada exitosamente');
-            Log::info('Init point: ' . $preference->init_point);
+            // Agregar información adicional en el título del item
+            $items[0]["title"] = "Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
+        }
 
-            return response()->json([
-                'success' => true,
-                'init_point' => $preference->init_point
-            ]);
+        $preferenceData["items"] = $items;
+
+        Log::info('Datos para MercadoPago:', $preferenceData);
+
+        $preference = $client->create($preferenceData);
+        
+        Log::info('Preferencia creada exitosamente');
+        Log::info('Init point: ' . $preference->init_point);
+
+        return response()->json([
+            'success' => true,
+            'init_point' => $preference->init_point
+        ]);
+
+
 
         } catch (MPApiException $e) {
             Log::error('Error MercadoPago API: ' . $e->getMessage());

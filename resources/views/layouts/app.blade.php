@@ -44,7 +44,7 @@
             <ul class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8 text-gray-500">
                 <li><a href="{{ url('/') }}" class="{{ request()->is('/') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Home</a></li>
                 <li><a href="{{ route('nosotros') }}" class="{{ request()->is('nosotros') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Nosotros</a></li>
-                <li><a href="{{ route('mercados.index') }}" class="{{ request()->is('mercados.index') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Mercados</a></li>
+                <li><a href="{{ route('tienda') }}" class="{{ request()->is('tienda') ? 'text-green-500 font-bold' : 'text-gray-500' }}">Tienda</a></li>
                 @auth
                     @if(Auth::user()->role == 'repartidor')
                         <li><a href="{{ route('repartidor.dashboard') }}">Repartidor Dashboard</a></li>
@@ -180,7 +180,7 @@
                 <div class="flex flex-col items-center md:items-start space-y-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">Categorías</h3>
                     <ul class="grid grid-cols-2 gap-3 text-center md:text-left">
-                        <li><a href="{{ route('mercados.index') }}" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Todo</a></li>
+                        <li><a href="{{ route('tienda') }}" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Todo</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Vegetales</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Fruta</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Verduras</a></li>

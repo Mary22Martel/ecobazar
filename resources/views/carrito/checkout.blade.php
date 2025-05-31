@@ -66,7 +66,7 @@
                                id="delivery-puesto"
                                class="mr-2 delivery-option focus:ring-green-500" 
                                required> 
-                        Recoger en Puesto
+                        Recoger en puesto
                     </label>
                     <label class="flex items-center text-gray-600 cursor-pointer">
                         <input type="radio" 
@@ -106,7 +106,7 @@
 
                 <h3 class="text-xl font-bold my-6 text-gray-700">Opción de Pago</h3>
                 <div class="flex flex-col space-y-4 mb-6">
-                    <label class="flex items-center text-gray-600 cursor-pointer">
+                    <!-- <label class="flex items-center text-gray-600 cursor-pointer">
                         <input type="radio" 
                                name="pago" 
                                value="puesto" 
@@ -114,7 +114,7 @@
                                class="mr-2 focus:ring-green-500" 
                                required> 
                         Pagar en Puesto
-                    </label>
+                    </label> -->
                     <label class="flex items-center text-gray-600 cursor-pointer">
                         <input type="radio" 
                                name="pago" 
@@ -122,7 +122,7 @@
                                id="pago-sistema"
                                class="mr-2 focus:ring-green-500" 
                                required> 
-                        Pagar en el Sistema (MercadoPago)
+                        Pagar por Mercado Pago
                     </label>
                 </div>
 
