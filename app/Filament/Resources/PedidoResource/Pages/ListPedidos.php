@@ -17,12 +17,6 @@ class ListPedidos extends ListRecords
             // Botón de crear
             Actions\CreateAction::make(),
 
-            // Ver pendientes
-            Action::make('verPendientes')
-                ->label('Ver Pendientes')
-                ->url(PedidoResource::getUrl('pendientes'))
-                ->color('primary'),
-
             // Ver pagados
             Action::make('verPagados')
                 ->label('Ver Pagados')

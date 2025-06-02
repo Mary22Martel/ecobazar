@@ -9,7 +9,7 @@ use App\Models\Zone;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Arr; // Agregar esta línea
+use Illuminate\Support\Arr;
 use Barryvdh\DomPDF\Facade\Pdf;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Preference\PreferenceClient;
@@ -111,7 +111,7 @@ class OrderController extends Controller
 
             Log::info("Totales calculados - Subtotal: {$subtotal}, Envío: {$costoEnvio}, Total: {$total}");
 
-            // Crear la orden
+            // Crear la orden - CAMBIO PRINCIPAL: Estados simplificados
             $orden = new Order();
             $orden->user_id = Auth::id();
             $orden->nombre = $validatedData['nombre'];
@@ -124,7 +124,8 @@ class OrderController extends Controller
             $orden->distrito = $zonaInfo;
             $orden->pago = $validatedData['pago'];
             $orden->total = $total;
-            $orden->estado = ($validatedData['pago'] === 'sistema') ? 'pendiente_pago' : 'confirmado';
+            // NUEVO: Estados simplificados
+            $orden->estado = ($validatedData['pago'] === 'sistema') ? 'pendiente' : 'pagado';
             $orden->repartidor_id = $repartidorId;
             $orden->save();
 
@@ -184,61 +185,59 @@ class OrderController extends Controller
         }
     }
 
-   private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
+    private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
     {
-         try {
-        Log::info('=== INICIANDO MERCADO PAGO ===');
-        
-        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-        $client = new PreferenceClient();
-
-        // Preparar items para MercadoPago
-        $items = [];
-        
-        // Item principal con el total
-        $items[] = [
-            "title" => "Pedido ",
-            "quantity" => 1,
-            "currency_id" => "PEN",
-            "unit_price" => floatval($subtotal + $costoEnvio)
-        ];
-
-        $preferenceData = [
-            "items" => $items,
-            "back_urls" => [
-                "success" => url('/orden-exito/' . $orden->id),
-                "failure" => url('/order/failed'),
-                "pending" => url('/orden-exito/' . $orden->id)
-            ],
-            "external_reference" => strval($orden->id),
-            "statement_descriptor" => "ECOBAZAR"
-        ];
-
-        // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
-        if ($costoEnvio > 0) {
-            $preferenceData["differential_pricing"] = [
-                "id" => 1
-            ];
+        try {
+            Log::info('=== INICIANDO MERCADO PAGO ===');
             
-            // Agregar información adicional en el título del item
-            $items[0]["title"] = "Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
-        }
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+            $client = new PreferenceClient();
 
-        $preferenceData["items"] = $items;
+            // Preparar items para MercadoPago
+            $items = [];
+            
+            // Item principal con el total
+            $items[] = [
+                "title" => "Pedido #" . $orden->id . " - EcoBazar",
+                "quantity" => 1,
+                "currency_id" => "PEN",
+                "unit_price" => floatval($subtotal + $costoEnvio)
+            ];
 
-        Log::info('Datos para MercadoPago:', $preferenceData);
+            $preferenceData = [
+                "items" => $items,
+                "back_urls" => [
+                    "success" => url('/orden-exito/' . $orden->id),
+                    "failure" => url('/order/failed'),
+                    "pending" => url('/orden-exito/' . $orden->id)
+                ],
+                "external_reference" => strval($orden->id),
+                "statement_descriptor" => "ECOBAZAR"
+            ];
 
-        $preference = $client->create($preferenceData);
-        
-        Log::info('Preferencia creada exitosamente');
-        Log::info('Init point: ' . $preference->init_point);
+            // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
+            if ($costoEnvio > 0) {
+                $preferenceData["differential_pricing"] = [
+                    "id" => 1
+                ];
+                
+                // Agregar información adicional en el título del item
+                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
+            }
 
-        return response()->json([
-            'success' => true,
-            'init_point' => $preference->init_point
-        ]);
+            $preferenceData["items"] = $items;
 
+            Log::info('Datos para MercadoPago:', $preferenceData);
 
+            $preference = $client->create($preferenceData);
+            
+            Log::info('Preferencia creada exitosamente');
+            Log::info('Init point: ' . $preference->init_point);
+
+            return response()->json([
+                'success' => true,
+                'init_point' => $preference->init_point
+            ]);
 
         } catch (MPApiException $e) {
             Log::error('Error MercadoPago API: ' . $e->getMessage());
@@ -290,13 +289,15 @@ class OrderController extends Controller
     public function success($orderId)
     {
         try {
+            Log::info("=== ACCESO A PÁGINA DE ÉXITO ===");
+            Log::info("Orden ID: {$orderId}");
+            
             $orden = Order::with(['items.product', 'user'])->findOrFail($orderId);
             
-            // Si viene de MercadoPago y aún está pendiente, marcar como pagado
-            if ($orden->estado === 'pendiente_pago') {
-                $orden->estado = 'pagado';
-                $orden->save();
-                Log::info("Orden {$orderId} marcada como pagada");
+            // CAMBIO: Si la orden está pendiente y llegó aquí, significa que pagó
+            if ($orden->estado === 'pendiente') {
+                Log::info("Orden pendiente, verificando pago con MercadoPago...");
+                $this->verificarYActualizarPago($orden);
             }
 
             // Calcular subtotal y envío para la vista
@@ -317,6 +318,77 @@ class OrderController extends Controller
         } catch (Exception $e) {
             Log::error('Error en success: ' . $e->getMessage());
             return redirect()->route('tienda')->with('error', 'Orden no encontrada');
+        }
+    }
+
+    /**
+     * Verificar el estado del pago con MercadoPago y actualizar la orden
+     */
+    private function verificarYActualizarPago($orden)
+    {
+        try {
+            // Solo verificar si tiene preference_id o si podemos obtener info del request
+            $paymentId = request()->get('payment_id') ?? request()->get('collection_id');
+            
+            if (!$paymentId) {
+                Log::warning("No se encontró payment_id para verificar la orden {$orden->id}");
+                // CAMBIO: Marcar como pagado si llegó a la página de éxito
+                if ($orden->estado === 'pendiente') {
+                    $orden->estado = 'pagado';
+                    $orden->paid_at = now();
+                    $orden->save();
+                    Log::info("Orden {$orden->id} marcada como pagada por fallback");
+                }
+                return;
+            }
+
+            Log::info("Verificando pago con ID: {$paymentId}");
+
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+            
+            // Crear cliente de Payment
+            $client = new \MercadoPago\Client\Payment\PaymentClient();
+            $payment = $client->get($paymentId);
+            
+            Log::info("Estado del pago: {$payment->status}");
+            Log::info("External reference: {$payment->external_reference}");
+            
+            // Verificar que el pago corresponde a esta orden
+            if ($payment->external_reference == $orden->id) {
+                switch ($payment->status) {
+                    case 'approved':
+                        $orden->estado = 'pagado';
+                        $orden->mercadopago_payment_id = $payment->id;
+                        $orden->paid_at = now();
+                        $orden->save();
+                        Log::info("Orden {$orden->id} marcada como pagada automáticamente");
+                        break;
+                        
+                    case 'rejected':
+                    case 'cancelled':
+                        $orden->estado = 'cancelado';
+                        $orden->save();
+                        Log::info("Orden {$orden->id} marcada como cancelada");
+                        break;
+                        
+                    default:
+                        Log::info("Pago aún en proceso, estado: {$payment->status}");
+                        break;
+                }
+            } else {
+                Log::warning("El external_reference del pago ({$payment->external_reference}) no coincide con la orden ({$orden->id})");
+            }
+            
+        } catch (Exception $e) {
+            Log::error("Error verificando pago para orden {$orden->id}: " . $e->getMessage());
+            
+            // CAMBIO: Marcar como pagado si llegó a la página de éxito
+            if ($orden->estado === 'pendiente') {
+                $orden->estado = 'pagado';
+                $orden->paid_at = now();
+                $orden->save();
+                Log::info("Orden {$orden->id} marcada como pagada por fallback");
+            }
         }
     }
 
@@ -399,7 +471,8 @@ class OrderController extends Controller
             abort(403, 'No autorizado');
         }
 
-        $pedido->estado = 'listo';
+        // CAMBIO: Actualizar al nuevo flujo de estados
+        $pedido->estado = 'armado';
         $pedido->save();
 
         return redirect()->route('agricultor.pedidos_pendientes')
@@ -438,7 +511,8 @@ class OrderController extends Controller
                 $q->where('user_id', Auth::id());
             })
             ->whereHas('order', function($q) {
-                $q->where('estado', 'listo');
+                // CAMBIO: Actualizar el estado que se considera para pagos
+                $q->where('estado', 'armado');
             })
             ->get()
             ->groupBy('producto_id')

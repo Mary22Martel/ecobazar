@@ -12,7 +12,11 @@ class Order extends Model
     protected $fillable = [
         'user_id', 'nombre', 'apellido', 'empresa', 'email', 'telefono', 
         'delivery', 'direccion', 'distrito', 'pago', 'total', 'estado', 
-        'envio', 'repartidor_id' 
+        'envio', 'repartidor_id', 'mercadopago_payment_id', 'paid_at'
+    ];
+
+    protected $casts = [
+        'paid_at' => 'datetime',
     ];
 
     // Relación con el usuario que realizó la orden
