@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Carrito;
 use App\Models\Zone;
 use App\Models\User;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Arr;
@@ -15,6 +16,7 @@ use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\Exceptions\MPApiException;
 use Exception;
+use Carbon\Carbon; 
 
 class OrderController extends Controller
 {
@@ -185,7 +187,7 @@ class OrderController extends Controller
         }
     }
 
-    private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
+  private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
     {
         try {
             Log::info('=== INICIANDO MERCADO PAGO ===');
@@ -198,7 +200,7 @@ class OrderController extends Controller
             
             // Item principal con el total
             $items[] = [
-                "title" => "Pedido #" . $orden->id . " - EcoBazar",
+                "title" => "Pedido #" . $orden->id . " - Punto Verde ",
                 "quantity" => 1,
                 "currency_id" => "PEN",
                 "unit_price" => floatval($subtotal + $costoEnvio)
@@ -207,12 +209,13 @@ class OrderController extends Controller
             $preferenceData = [
                 "items" => $items,
                 "back_urls" => [
-                    "success" => url('/orden-exito/' . $orden->id),
-                    "failure" => url('/order/failed'),
-                    "pending" => url('/orden-exito/' . $orden->id)
+                    "success" => "http://127.0.0.1:8000/orden-exito/" . $orden->id,
+                    "failure" => "http://127.0.0.1:8000/order/failed",
+                    "pending" => "http://127.0.0.1:8000/orden-exito/" . $orden->id
                 ],
                 "external_reference" => strval($orden->id),
-                "statement_descriptor" => "ECOBAZAR"
+                "statement_descriptor" => "Punto Verde"
+                // REMOVIDO: "auto_return" => "approved" - esto causaba el error
             ];
 
             // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
@@ -327,6 +330,15 @@ class OrderController extends Controller
     private function verificarYActualizarPago($orden)
     {
         try {
+            // NUEVO: Para desarrollo local - marcar automáticamente como pagado
+            if (config('app.env') === 'local' && $orden->estado === 'pendiente') {
+                $orden->estado = 'pagado';
+                $orden->paid_at = now();
+                $orden->save();
+                Log::info("Orden {$orden->id} marcada como pagada (desarrollo local)");
+                return;
+            }
+
             // Solo verificar si tiene preference_id o si podemos obtener info del request
             $paymentId = request()->get('payment_id') ?? request()->get('collection_id');
             
@@ -533,5 +545,170 @@ class OrderController extends Controller
         $totalPagar = $pagos->sum('monto');
 
         return view('agricultor.pagos', compact('pagos', 'totalPagar'));
+    }
+    
+     public function resumenPagosAgricultores(Request $request)
+    {
+        $fechaInicio = $request->get('fecha_inicio', Carbon::now()->startOfWeek());
+        $fechaFin = $request->get('fecha_fin', Carbon::now()->endOfWeek());
+        
+        $agricultores = User::where('role', 'agricultor')
+            ->whereHas('productos.orderItems.order', function($query) use ($fechaInicio, $fechaFin) {
+                $query->where('estado', 'armado')
+                      ->whereBetween('created_at', [$fechaInicio, $fechaFin]);
+            })
+            ->with(['mercado'])
+            ->get()
+            ->map(function($agricultor) use ($fechaInicio, $fechaFin) {
+                $ventas = OrderItem::whereHas('product', function($query) use ($agricultor) {
+                    $query->where('user_id', $agricultor->id);
+                })
+                ->whereHas('order', function($query) use ($fechaInicio, $fechaFin) {
+                    $query->where('estado', 'armado')
+                          ->whereBetween('created_at', [$fechaInicio, $fechaFin]);
+                })
+                ->with(['product', 'order'])
+                ->get();
+
+                $totalPagar = $ventas->sum(function($item) {
+                    return $item->precio * $item->cantidad;
+                });
+
+                return [
+                    'id' => $agricultor->id,
+                    'nombre' => $agricultor->name,
+                    'mercado' => $agricultor->mercado->name ?? 'Sin mercado',
+                    'total_pagar' => $totalPagar,
+                    'productos_vendidos' => $ventas->count(),
+                    'pedidos_involucrados' => $ventas->pluck('order_id')->unique()->count()
+                ];
+            })
+            ->filter(function($agricultor) {
+                return $agricultor['total_pagar'] > 0;
+            })
+            ->sortByDesc('total_pagar')
+            ->values();
+
+        $totalGeneral = $agricultores->sum('total_pagar');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'agricultores' => $agricultores,
+                'total_general' => $totalGeneral,
+                'count_agricultores' => $agricultores->count(),
+                'periodo' => [
+                    'inicio' => Carbon::parse($fechaInicio)->format('d/m/Y'),
+                    'fin' => Carbon::parse($fechaFin)->format('d/m/Y')
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * Generar reporte de pagos por período
+     */
+    public function reportePagosPeriodo(Request $request)
+    {
+        $fechaInicio = $request->get('fecha_inicio', Carbon::now()->startOfMonth());
+        $fechaFin = $request->get('fecha_fin', Carbon::now()->endOfMonth());
+        
+        // Pagos realizados
+        $pagosRealizados = \App\Models\PagoAgricultor::with(['agricultor', 'pagadoPor'])
+            ->where('estado', 'pagado')
+            ->whereBetween('fecha_pago', [$fechaInicio, $fechaFin])
+            ->get();
+
+        // Pagos pendientes
+        $pagosPendientes = \App\Models\PagoAgricultor::with(['agricultor'])
+            ->where('estado', 'pendiente')
+            ->whereBetween('created_at', [$fechaInicio, $fechaFin])
+            ->get();
+
+        // Estadísticas generales
+        $estadisticas = [
+            'total_pagado' => $pagosRealizados->sum('monto_total'),
+            'total_pendiente' => $pagosPendientes->sum('monto_total'),
+            'count_pagados' => $pagosRealizados->count(),
+            'count_pendientes' => $pagosPendientes->count(),
+            'agricultores_pagados' => $pagosRealizados->pluck('agricultor_id')->unique()->count(),
+            'agricultores_pendientes' => $pagosPendientes->pluck('agricultor_id')->unique()->count()
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'estadisticas' => $estadisticas,
+                'pagos_realizados' => $pagosRealizados,
+                'pagos_pendientes' => $pagosPendientes,
+                'periodo' => [
+                    'inicio' => Carbon::parse($fechaInicio)->format('d/m/Y'),
+                    'fin' => Carbon::parse($fechaFin)->format('d/m/Y')
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * Procesar pago masivo a múltiples agricultores
+     */
+    public function pagoMasivoAgricultores(Request $request)
+    {
+        $validatedData = $request->validate([
+            'agricultores' => 'required|array',
+            'agricultores.*' => 'exists:users,id',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'metodo_pago' => 'nullable|string',
+            'referencia_pago' => 'nullable|string',
+            'notas' => 'nullable|string'
+        ]);
+
+        $pagosCreados = [];
+        $errores = [];
+
+        foreach ($validatedData['agricultores'] as $agricultorId) {
+            try {
+                $pago = \App\Models\PagoAgricultor::crearPago(
+                    $agricultorId,
+                    $validatedData['fecha_inicio'],
+                    $validatedData['fecha_fin'],
+                    'pagado'
+                );
+
+                if ($pago) {
+                    // Actualizar información de pago
+                    $pago->update([
+                        'metodo_pago' => $validatedData['metodo_pago'],
+                        'referencia_pago' => $validatedData['referencia_pago'],
+                        'notas' => $validatedData['notas'],
+                        'fecha_pago' => now(),
+                        'pagado_por' => Auth::id()
+                    ]);
+
+                    $pagosCreados[] = $pago;
+                } else {
+                    $agricultor = User::find($agricultorId);
+                    $errores[] = "No hay ventas para pagar a {$agricultor->name}";
+                }
+            } catch (\Exception $e) {
+                $agricultor = User::find($agricultorId);
+                $errores[] = "Error al procesar pago para {$agricultor->name}: {$e->getMessage()}";
+            }
+        }
+
+        $totalPagado = collect($pagosCreados)->sum('monto_total');
+
+        return response()->json([
+            'success' => count($pagosCreados) > 0,
+            'message' => count($pagosCreados) > 0 
+                ? "Se procesaron " . count($pagosCreados) . " pagos por un total de S/ " . number_format($totalPagado, 2)
+                : "No se pudo procesar ningún pago",
+            'data' => [
+                'pagos_creados' => $pagosCreados,
+                'total_pagado' => $totalPagado,
+                'errores' => $errores
+            ]
+        ]);
     }
 }

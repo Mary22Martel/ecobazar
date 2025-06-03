@@ -142,3 +142,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
 
 });
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/resumen-pagos-agricultores', [OrderController::class, 'resumenPagosAgricultores'])->name('admin.resumen_pagos');
+    Route::get('/admin/reporte-pagos-periodo', [OrderController::class, 'reportePagosPeriodo'])->name('admin.reporte_pagos');
+    Route::post('/admin/pago-masivo-agricultores', [OrderController::class, 'pagoMasivoAgricultores'])->name('admin.pago_masivo');
+});

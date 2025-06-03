@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PedidoResource\Pages;
 use App\Models\Order;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
@@ -14,6 +15,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Support\Enums\FontWeight;
+use Filament\Navigation\NavigationItem;
+use Carbon\Carbon;
 
 class PedidoResource extends Resource
 {
@@ -29,6 +32,42 @@ class PedidoResource extends Resource
     public static function pluralLabel(): string
     {
         return 'Órdenes';
+    }
+
+    // Agregar esta función para crear items de navegación personalizados
+    public static function getNavigationItems(): array
+    {
+        return [
+            // Item principal de órdenes
+            NavigationItem::make(static::getNavigationLabel())
+                ->icon(static::getNavigationIcon())
+                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName() . '.index'))
+                ->sort(static::getNavigationSort())
+                ->url(static::getUrl()),
+            
+            // Item directo para pagos a agricultores
+            NavigationItem::make('Pagos Agricultores')
+                ->icon('heroicon-o-banknotes')
+                ->url(static::getUrl('pagos'))
+                ->sort(static::getNavigationSort() + 1)
+                ->badge(function () {
+                    // Mostrar cuántos agricultores tienen ventas pendientes de pago esta semana
+                    try {
+                        $count = User::where('role', 'agricultor')
+                            ->whereHas('productos.orderItems.order', function ($query) {
+                                $query->where('estado', 'armado')
+                                    ->whereBetween('created_at', [
+                                        Carbon::now()->startOfWeek(),
+                                        Carbon::now()->endOfWeek()
+                                    ]);
+                            })->count();
+                        
+                        return $count > 0 ? $count : null;
+                    } catch (\Exception $e) {
+                        return null;
+                    }
+                }, 'warning'),
+        ];
     }
 
     public static function infolist(Infolist $infolist): Infolist
