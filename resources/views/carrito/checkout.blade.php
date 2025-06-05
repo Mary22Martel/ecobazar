@@ -104,32 +104,32 @@
                     </select>
                 </div>
 
-                <h3 class="text-xl font-bold my-6 text-gray-700">Opción de Pago</h3>
-                <div class="flex flex-col space-y-4 mb-6">
-                    <!-- <label class="flex items-center text-gray-600 cursor-pointer">
-                        <input type="radio" 
-                               name="pago" 
-                               value="puesto" 
-                               id="pago-puesto"
-                               class="mr-2 focus:ring-green-500" 
-                               required> 
-                        Pagar en Puesto
-                    </label> -->
-                    <label class="flex items-center text-gray-600 cursor-pointer">
+                <h3 class="text-xl font-bold my-6 text-gray-700">Método de Pago</h3>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-center">
                         <input type="radio" 
                                name="pago" 
                                value="sistema" 
                                id="pago-sistema"
-                               class="mr-2 focus:ring-green-500" 
+                               class="mr-3 focus:ring-green-500" 
+                               checked
                                required> 
-                        Pagar por Mercado Pago
-                    </label>
+                        <div class="flex items-center">
+                            <img src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadopago/logo__large@2x.png" 
+                                 alt="MercadoPago" 
+                                 class="h-8 mr-3">
+                            <div>
+                                <p class="font-semibold text-gray-800">Pagar con MercadoPago</p>
+                                <p class="text-sm text-gray-600">Tarjetas de crédito, débito y otros métodos</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <button type="submit" 
                         id="submit-btn"
                         class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg hover:bg-green-600 transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    <span id="btn-text">Realizar pedido</span>
+                    <span id="btn-text">Proceder al pago</span>
                     <span id="btn-loading" class="hidden">
                         <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -247,9 +247,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const email = document.getElementById('email').value.trim();
         const telefono = document.getElementById('telefono').value.trim();
         const delivery = document.querySelector('input[name="delivery"]:checked');
-        const pago = document.querySelector('input[name="pago"]:checked');
+        // El pago siempre será sistema, no necesitamos validarlo
 
-        if (!nombre || !apellido || !email || !telefono || !delivery || !pago) {
+        if (!nombre || !apellido || !email || !telefono || !delivery) {
             showError('Por favor, completa todos los campos obligatorios');
             return false;
         }
@@ -275,7 +275,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function collectFormData() {
         const delivery = document.querySelector('input[name="delivery"]:checked');
-        const pago = document.querySelector('input[name="pago"]:checked');
         
         const data = {
             nombre: document.getElementById('nombre').value.trim(),
@@ -284,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
             email: document.getElementById('email').value.trim(),
             telefono: document.getElementById('telefono').value.trim(),
             delivery: delivery ? delivery.value : null,
-            pago: pago ? pago.value : null,
+            pago: 'sistema', // Siempre sistema
             direccion: null,
             distrito: null
         };

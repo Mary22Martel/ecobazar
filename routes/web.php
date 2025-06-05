@@ -104,6 +104,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/carrito/details', [CarritoController::class, 'getDetails'])->name('carrito.getDetails');
     Route::get('/checkout', [CarritoController::class, 'checkout'])->name('checkout');
     Route::get('/carrito/checkout', [CarritoController::class, 'checkout'])->name('carrito.checkout');
+    Route::get('/carrito/load-data', [CarritoController::class, 'loadCartData'])->name('carrito.loadCartData');
 
 
 });

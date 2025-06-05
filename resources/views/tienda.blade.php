@@ -201,6 +201,7 @@
 
 @section('scripts')
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
     // Control del sidebar móvil
@@ -218,49 +219,57 @@ $(document).ready(function() {
 
     // Función de búsqueda unificada
     function handleSearch(searchInput, resultsContainer) {
+        let searchTimeout;
+        
         $(searchInput).on('input', function() {
+            clearTimeout(searchTimeout);
             let query = $(this).val();
 
             if (query.length > 2) {
-                $.ajax({
-                    url: "{{ route('buscar.productos.ajax') }}",
-                    method: 'GET',
-                    data: { q: query },
-                    success: function(response) {
-                        let searchResults = $(resultsContainer);
-                        searchResults.empty();
+                searchTimeout = setTimeout(function() {
+                    $.ajax({
+                        url: "{{ route('buscar.productos.ajax') }}",
+                        method: 'GET',
+                        data: { q: query },
+                        success: function(response) {
+                            let searchResults = $(resultsContainer);
+                            searchResults.empty();
 
-                        if (response.length > 0) {
-                            searchResults.removeClass('hidden');
+                            if (response.length > 0) {
+                                searchResults.removeClass('hidden');
 
-                            response.forEach(function(product) {
-                                let productItem = `
-                                    <a href="/producto/${product.id}" class="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
-                                        <div class="w-12 h-12 rounded-lg overflow-hidden mr-4 flex-shrink-0">
-                                            ${product.imagen ? 
-                                                `<img src="/storage/${product.imagen}" alt="${product.nombre}" class="w-full h-full object-cover">` :
-                                                `<div class="w-full h-full bg-gray-200 flex items-center justify-center">
-                                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                    </svg>
-                                                </div>`
-                                            }
-                                        </div>
-                                        <div class="flex-1">
-                                            <p class="font-semibold text-gray-800">${product.nombre}</p>
-                                            <p class="text-lg font-bold text-green-600">S/${product.precio}</p>
-                                            <p class="text-sm text-gray-500">Stock: ${product.cantidad_disponible}</p>
-                                        </div>
-                                    </a>
-                                `;
-                                searchResults.append(productItem);
-                            });
-                        } else {
-                            searchResults.removeClass('hidden');
-                            searchResults.append('<div class="p-4 text-center text-gray-500">No se encontraron productos</div>');
+                                response.forEach(function(product) {
+                                    let productItem = `
+                                        <a href="/producto/${product.id}" class="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
+                                            <div class="w-12 h-12 rounded-lg overflow-hidden mr-4 flex-shrink-0">
+                                                ${product.imagen ? 
+                                                    `<img src="/storage/${product.imagen}" alt="${product.nombre}" class="w-full h-full object-cover">` :
+                                                    `<div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                        </svg>
+                                                    </div>`
+                                                }
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-gray-800">${product.nombre}</p>
+                                                <p class="text-lg font-bold text-green-600">S/${product.precio}</p>
+                                                <p class="text-sm text-gray-500">Stock: ${product.cantidad_disponible}</p>
+                                            </div>
+                                        </a>
+                                    `;
+                                    searchResults.append(productItem);
+                                });
+                            } else {
+                                searchResults.removeClass('hidden');
+                                searchResults.append('<div class="p-4 text-center text-gray-500">No se encontraron productos</div>');
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('Error en búsqueda:', xhr);
                         }
-                    }
-                });
+                    });
+                }, 300); // Esperar 300ms antes de buscar
             } else {
                 $(resultsContainer).addClass('hidden');
             }
@@ -281,138 +290,161 @@ $(document).ready(function() {
         }
     });
 
+    // Variable para prevenir múltiples envíos
+    let isAddingToCart = false;
+
     // Manejo del formulario "Agregar al carrito"
     $('.add-to-cart-form').off('submit').on('submit', function(e) {
         e.preventDefault();
+
+        // Prevenir múltiples clics
+        if (isAddingToCart) {
+            return false;
+        }
 
         let form = $(this);
         let button = form.find('button[type="submit"]');
         let originalText = button.html();
 
+        // Marcar como enviando
+        isAddingToCart = true;
+        
         // Cambiar botón a estado de carga
         button.prop('disabled', true).html(`
-            <svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Agregando...
         `);
 
-        // Verificar autenticación
-        $.get("{{ route('auth.check') }}", function(response) {
-            if (!response.authenticated) {
-                button.prop('disabled', false).html(originalText);
-                Swal.fire({
-                    title: 'Inicia sesión',
-                    text: 'Debes iniciar sesión para agregar productos al carrito.',
-                    icon: 'warning',
-                    showConfirmButton: true,
-                    confirmButtonColor: '#10B981',
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = "{{ route('login') }}";
+        // Enviar formulario con timeout para evitar bloqueos
+        let actionUrl = form.attr('action');
+        
+        $.ajax({
+            type: 'POST',
+            url: actionUrl,
+            data: form.serialize(),
+            timeout: 10000, // 10 segundos de timeout
+            success: function(response) {
+                if (response.success) {
+                    // Actualizar badge del carrito
+                    $('#cart-badge').text(response.totalItems);
+
+                    // Mostrar notificación de éxito
+                    Swal.fire({
+                        title: '¡Producto añadido!',
+                        text: response.message || 'El producto se agregó correctamente al carrito',
+                        icon: 'success',
+                        showConfirmButton: false,
+                        timer: 1500,
+                        toast: true,
+                        position: 'top-end',
+                        timerProgressBar: true,
+                    });
+
+                    // Actualizar elementos del carrito si existen
+                    if ($('#cart-total-items').length) {
+                        $('#cart-total-items').text(response.totalItems);
                     }
-                });
-                return;
-            }
+                    if ($('#cart-total-price').length) {
+                        $('#cart-total-price').text(response.totalPrice.toFixed(2));
+                    }
 
-            // Enviar formulario
-            let actionUrl = form.attr('action');
-
-            $.ajax({
-                type: 'POST',
-                url: actionUrl,
-                data: form.serialize(),
-                success: function(response) {
-                    button.prop('disabled', false).html(originalText);
-                    
-                    if (response.totalItems !== undefined && response.totalPrice !== undefined) {
-                        // Actualizar badge del carrito
-                        $('#cart-badge').text(response.totalItems);
-
-                        // Actualizar elementos si existen
-                        if ($('#cart-total-items').length) {
-                            $('#cart-total-items').text(response.totalItems);
-                        }
-                        if ($('#cart-total-price').length) {
-                            $('#cart-total-price').text(response.totalPrice.toFixed(2));
-                        }
-
-                        // Actualizar modal del carrito si existe
-                        if ($('#cart-items-list').length) {
-                            $('#cart-items-list').empty();
-                            response.items.forEach(function(item) {
-                                $('#cart-items-list').append(`
-                                    <div class="flex justify-between items-center mb-2 p-2 bg-gray-50 rounded">
-                                        <span class="font-medium">${item.nombre}</span>
-                                        <span class="text-gray-600">${item.cantidad}</span>
-                                        <span class="font-bold text-green-600">S/${item.subtotal.toFixed(2)}</span>
-                                    </div>
-                                `);
-                            });
-                        }
-
-                        if ($('#cart-popup-total-price').length) {
-                            $('#cart-popup-total-price').text(response.totalPrice.toFixed(2));
-                        }
-
-                        // Mostrar notificación de éxito
-                        Swal.fire({
-                            title: '¡Producto añadido!',
-                            text: 'El producto se agregó correctamente al carrito',
-                            icon: 'success',
-                            showConfirmButton: false,
-                            timer: 2000,
-                            toast: true,
-                            position: 'top-end',
-                            timerProgressBar: true,
-                        });
-
-                        // Mostrar modal del carrito si existe
-                        if ($('#cart-summary').length) {
-                            $('#cart-summary').removeClass('hidden');
-                        }
-                    } else {
-                        Swal.fire({
-                            title: 'Error',
-                            text: 'No se pudo agregar el producto. Intenta nuevamente.',
-                            icon: 'error',
-                            confirmButtonColor: '#10B981',
+                    // Actualizar modal del carrito si existe
+                    if ($('#cart-items-list').length && response.items) {
+                        $('#cart-items-list').empty();
+                        response.items.forEach(function(item) {
+                            $('#cart-items-list').append(`
+                                <div class="flex justify-between items-center mb-2 p-2 bg-gray-50 rounded">
+                                    <span class="font-medium">${item.nombre}</span>
+                                    <span class="text-gray-600">${item.cantidad}</span>
+                                    <span class="font-bold text-green-600">S/${item.subtotal.toFixed(2)}</span>
+                                </div>
+                            `);
                         });
                     }
-                },
-                error: function(xhr, status, error) {
-                    button.prop('disabled', false).html(originalText);
+
+                    if ($('#cart-popup-total-price').length) {
+                        $('#cart-popup-total-price').text(response.totalPrice.toFixed(2));
+                    }
+                } else {
+                    // Mostrar error específico
                     Swal.fire({
                         title: 'Error',
-                        text: 'Hubo un problema al agregar el producto.',
+                        text: response.error || 'No se pudo agregar el producto',
                         icon: 'error',
                         confirmButtonColor: '#10B981',
                     });
                 }
-            });
+            },
+            error: function(xhr, status, error) {
+                console.error('Error al agregar al carrito:', xhr, status, error);
+                
+                let errorMessage = 'Error al agregar el producto al carrito.';
+                
+                if (status === 'timeout') {
+                    errorMessage = 'La solicitud tardó demasiado. Por favor, intenta nuevamente.';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'No hay conexión a internet. Verifica tu conexión.';
+                } else if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMessage = xhr.responseJSON.error;
+                } else if (xhr.status === 401) {
+                    // Usuario no autenticado
+                    Swal.fire({
+                        title: 'Inicia sesión',
+                        text: 'Debes iniciar sesión para agregar productos al carrito.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10B981',
+                        confirmButtonText: 'Ir a login',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = "{{ route('login') }}";
+                        }
+                    });
+                    return;
+                }
+                
+                Swal.fire({
+                    title: 'Error',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#10B981',
+                });
+            },
+            complete: function() {
+                // Restaurar botón
+                setTimeout(function() {
+                    button.prop('disabled', false).html(originalText);
+                    isAddingToCart = false;
+                }, 1000);
+            }
         });
     });
-});
 
-// Función para actualizar stock del producto
-function updateProductStock(productId) {
-    $.ajax({
-        url: '/producto/' + productId,
-        method: 'GET',
-        success: function(response) {
-            $('#producto-' + productId + ' .cantidad-disponible').text('Disponibles: ' + response.cantidad_disponible);
+    // Actualizar stock del producto periódicamente
+    function updateProductStock(productId) {
+        $.ajax({
+            url: '/producto/' + productId,
+            method: 'GET',
+            success: function(response) {
+                let stockElement = $(`#producto-${productId} .cantidad-disponible`);
+                if (stockElement.length) {
+                    stockElement.text('Stock: ' + response.cantidad_disponible);
+                }
+            }
+        });
+    }
+
+    // Cerrar sidebar al cambiar el tamaño de ventana
+    $(window).resize(function() {
+        if ($(window).width() >= 1024) {
+            $('#sidebar').removeClass('-translate-x-full');
+            $('#sidebar-overlay').addClass('hidden');
+            $('body').removeClass('overflow-hidden');
         }
     });
-}
-
-// Cerrar sidebar al cambiar el tamaño de ventana
-$(window).resize(function() {
-    if ($(window).width() >= 1024) {
-        $('#sidebar').removeClass('-translate-x-full');
-        $('#sidebar-overlay').addClass('hidden');
-        $('body').removeClass('overflow-hidden');
-    }
 });
 </script>
 @endsection

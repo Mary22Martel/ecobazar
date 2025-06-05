@@ -36,7 +36,7 @@ class OrderController extends Controller
                 'delivery' => 'required|in:puesto,delivery',
                 'direccion' => 'required_if:delivery,delivery|nullable|string',
                 'distrito' => 'required_if:delivery,delivery|nullable|exists:zones,id',
-                'pago' => 'required|in:puesto,sistema'
+                'pago' => 'required|in:sistema' // Solo permitir pago por sistema
             ]);
 
             Log::info('Datos validados:', $validatedData);
@@ -56,6 +56,12 @@ class OrderController extends Controller
 
             Log::info('Carrito encontrado con ' . $carrito->items->count() . ' items');
 
+            // TEMPORAL: Forzar mercado 1 hasta que se implemente la selección de mercados
+            $mercadoActual = 1; // Siempre usar mercado 1
+            Log::info('Mercado forzado a: ' . $mercadoActual);
+
+            // COMENTADO TEMPORALMENTE: Validación de mercado
+            /*
             // Verificar que todos los productos pertenezcan al mismo mercado
             $mercadoActual = session('mercado_actual');
             if (!$mercadoActual) {
@@ -74,6 +80,7 @@ class OrderController extends Controller
                     ], 400);
                 }
             }
+            */
 
             // Calcular totales
             $subtotal = 0;
@@ -113,7 +120,7 @@ class OrderController extends Controller
 
             Log::info("Totales calculados - Subtotal: {$subtotal}, Envío: {$costoEnvio}, Total: {$total}");
 
-            // Crear la orden - CAMBIO PRINCIPAL: Estados simplificados
+            // Crear la orden
             $orden = new Order();
             $orden->user_id = Auth::id();
             $orden->nombre = $validatedData['nombre'];
@@ -124,10 +131,9 @@ class OrderController extends Controller
             $orden->delivery = $validatedData['delivery'];
             $orden->direccion = $validatedData['direccion'] ?? null;
             $orden->distrito = $zonaInfo;
-            $orden->pago = $validatedData['pago'];
+            $orden->pago = 'sistema'; // Siempre sistema
             $orden->total = $total;
-            // NUEVO: Estados simplificados
-            $orden->estado = ($validatedData['pago'] === 'sistema') ? 'pendiente' : 'pagado';
+            $orden->estado = 'pendiente'; // Siempre pendiente hasta confirmar pago
             $orden->repartidor_id = $repartidorId;
             $orden->save();
 
@@ -160,16 +166,8 @@ class OrderController extends Controller
             $carrito->delete();
             Log::info('Carrito limpiado');
 
-            // Procesar pago según el método elegido
-            if ($validatedData['pago'] === 'sistema') {
-                return $this->procesarPagoMercadoPago($orden, $subtotal, $costoEnvio);
-            } else {
-                // Pago en puesto - redirigir directamente
-                return response()->json([
-                    'success' => true,
-                    'redirect_url' => route('order.success', $orden->id)
-                ]);
-            }
+            // Siempre procesar pago con MercadoPago
+            return $this->procesarPagoMercadoPago($orden, $subtotal, $costoEnvio);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Error de validación:', $e->errors());
@@ -187,7 +185,7 @@ class OrderController extends Controller
         }
     }
 
-  private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
+    private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
     {
         try {
             Log::info('=== INICIANDO MERCADO PAGO ===');
@@ -215,7 +213,6 @@ class OrderController extends Controller
                 ],
                 "external_reference" => strval($orden->id),
                 "statement_descriptor" => "Punto Verde"
-                // REMOVIDO: "auto_return" => "approved" - esto causaba el error
             ];
 
             // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
@@ -250,7 +247,6 @@ class OrderController extends Controller
                 $apiResponse = $e->getApiResponse();
                 if ($apiResponse) {
                     $content = $apiResponse->getContent();
-                    // Verificar si el contenido es un array y convertirlo a JSON para el log
                     if (is_array($content)) {
                         Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
                     } elseif (is_string($content)) {
@@ -265,7 +261,6 @@ class OrderController extends Controller
                 Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
             }
             
-            // También verificar el código de estado HTTP si está disponible
             try {
                 if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
                     $statusCode = $e->getApiResponse()->getStatusCode();
@@ -297,7 +292,6 @@ class OrderController extends Controller
             
             $orden = Order::with(['items.product', 'user'])->findOrFail($orderId);
             
-            // CAMBIO: Si la orden está pendiente y llegó aquí, significa que pagó
             if ($orden->estado === 'pendiente') {
                 Log::info("Orden pendiente, verificando pago con MercadoPago...");
                 $this->verificarYActualizarPago($orden);
@@ -339,12 +333,10 @@ class OrderController extends Controller
                 return;
             }
 
-            // Solo verificar si tiene preference_id o si podemos obtener info del request
             $paymentId = request()->get('payment_id') ?? request()->get('collection_id');
             
             if (!$paymentId) {
                 Log::warning("No se encontró payment_id para verificar la orden {$orden->id}");
-                // CAMBIO: Marcar como pagado si llegó a la página de éxito
                 if ($orden->estado === 'pendiente') {
                     $orden->estado = 'pagado';
                     $orden->paid_at = now();
@@ -358,14 +350,12 @@ class OrderController extends Controller
 
             MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
             
-            // Crear cliente de Payment
             $client = new \MercadoPago\Client\Payment\PaymentClient();
             $payment = $client->get($paymentId);
             
             Log::info("Estado del pago: {$payment->status}");
             Log::info("External reference: {$payment->external_reference}");
             
-            // Verificar que el pago corresponde a esta orden
             if ($payment->external_reference == $orden->id) {
                 switch ($payment->status) {
                     case 'approved':
@@ -394,7 +384,6 @@ class OrderController extends Controller
         } catch (Exception $e) {
             Log::error("Error verificando pago para orden {$orden->id}: " . $e->getMessage());
             
-            // CAMBIO: Marcar como pagado si llegó a la página de éxito
             if ($orden->estado === 'pendiente') {
                 $orden->estado = 'pagado';
                 $orden->paid_at = now();
@@ -483,7 +472,6 @@ class OrderController extends Controller
             abort(403, 'No autorizado');
         }
 
-        // CAMBIO: Actualizar al nuevo flujo de estados
         $pedido->estado = 'armado';
         $pedido->save();
 
@@ -519,35 +507,133 @@ class OrderController extends Controller
 
     public function pagosProductor()
     {
-        $pagos = \App\Models\OrderItem::whereHas('product', function($q) {
+        // USAR LA MISMA LÓGICA QUE EL ADMIN - startOfWeek() normal
+        $fechaInicio = Carbon::now()->startOfWeek();
+        $fechaFin = Carbon::now()->endOfWeek();
+
+        // IMPORTANTE: Usar exactamente la misma lógica que el admin - solo pedidos ARMADOS
+        $ventasDetalladas = OrderItem::whereHas('product', function($q) {
                 $q->where('user_id', Auth::id());
             })
-            ->whereHas('order', function($q) {
-                // CAMBIO: Actualizar el estado que se considera para pagos
-                $q->where('estado', 'armado');
+            ->whereHas('order', function($q) use ($fechaInicio, $fechaFin) {
+                $q->where('estado', 'armado') // SOLO ESTADO ARMADO como en el admin
+                  ->whereBetween('created_at', [
+                      $fechaInicio->startOfDay(),
+                      $fechaFin->endOfDay()
+                  ]);
             })
-            ->get()
-            ->groupBy('producto_id')
+            ->with(['product', 'order'])
+            ->get();
+
+        // Agrupar por producto para el resumen (misma lógica que admin)
+        $pagos = $ventasDetalladas->groupBy('producto_id')
             ->map(function($items) {
                 $producto = $items->first()->product;
                 $cantidad = $items->sum('cantidad');
                 $monto = $items->sum(function($item) {
                     return $item->cantidad * $item->precio;
                 });
+                
                 return [
                     'producto' => $producto,
                     'cantidad' => $cantidad,
                     'monto' => $monto,
+                    'pedidos_count' => $items->pluck('order_id')->unique()->count(),
+                    'precio_promedio' => $cantidad > 0 ? $monto / $cantidad : 0,
                 ];
             })
-            ->values();
+            ->values()
+            ->sortByDesc('monto');
 
+        // Calcular estadísticas generales
         $totalPagar = $pagos->sum('monto');
+        $totalProductos = $pagos->count();
+        $totalCantidad = $pagos->sum('cantidad');
+        $totalPedidos = $ventasDetalladas->pluck('order_id')->unique()->count();
 
-        return view('agricultor.pagos', compact('pagos', 'totalPagar'));
+        // Para estadísticas adicionales, obtener todos los pedidos del período (no solo armados)
+        $todasLasVentas = OrderItem::whereHas('product', function($q) {
+                $q->where('user_id', Auth::id());
+            })
+            ->whereHas('order', function($q) use ($fechaInicio, $fechaFin) {
+                $q->where('estado', '!=', 'cancelado')
+                  ->whereBetween('created_at', [
+                      $fechaInicio->startOfDay(),
+                      $fechaFin->endOfDay()
+                  ]);
+            })
+            ->with(['product', 'order'])
+            ->get();
+
+        // Estadísticas por estado de pedido (para información general)
+        $estadisticas = [
+            'pagados' => [
+                'count' => $todasLasVentas->where('order.estado', 'pagado')->pluck('order_id')->unique()->count(),
+                'monto' => $todasLasVentas->where('order.estado', 'pagado')->sum(function($item) {
+                    return $item->cantidad * $item->precio;
+                })
+            ],
+            'armados' => [
+                'count' => $ventasDetalladas->pluck('order_id')->unique()->count(), // Solo armados
+                'monto' => $totalPagar // Solo armados
+            ],
+            'entregados' => [
+                'count' => $todasLasVentas->where('order.estado', 'entregado')->pluck('order_id')->unique()->count(),
+                'monto' => $todasLasVentas->where('order.estado', 'entregado')->sum(function($item) {
+                    return $item->cantidad * $item->precio;
+                })
+            ]
+        ];
+
+        // Top 5 productos más vendidos (solo de pedidos armados para pagos)
+        $topProductos = $pagos->take(5);
+
+        // Ventas por día de la semana (solo pedidos armados)
+        $ventasPorDia = $ventasDetalladas->groupBy(function($item) {
+            return $item->order->created_at->format('l'); // Nombre del día en inglés
+        })->map(function($items) {
+            return [
+                'cantidad' => $items->sum('cantidad'),
+                'monto' => $items->sum(function($item) {
+                    return $item->cantidad * $item->precio;
+                }),
+                'pedidos' => $items->pluck('order_id')->unique()->count()
+            ];
+        });
+
+        // Datos para gráficos (basados en pedidos armados)
+        $chartData = [
+            'productos_labels' => $topProductos->pluck('producto.nombre')->toArray(),
+            'productos_ventas' => $topProductos->pluck('monto')->toArray(),
+            'productos_cantidades' => $topProductos->pluck('cantidad')->toArray(),
+            'dias_labels' => ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
+            'dias_montos' => [
+                $ventasPorDia['Monday']['monto'] ?? 0,
+                $ventasPorDia['Tuesday']['monto'] ?? 0,
+                $ventasPorDia['Wednesday']['monto'] ?? 0,
+                $ventasPorDia['Thursday']['monto'] ?? 0,
+                $ventasPorDia['Friday']['monto'] ?? 0,
+                $ventasPorDia['Saturday']['monto'] ?? 0,
+                $ventasPorDia['Sunday']['monto'] ?? 0,
+            ]
+        ];
+
+        return view('agricultor.pagos', compact(
+            'pagos', 
+            'totalPagar', 
+            'totalProductos', 
+            'totalCantidad', 
+            'totalPedidos',
+            'estadisticas',
+            'topProductos',
+            'ventasPorDia',
+            'chartData',
+            'fechaInicio',
+            'fechaFin'
+        ));
     }
     
-     public function resumenPagosAgricultores(Request $request)
+    public function resumenPagosAgricultores(Request $request)
     {
         $fechaInicio = $request->get('fecha_inicio', Carbon::now()->startOfWeek());
         $fechaFin = $request->get('fecha_fin', Carbon::now()->endOfWeek());
@@ -613,19 +699,16 @@ class OrderController extends Controller
         $fechaInicio = $request->get('fecha_inicio', Carbon::now()->startOfMonth());
         $fechaFin = $request->get('fecha_fin', Carbon::now()->endOfMonth());
         
-        // Pagos realizados
         $pagosRealizados = \App\Models\PagoAgricultor::with(['agricultor', 'pagadoPor'])
             ->where('estado', 'pagado')
             ->whereBetween('fecha_pago', [$fechaInicio, $fechaFin])
             ->get();
 
-        // Pagos pendientes
         $pagosPendientes = \App\Models\PagoAgricultor::with(['agricultor'])
             ->where('estado', 'pendiente')
             ->whereBetween('created_at', [$fechaInicio, $fechaFin])
             ->get();
 
-        // Estadísticas generales
         $estadisticas = [
             'total_pagado' => $pagosRealizados->sum('monto_total'),
             'total_pendiente' => $pagosPendientes->sum('monto_total'),
@@ -677,7 +760,6 @@ class OrderController extends Controller
                 );
 
                 if ($pago) {
-                    // Actualizar información de pago
                     $pago->update([
                         'metodo_pago' => $validatedData['metodo_pago'],
                         'referencia_pago' => $validatedData['referencia_pago'],
