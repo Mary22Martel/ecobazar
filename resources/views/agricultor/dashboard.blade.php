@@ -1,106 +1,130 @@
 @extends('layouts.app2')
 
 @section('content')
-<div class="container mx-auto mt-6 sm:mt-12 px-4 sm:px-6 lg:px-8 max-w-7xl">
-    <!-- Sección de Bienvenida -->
-    <div class="mb-8 sm:mb-16">
-        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg rounded-2xl sm:rounded-3xl p-6 sm:p-10 flex flex-col lg:flex-row items-center justify-between transition-all duration-300 hover:shadow-xl">
-            <div class="flex-1 mb-8 lg:mb-0 lg:mr-10">
-                <h1 class="text-3xl sm:text-4xl xl:text-5xl font-bold mb-4 leading-tight">
-                    ¡Bienvenido, {{ Auth::user()->name ?? 'Agricultor' }}!
-                </h1>
-                <p class="text-sm sm:text-base lg:text-lg opacity-95 leading-relaxed">
-                    Gracias por ser parte de nuestra comunidad. Gestiona tus productos, revisa pedidos pendientes y descubre herramientas diseñadas para potenciar tu trabajo agrícola.
-                </p>
-            </div>
-            <div class="w-full lg:w-1/3 mt-8 lg:mt-0">
-                <img src="{{ asset('images/agrix.svg') }}" alt="Agricultor" 
-                     class="w-full h-48 sm:h-56 object-contain object-center transition-transform duration-500 hover:scale-105">
+<div class="container mx-auto mt-8 max-w-4xl px-4">
+    <!-- Menú de navegación fijo superior -->
+    <div class="bg-white border-2 border-gray-300 rounded-lg p-4 mb-6 shadow sticky top-4 z-10">
+        <div class="flex justify-between items-center">
+            <h2 class="text-lg font-bold text-gray-800">🏠 MI PANEL</h2>
+            <div class="flex space-x-2">
+                <a href="{{ route('agricultor.pedidos_pendientes') }}" 
+                   class="bg-orange-500 text-white px-3 py-2 rounded text-sm font-bold hover:bg-orange-600">
+                    📦 PENDIENTES
+                </a>
+                <a href="{{ route('agricultor.pedidos_listos') }}" 
+                   class="bg-green-500 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-600">
+                    ✅ LISTOS
+                </a>
+                <a href="{{ route('agricultor.pagos') }}" 
+                   class="bg-blue-500 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-600">
+                    💰 PAGOS
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Tarjetas de Funcionalidades -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-        <!-- Tarjeta Productos -->
-        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
-            <div class="mb-4">
-                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2M14 4h2a2 2 0 12-4 0h2m0-2v2"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-semibold mb-2 text-gray-800">Gestionar Productos</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">Administra y actualiza tu catálogo de productos agrícolas de forma sencilla y organizada.</p>
-            </div>
-            <a href="{{ route('productos.index') }}" 
-               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
-                <span>Administrar Productos</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                </svg>
-            </a>
-        </div>
+    <!-- Saludo simple -->
+    <div class="bg-green-600 text-white p-6 rounded-lg mb-8 text-center">
+        <h1 class="text-3xl font-bold">¡Hola {{ Auth::user()->name }}!</h1>
+        <p class="text-lg mt-2">Bienvenido a tu espacio de trabajo</p>
+    </div>
 
-        <!-- Tarjeta Pedidos -->
-        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
-            <div class="mb-4">
-                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2m-4 0v2m0 0h.01M9 16h.01"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-semibold mb-2 text-gray-800">Pedidos Pendientes</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">Revisa y gestiona todos los pedidos actuales de tus productos.</p>
+    <!-- Botones principales grandes -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Pedidos por armar -->
+        <a href="{{ route('agricultor.pedidos_pendientes') }}" 
+           class="bg-white border-4 border-orange-400 text-gray-800 p-8 rounded-lg shadow-lg text-center block hover:shadow-xl hover:scale-105 transition-all duration-200">
+            <div class="text-4xl mb-4">📦</div>
+            <h2 class="text-2xl font-bold mb-2 text-orange-600">PEDIDOS POR ARMAR</h2>
+            @php
+                // Pedidos que necesitan preparación
+                $pendientesQuery = \App\Models\Order::whereHas('items.product', function($query) {
+                    $query->where('user_id', Auth::id());
+                })->whereIn('estado', ['pendiente', 'pagado']);
+                $pendientes = $pendientesQuery->count();
+            @endphp
+            @if($pendientes > 0)
+            <div class="bg-red-500 text-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 animate-pulse">
+                <span class="text-2xl font-bold">{{ $pendientes }}</span>
             </div>
+            <p class="text-lg text-gray-700">Tienes {{ $pendientes }} pedidos esperando</p>
+            @else
+            <p class="text-lg text-gray-500">No hay pedidos pendientes</p>
+            @endif
+        </a>
+
+        <!-- Pedidos listos -->
+        <a href="{{ route('agricultor.pedidos_listos') }}" 
+           class="bg-white border-4 border-green-400 text-gray-800 p-8 rounded-lg shadow-lg text-center block hover:shadow-xl hover:scale-105 transition-all duration-200">
+            <div class="text-4xl mb-4">✅</div>
+            <h2 class="text-2xl font-bold mb-2 text-green-600">PEDIDOS LISTOS</h2>
+            @php
+                // Pedidos ya listos (generan pago)
+                $listosQuery = \App\Models\Order::whereHas('items.product', function($query) {
+                    $query->where('user_id', Auth::id());
+                })->whereIn('estado', ['armado', 'entregado']);
+                $listos = $listosQuery->count();
+            @endphp
+            <p class="text-lg text-gray-700">{{ $listos }} pedidos preparados</p>
+        </a>
+    </div>
+
+    <!-- Botones secundarios -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Mis pagos -->
+        <a href="{{ route('agricultor.pagos') }}" 
+           class="bg-white border-2 border-blue-300 text-gray-800 p-6 rounded-lg shadow text-center block hover:shadow-md hover:border-blue-400 transition-all duration-200">
+            <div class="text-3xl mb-3">💰</div>
+            <h3 class="text-xl font-bold mb-2 text-blue-600">MIS PAGOS</h3>
+            <p class="text-sm text-gray-600">Ver dinero ganado</p>
+        </a>
+
+        <!-- Mis productos -->
+        <a href="{{ route('productos.index') }}" 
+           class="bg-white border-2 border-purple-300 text-gray-800 p-6 rounded-lg shadow text-center block hover:shadow-md hover:border-purple-400 transition-all duration-200">
+            <div class="text-3xl mb-3">🥕</div>
+            <h3 class="text-xl font-bold mb-2 text-purple-600">MIS PRODUCTOS</h3>
+            <p class="text-sm text-gray-600">Administrar catálogo</p>
+        </a>
+    </div>
+
+    <!-- Resumen rápido -->
+    @php
+        $totalProductos = \App\Models\Product::where('user_id', Auth::id())->count();
+    @endphp
+
+    <div class="bg-white border-2 border-gray-300 rounded-lg p-6 shadow">
+        <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">📊 RESUMEN DE HOY</h3>
+        <div class="grid grid-cols-3 gap-4 text-center">
             <a href="{{ route('agricultor.pedidos_pendientes') }}" 
-               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
-                <span>Ver Pedidos</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
+               class="bg-orange-50 border border-orange-200 p-4 rounded-lg hover:bg-orange-100 transition-colors block">
+                <div class="text-3xl font-bold text-orange-600">{{ $pendientes }}</div>
+                <div class="text-sm text-orange-800">Por armar</div>
             </a>
-        </div>
-
-        <!-- Tarjeta Nuevas Funciones -->
-        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
-            <div class="mb-4">
-                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-semibold mb-2 text-gray-800">Nuevas Funciones</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">Descubre las próximas actualizaciones y mejoras en desarrollo.</p>
-            </div>
-            <a href="{{ route('progreso') }}" 
-               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
-                <span>Explorar</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                </svg>
+            <a href="{{ route('agricultor.pedidos_listos') }}" 
+               class="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition-colors block">
+                <div class="text-3xl font-bold text-green-600">{{ $listos }}</div>
+                <div class="text-sm text-green-800">Listos</div>
             </a>
-        </div>
-
-        <!-- Tarjeta Pagos al Productor -->
-        <div class="bg-white border border-green-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col group">
-            <div class="mb-4">
-                <div class="w-12 h-12 bg-green-100 rounded-lg mb-4 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10v6m0 4v2m-1-1h2"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-semibold mb-2 text-gray-800">Pagos al Productor</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">Visualiza el monto a pagar por las ventas de tus productos.</p>
-            </div>
-            <a href="{{ route('agricultor.pagos') }}" 
-               class="mt-auto bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center justify-center space-x-2">
-                <span>Ver Pagos</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
+            <a href="{{ route('productos.index') }}" 
+               class="bg-purple-50 border border-purple-200 p-4 rounded-lg hover:bg-purple-100 transition-colors block">
+                <div class="text-3xl font-bold text-purple-600">{{ $totalProductos }}</div>
+                <div class="text-sm text-purple-800">Productos</div>
             </a>
         </div>
     </div>
+
+    <!-- Instrucciones simples -->
+    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mt-8">
+        <h3 class="text-lg font-bold text-blue-800 mb-3">❓ ¿QUÉ HACER?</h3>
+        <div class="space-y-2 text-blue-800">
+            <p><strong>1.</strong> Revisa si hay "PEDIDOS POR ARMAR" (naranja)</p>
+            <p><strong>2.</strong> Prepara los productos con las cantidades exactas</p>
+            <p><strong>3.</strong> Marca como "YA ESTÁ LISTO" cuando termines</p>
+            <p><strong>4.</strong> Lleva todo a la feria el día acordado</p>
+            <p><strong>5.</strong> Revisa tus "PAGOS" cada semana</p>
+        </div>
+    </div>
+
 </div>
 @endsection

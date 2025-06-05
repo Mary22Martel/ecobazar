@@ -118,7 +118,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mercadopago/webhook', [OrderController::class, 'mercadoPagoWebhook']);
     
     // Rutas para los agricultores relacionadas con pedidos
-    Route::get('/agricultor/pedidos-pendientes', [OrderController::class, 'mostrarPedidosPendientes'])->name('agricultor.pedidos_pendientes');
+    Route::get('/agricultor/pedidos-pendientes', [OrderController::class, 'pedidosPendientes'])->name('agricultor.pedidos_pendientes');
     Route::get('/agricultor/pedido/{id}', [OrderController::class, 'detallePedido'])->name('agricultor.pedido.detalle');
     Route::post('/agricultor/pedido/{id}/confirmar-listo', [OrderController::class, 'confirmarPedidoListo'])->name('agricultor.confirmar_pedido_listo');
     Route::get('/agricultor/pedidos-listos', [OrderController::class, 'pedidosListos'])->name('agricultor.pedidos_listos');

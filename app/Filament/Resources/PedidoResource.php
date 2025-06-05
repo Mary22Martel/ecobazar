@@ -34,24 +34,20 @@ class PedidoResource extends Resource
         return 'Órdenes';
     }
 
-    // Agregar esta función para crear items de navegación personalizados
     public static function getNavigationItems(): array
     {
         return [
-            // Item principal de órdenes
             NavigationItem::make(static::getNavigationLabel())
                 ->icon(static::getNavigationIcon())
                 ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName() . '.index'))
                 ->sort(static::getNavigationSort())
                 ->url(static::getUrl()),
             
-            // Item directo para pagos a agricultores
             NavigationItem::make('Pagos Agricultores')
                 ->icon('heroicon-o-banknotes')
                 ->url(static::getUrl('pagos'))
                 ->sort(static::getNavigationSort() + 1)
                 ->badge(function () {
-                    // Mostrar cuántos agricultores tienen ventas pendientes de pago esta semana
                     try {
                         $count = User::where('role', 'agricultor')
                             ->whereHas('productos.orderItems.order', function ($query) {
@@ -74,66 +70,56 @@ class PedidoResource extends Resource
     {
         return $infolist
             ->schema([
-                // HEADER - Información del Cliente con Diseño Mejorado
-                Infolists\Components\Section::make('')
+                // INFORMACIÓN DEL CLIENTE - Diseño limpio
+                Infolists\Components\Section::make('Información del Cliente')
+                    ->icon('heroicon-m-user')
                     ->schema([
-                        Infolists\Components\Group::make([
-                            Infolists\Components\TextEntry::make('cliente_nombre')
-                                ->label('')
-                                ->state(function (Order $record) {
-                                    return "{$record->nombre} {$record->apellido}";
-                                })
-                                ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
-                                ->weight(FontWeight::Bold)
-                                ->color('gray')
-                                ->icon('heroicon-m-user')
-                                ->iconColor('primary'),
-                            
-                            Infolists\Components\TextEntry::make('telefono_info')
-                                ->label('')
-                                ->state(function (Order $record) {
-                                    return $record->telefono;
-                                })
-                                ->size(Infolists\Components\TextEntry\TextEntrySize::Medium)
-                                ->color('gray')
-                                ->icon('heroicon-m-phone')
-                                ->iconColor('success')
-                                ->badge()
-                                ->copyable(),
-                            
-                            Infolists\Components\TextEntry::make('entrega_info')
-                                ->label('')
-                                ->state(function (Order $record) {
-                                    return $record->delivery === 'delivery' 
-                                        ? "Delivery: {$record->direccion}, {$record->distrito}"
-                                        : "Recoger en Puesto";
-                                })
-                                ->badge()
-                                ->color(fn (Order $record): string => $record->delivery === 'delivery' ? 'warning' : 'info')
-                                ->icon(fn (Order $record): string => $record->delivery === 'delivery' ? 'heroicon-m-truck' : 'heroicon-m-building-storefront'),
-                        ])->columns(3),
+                        Infolists\Components\Grid::make(3)
+                            ->schema([
+                                Infolists\Components\TextEntry::make('nombre_completo')
+                                    ->label('Cliente')
+                                    ->state(function (Order $record) {
+                                        return $record->nombre . ' ' . $record->apellido;
+                                    })
+                                    ->weight(FontWeight::SemiBold)
+                                    ->size(Infolists\Components\TextEntry\TextEntrySize::Large),
+                                
+                                Infolists\Components\TextEntry::make('telefono')
+                                    ->label('Teléfono')
+                                    ->copyable()
+                                    ->copyMessage('Teléfono copiado')
+                                    ->weight(FontWeight::Medium),
+                                
+                                Infolists\Components\TextEntry::make('tipo_entrega')
+                                    ->label('Tipo de entrega')
+                                    ->state(function (Order $record) {
+                                        if ($record->delivery === 'delivery') {
+                                            return 'Delivery: ' . $record->direccion . ', ' . $record->distrito;
+                                        }
+                                        return 'Recoger en puesto';
+                                    })
+                                    ->badge()
+                                    ->color(fn (Order $record): string => $record->delivery === 'delivery' ? 'warning' : 'success'),
+                            ]),
                     ])
-                    ->compact()
-                    ->extraAttributes([
-                        'style' => 'background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #cbd5e1;'
-                    ]),
+                    ->compact(),
 
-                // PRODUCTOS POR AGRICULTOR - Diseño con Cards
-                Infolists\Components\Section::make('Productos por Agricultor')
-                    ->description('Lista de productos que cada agricultor debe entregar')
-                    ->icon('heroicon-m-user-group')
+                // PRODUCTOS POR AGRICULTOR - Diseño simplificado
+                Infolists\Components\Section::make('Lista de Productos')
+                    ->icon('heroicon-m-clipboard-document-list')
+                    ->description('Productos que debe entregar cada agricultor')
                     ->schema([
-                        Infolists\Components\TextEntry::make('productos_agricultores')
+                        Infolists\Components\TextEntry::make('productos_lista')
                             ->label('')
                             ->state(function (Order $record) {
                                 try {
                                     $items = $record->items()->with(['product.user', 'product.medida'])->get();
                                     
                                     if ($items->isEmpty()) {
-                                        return "Sin productos en este pedido";
+                                        return 'Sin productos en este pedido';
                                     }
                                     
-                                    $cards = [];
+                                    $html = '<div class="space-y-4">';
                                     
                                     // Agrupar por agricultor
                                     $porAgricultor = $items->groupBy(function ($item) {
@@ -141,48 +127,49 @@ class PedidoResource extends Resource
                                     });
                                     
                                     foreach ($porAgricultor as $agricultor => $productos) {
-                                        $productosTexto = [];
+                                        $html .= '<div class="border border-gray-200 rounded-lg p-4 bg-gray-50">';
+                                        $html .= '<h4 class="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">' . $agricultor . '</h4>';
+                                        
+                                        $html .= '<div class="space-y-2">';
                                         foreach ($productos as $item) {
                                             $producto = $item->product->nombre ?? 'Producto no encontrado';
                                             $medida = $item->product->medida->nombre ?? 'unidad';
                                             $cantidad = $item->cantidad;
-                                            $productosTexto[] = "• {$cantidad} {$medida} de {$producto}";
+                                            
+                                            $html .= '<div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">';
+                                            $html .= '<div class="flex-1">';
+                                            $html .= '<span class="text-gray-900 font-medium">' . $producto . '</span>';
+                                            $html .= '</div>';
+                                            $html .= '<div class="text-right">';
+                                            $html .= '<span class="font-semibold text-gray-900">' . $cantidad . ' ' . $medida . '</span>';
+                                            $html .= '</div>';
+                                            $html .= '</div>';
                                         }
-                                        
-                                        $cards[] = "
-<div style='background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-    <div style='display: flex; align-items: center; margin-bottom: 0.75rem;'>
-        <div style='background: #f59e0b; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-weight: bold;'>👨‍🌾</div>
-        <h3 style='margin: 0; font-weight: bold; font-size: 1.1rem; color: #92400e;'>" . strtoupper($agricultor) . "</h3>
-    </div>
-    <div style='color: #92400e; line-height: 1.6; font-size: 0.95rem;'>" . implode("<br>", $productosTexto) . "</div>
-</div>";
+                                        $html .= '</div>';
+                                        $html .= '</div>';
                                     }
                                     
-                                    return implode("", $cards);
+                                    $html .= '</div>';
+                                    return $html;
                                     
                                 } catch (\Exception $e) {
-                                    return "<div style='color: #dc2626; padding: 1rem;'>❌ ERROR: " . $e->getMessage() . "</div>";
+                                    return 'Error al cargar productos: ' . $e->getMessage();
                                 }
                             })
-                            ->columnSpanFull()
-                            ->extraAttributes([
-                                'class' => 'productos-agricultores'
-                            ])
-                            ->html(),
-                    ])
-                    ->collapsible(false),
+                            ->html()
+                            ->columnSpanFull(),
+                    ]),
 
-                // CHECKLIST INTERACTIVO
-                Infolists\Components\Section::make('Pasos para Armar el Pedido')
-                    ->description('Sigue estos pasos para completar el pedido')
+                // INSTRUCCIONES PARA ARMAR - Diseño simplificado
+                Infolists\Components\Section::make('Instrucciones para Armar')
                     ->icon('heroicon-m-clipboard-document-check')
                     ->schema([
-                        Infolists\Components\TextEntry::make('checklist_interactivo')
+                        Infolists\Components\TextEntry::make('instrucciones')
                             ->label('')
                             ->state(function (Order $record) {
                                 $cliente = $record->nombre . ' ' . $record->apellido;
                                 $totalProductos = $record->items->count();
+                                
                                 $agricultores = $record->items()->with('product.user')->get()
                                     ->groupBy('product.user_id')
                                     ->map(function ($items) {
@@ -192,49 +179,45 @@ class PedidoResource extends Resource
                                     ->implode(', ');
                                 
                                 $pasos = [
-                                    "Solicitar productos a: {$agricultores}",
-                                    "Verificar que tienes {$totalProductos} productos completos",
-                                    "Juntar todos los productos en una bolsa o caja",
-                                    "Etiquetar el paquete con: \"{$cliente}\"",
-                                    "Marcar como ARMADO cuando esté listo"
+                                    'Solicitar productos a: ' . $agricultores,
+                                    'Verificar que tienes ' . $totalProductos . ' productos completos',
+                                    'Juntar todos los productos en una bolsa o caja',
+                                    'Etiquetar el paquete con: "' . $cliente . '"',
+                                    'Marcar como ARMADO cuando esté listo'
                                 ];
                                 
-                                $html = "<div style='background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-radius: 12px; padding: 1.5rem; border: 2px solid #10b981;'>";
-                                
+                                $html = '<ol class="space-y-2">';
                                 foreach ($pasos as $index => $paso) {
                                     $numero = $index + 1;
-                                    $html .= "
-<div style='display: flex; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.7); border-radius: 8px; border-left: 4px solid #10b981;'>
-    <div style='background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 1rem; font-weight: bold; font-size: 0.875rem;'>{$numero}</div>
-    <span style='flex: 1; color: #065f46; font-weight: 500;'>{$paso}</span>
-</div>";
+                                    $html .= '<li class="flex items-start gap-3">';
+                                    $html .= '<span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">' . $numero . '</span>';
+                                    $html .= '<span class="text-gray-700">' . $paso . '</span>';
+                                    $html .= '</li>';
                                 }
+                                $html .= '</ol>';
                                 
-                                $html .= "</div>";
                                 return $html;
                             })
                             ->html()
                             ->columnSpanFull(),
                     ])
-                    ->collapsible(false),
+                    ->collapsible(),
 
-                // RESUMEN FINANCIERO CON MEJOR DISEÑO
+                // RESUMEN DE PAGOS - Diseño limpio
                 Infolists\Components\Section::make('Resumen de Pagos')
-                    ->description('Detalle de pagos para este pedido')
                     ->icon('heroicon-m-banknotes')
                     ->schema([
-                        Infolists\Components\TextEntry::make('resumen_financiero')
+                        Infolists\Components\TextEntry::make('resumen_pagos')
                             ->label('')
                             ->state(function (Order $record) {
                                 try {
                                     $items = $record->items()->with(['product.user'])->get();
                                     
                                     if ($items->isEmpty()) {
-                                        return "<div style='text-align: center; color: #6b7280; padding: 2rem;'>Sin productos en este pedido</div>";
+                                        return 'Sin productos en este pedido';
                                     }
                                     
-                                    $html = "<div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 1.5rem; border: 2px solid #0ea5e9;'>";
-                                    
+                                    $html = '<div class="space-y-3">';
                                     $totalGeneral = 0;
                                     
                                     // Agrupar por agricultor y calcular totales
@@ -248,77 +231,64 @@ class PedidoResource extends Resource
                                         });
                                         $totalGeneral += $totalAgricultor;
                                         
-                                        $html .= "
-<div style='display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.8); border-radius: 8px; border-left: 4px solid #0ea5e9;'>
-    <div style='display: flex; align-items: center;'>
-        <div style='background: #0ea5e9; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.75rem;'>👨‍🌾</div>
-        <span style='font-weight: 600; color: #0c4a6e;'>{$agricultor}</span>
-    </div>
-    <span style='font-weight: bold; color: #0c4a6e; background: #bae6fd; padding: 0.25rem 0.75rem; border-radius: 20px;'>S/ " . number_format($totalAgricultor, 2) . "</span>
-</div>";
+                                        $html .= '<div class="flex justify-between items-center py-2 border-b border-gray-200">';
+                                        $html .= '<span class="font-medium text-gray-900">' . $agricultor . '</span>';
+                                        $html .= '<span class="font-semibold text-gray-900">S/ ' . number_format($totalAgricultor, 2) . '</span>';
+                                        $html .= '</div>';
                                     }
                                     
-                                    $html .= "
-<div style='border-top: 2px solid #0ea5e9; margin-top: 1rem; padding-top: 1rem;'>
-    <div style='display: flex; justify-content: space-between; align-items: center; background: #0ea5e9; color: white; padding: 1rem; border-radius: 8px;'>
-        <span style='font-weight: bold; font-size: 1.1rem;'>💰 TOTAL DEL PEDIDO</span>
-        <span style='font-weight: bold; font-size: 1.25rem;'>S/ " . number_format($totalGeneral, 2) . "</span>
-    </div>
-</div>";
+                                    $html .= '<div class="flex justify-between items-center pt-3 border-t-2 border-gray-300">';
+                                    $html .= '<span class="text-lg font-bold text-gray-900">TOTAL DEL PEDIDO</span>';
+                                    $html .= '<span class="text-lg font-bold text-blue-600">S/ ' . number_format($totalGeneral, 2) . '</span>';
+                                    $html .= '</div>';
+                                    $html .= '</div>';
                                     
-                                    $html .= "</div>";
                                     return $html;
                                     
                                 } catch (\Exception $e) {
-                                    return "<div style='color: #dc2626; padding: 1rem;'>❌ ERROR: " . $e->getMessage() . "</div>";
+                                    return 'Error al calcular totales: ' . $e->getMessage();
                                 }
                             })
                             ->html()
                             ->columnSpanFull(),
                     ])
-                    ->compact()
                     ->collapsible(),
 
-                // ESTADO CON DISEÑO MEJORADO
+                // ESTADO DEL PEDIDO - Diseño minimalista
                 Infolists\Components\Section::make('Estado del Pedido')
                     ->schema([
-                        Infolists\Components\TextEntry::make('estado_visual_mejorado')
+                        Infolists\Components\TextEntry::make('estado')
                             ->label('')
                             ->state(function (Order $record) {
                                 $estados = [
-                                    'pagado' => ['texto' => 'Pagado - Listo para Armar', 'emoji' => '🎯', 'color' => '#f59e0b', 'bg' => '#fef3c7'],
-                                    'pendiente' => ['texto' => 'Pendiente', 'emoji' => '⏳', 'color' => '#6b7280', 'bg' => '#f3f4f6'],
-                                    'armado' => ['texto' => 'Pedido Armado - Listo para Entregar', 'emoji' => '✅', 'color' => '#10b981', 'bg' => '#dcfce7'],
-                                    'en_entrega' => ['texto' => 'En Camino al Cliente', 'emoji' => '🚚', 'color' => '#3b82f6', 'bg' => '#dbeafe'],
-                                    'entregado' => ['texto' => 'Entregado al Cliente', 'emoji' => '🎉', 'color' => '#8b5cf6', 'bg' => '#e9d5ff'],
-                                    'cancelado' => ['texto' => 'Pedido Cancelado', 'emoji' => '❌', 'color' => '#ef4444', 'bg' => '#fecaca'],
+                                    'pagado' => ['texto' => 'Pagado - Listo para Armar', 'color' => 'warning'],
+                                    'pendiente' => ['texto' => 'Pendiente de Pago', 'color' => 'gray'],
+                                    'armado' => ['texto' => 'Pedido Armado - Listo para Entregar', 'color' => 'success'],
+                                    'en_entrega' => ['texto' => 'En Camino al Cliente', 'color' => 'info'],
+                                    'entregado' => ['texto' => 'Entregado al Cliente', 'color' => 'primary'],
+                                    'cancelado' => ['texto' => 'Pedido Cancelado', 'color' => 'danger'],
                                 ];
                                 
-                                $estado = $estados[$record->estado] ?? ['texto' => ucfirst($record->estado), 'emoji' => '⚪', 'color' => '#6b7280', 'bg' => '#f3f4f6'];
+                                $estado = $estados[$record->estado] ?? ['texto' => ucfirst($record->estado), 'color' => 'gray'];
                                 
-                                // Helper function for color adjustment
-                                $adjustBrightness = function($hexColor, $percent) {
-                                    $hexColor = ltrim($hexColor, '#');
-                                    $r = hexdec(substr($hexColor, 0, 2));
-                                    $g = hexdec(substr($hexColor, 2, 2));
-                                    $b = hexdec(substr($hexColor, 4, 2));
-                                    $r = max(0, min(255, $r + ($r * $percent / 100)));
-                                    $g = max(0, min(255, $g + ($g * $percent / 100)));
-                                    $b = max(0, min(255, $b + ($b * $percent / 100)));
-                                    return sprintf("#%02x%02x%02x", $r, $g, $b);
-                                };
-                                
-                                return "
-<div style='background: linear-gradient(135deg, {$estado['bg']} 0%, " . $adjustBrightness($estado['bg'], -10) . " 100%); border: 2px solid {$estado['color']}; border-radius: 12px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-    <div style='font-size: 3rem; margin-bottom: 0.5rem;'>{$estado['emoji']}</div>
-    <div style='font-size: 1.25rem; font-weight: bold; color: {$estado['color']}; margin-bottom: 0.5rem;'>{$estado['texto']}</div>
-    <div style='font-size: 0.875rem; color: " . $adjustBrightness($estado['color'], -20) . ";'>Pedido #{$record->id}</div>
-</div>";
+                                return $estado['texto'] . ' (Pedido #' . $record->id . ')';
                             })
-                            ->html()
+                            ->badge()
+                            ->color(function (Order $record) {
+                                $colores = [
+                                    'pagado' => 'warning',
+                                    'pendiente' => 'gray',
+                                    'armado' => 'success',
+                                    'en_entrega' => 'info',
+                                    'entregado' => 'primary',
+                                    'cancelado' => 'danger',
+                                ];
+                                
+                                return $colores[$record->estado] ?? 'gray';
+                            })
+                            ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
                             ->columnSpanFull(),
-                    ])
-                    ->compact(),
+                    ]),
             ]);
     }
 
@@ -447,7 +417,7 @@ class PedidoResource extends Resource
                         'entregado' => 'Entregado',
                         'cancelado' => 'Cancelado',
                     ])
-                    ->default('pagado'), // Por defecto mostrar pedidos pagados listos para armar
+                    ->default('pagado'),
                     
                 Tables\Filters\SelectFilter::make('delivery')
                     ->options([
@@ -456,14 +426,13 @@ class PedidoResource extends Resource
                     ]),
             ])
             ->actions([
-                // Acción principal: ARMAR PEDIDO
                 Tables\Actions\ViewAction::make()
                     ->label(fn (Order $record): string => match ($record->estado) {
-                        'pagado' => '📋 Armar Pedido',
-                        'armado' => '👁️ Ver Pedido',
-                        default => '👁️ Revisar',
+                        'pagado' => 'Armar Pedido',
+                        'armado' => 'Ver Pedido',
+                        default => 'Revisar',
                     })
-                    ->modalWidth('6xl')
+                    ->modalWidth('5xl')
                     ->color(fn (Order $record): string => match ($record->estado) {
                         'pagado' => 'success',
                         'armado' => 'primary',
@@ -475,9 +444,8 @@ class PedidoResource extends Resource
                         default => 'heroicon-o-eye',
                     }),
 
-                // Marcar como armado (acción más importante)
                 Tables\Actions\Action::make('marcarArmado')
-                    ->label('🎯 Pedido Armado')
+                    ->label('Pedido Armado')
                     ->icon('heroicon-o-check-badge')
                     ->color('primary')
                     ->action(function (Order $record) {
@@ -489,7 +457,6 @@ class PedidoResource extends Resource
                     ->modalDescription('Confirma que verificaste todos los productos y armaste el pedido completo.')
                     ->modalSubmitActionLabel('Sí, está armado'),
 
-                // Editar (solo icono para ahorrar espacio)  
                 Tables\Actions\EditAction::make()
                     ->label('')
                     ->tooltip('Editar pedido')

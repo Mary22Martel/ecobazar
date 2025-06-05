@@ -428,15 +428,25 @@ class OrderController extends Controller
     }
 
     // Métodos para agricultores
-    public function pedidosPendientes()
+   public function pedidosPendientes()
     {
         if (Auth::user()->role !== 'agricultor') {
             abort(403, 'No autorizado');
         }
 
+        // Solo mostrar pedidos que necesitan preparación
         $pedidos = Order::whereHas('items.product', function($query) {
             $query->where('user_id', Auth::id());
-        })->with(['items.product', 'user'])->orderBy('created_at', 'desc')->get();
+        })
+        ->whereIn('estado', ['pendiente', 'pagado']) // Solo estos necesitan preparación
+        ->with([
+            'items.product.categoria',
+            'items.product.medida', 
+            'items.product.user',
+            'user'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         return view('agricultor.pedidos_pendientes', compact('pedidos'));
     }
@@ -460,23 +470,27 @@ class OrderController extends Controller
         return view('agricultor.pedido_detalle', compact('pedido', 'productosAgricultor'));
     }
 
-    public function confirmarPedidoListo($id)
+   public function pedidosListos()
     {
-        $pedido = Order::findOrFail($id);
-
-        $productosAgricultor = $pedido->items->filter(function($item) {
-            return $item->product->user_id == Auth::id();
-        });
-
-        if ($productosAgricultor->isEmpty()) {
+        if (Auth::user()->role !== 'agricultor') {
             abort(403, 'No autorizado');
         }
 
-        $pedido->estado = 'armado';
-        $pedido->save();
+        // Mostrar pedidos que ya están listos (armados/entregados)
+        $pedidos = Order::whereHas('items.product', function($query) {
+            $query->where('user_id', Auth::id());
+        })
+        ->whereIn('estado', ['armado', 'entregado']) // Ya listos = generan pago
+        ->with([
+            'items.product.categoria',
+            'items.product.medida', 
+            'items.product.user',
+            'user'
+        ])
+        ->orderBy('updated_at', 'desc')
+        ->get();
 
-        return redirect()->route('agricultor.pedidos_pendientes')
-                        ->with('success', 'Pedido marcado como listo');
+        return view('agricultor.pedidos_listos', compact('pedidos'));
     }
 
     // Métodos para admin
@@ -792,5 +806,44 @@ class OrderController extends Controller
                 'errores' => $errores
             ]
         ]);
+    }
+    public function confirmarPedidoListo($id)
+    {
+        try {
+            if (Auth::user()->role !== 'agricultor') {
+                abort(403, 'No autorizado');
+            }
+
+            $pedido = Order::findOrFail($id);
+
+            // Verificar que el agricultor tenga productos en este pedido
+            $productosAgricultor = $pedido->items->filter(function($item) {
+                return $item->product->user_id == Auth::id();
+            });
+
+            if ($productosAgricultor->isEmpty()) {
+                abort(403, 'No autorizado para modificar este pedido');
+            }
+
+            // Solo permitir marcar como listo si está pagado
+            if ($pedido->estado !== 'pagado') {
+                return redirect()->route('agricultor.pedidos_pendientes')
+                                ->with('error', 'Solo se pueden marcar como listos los pedidos pagados');
+            }
+
+            // Cambiar directamente a "armado" 
+            // (Esto significa: "El agricultor tiene todo listo, considerarlo para pago")
+            $pedido->estado = 'armado';
+            $pedido->save();
+
+            return redirect()->route('agricultor.pedidos_pendientes')
+                            ->with('success', '¡Pedido marcado como listo! Ya se considera para tu pago.');
+
+        } catch (\Exception $e) {
+            Log::error('Error al confirmar pedido listo: ' . $e->getMessage());
+            
+            return redirect()->route('agricultor.pedidos_pendientes')
+                            ->with('error', 'Error al confirmar el pedido. Inténtalo de nuevo.');
+        }
     }
 }
