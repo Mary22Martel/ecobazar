@@ -110,7 +110,7 @@
                         </div>
                         <a href="mailto:contacto@ecobazar.com" 
                            class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">
-                            contacto@ecobazar.com
+                            contacto@.com
                         </a>
                     </li>
                     <li class="flex items-center space-x-3 group">

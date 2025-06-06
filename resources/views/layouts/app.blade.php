@@ -148,44 +148,39 @@
     </main>
 
     <!-- Footer --> 
-    <footer class="bg-gray-50 text-gray-700 py-8 px-4 md:py-12">
+   <footer class="bg-gray-50 text-gray-700 py-8 px-4 md:py-12">
         <div class="container mx-auto max-w-7xl px-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
                 <!-- Columna 1 - Logo y descripción -->
                 <div class="flex flex-col items-center md:items-start space-y-6">
                     <a href="#" class="mb-4 transition-transform hover:scale-105">
-                        <img src="{{ asset('images/logox.png') }}" alt="Ecobazar Logo" class="w-20 md:w-20">
+                        <img src="{{ asset('images/logox.png') }}" alt="Punto Verde Agroecológico Logo" class="w-20 md:w-20">
                     </a>
                     <p class="text-gray-600 text-center md:text-left text-sm leading-relaxed">
-                        Tu mercado en línea para productos frescos y de calidad provenientes de ferias agrícolas locales.<br>
-                        ¡Compra directamente de los agricultores!
+                        Feria Agrícola Sabatina en Amarilis - Huánuco<br>
+                        14 productores agroecológicos de 3 provincias.<br>
+                        ¡Productos frescos directamente del campo!
                     </p>
                     <div class="flex space-x-5 pt-2">
-                        <a href="#" aria-label="Facebook" class="p-2 rounded-full bg-gray-100 hover:bg-green-100 transition-colors duration-300">
+                        <a href="https://www.facebook.com/islasdepazperu" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="p-2 rounded-full bg-gray-100 hover:bg-green-100 transition-colors duration-300">
                             <i class="fab fa-facebook-f text-gray-600 hover:text-green-600 text-lg"></i>
                         </a>
-                        <a href="#" aria-label="Twitter" class="p-2 rounded-full bg-gray-100 hover:bg-green-100 transition-colors duration-300">
-                            <i class="fab fa-twitter text-gray-600 hover:text-green-600 text-lg"></i>
-                        </a>
-                        <a href="#" aria-label="Instagram" class="p-2 rounded-full bg-gray-100 hover:bg-green-100 transition-colors duration-300">
+                        <a href="https://www.instagram.com/puntoverde.huanuco/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="p-2 rounded-full bg-gray-100 hover:bg-green-100 transition-colors duration-300">
                             <i class="fab fa-instagram text-gray-600 hover:text-green-600 text-lg"></i>
-                        </a>
-                        <a href="#" aria-label="LinkedIn" class="p-2 rounded-full bg-gray-100 hover:bg-green-100 transition-colors duration-300">
-                            <i class="fab fa-linkedin-in text-gray-600 hover:text-green-600 text-lg"></i>
                         </a>
                     </div>
                 </div>
 
                 <!-- Columna 2 - Categorías -->
                 <div class="flex flex-col items-center md:items-start space-y-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Categorías</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Nuestros Productos</h3>
                     <ul class="grid grid-cols-2 gap-3 text-center md:text-left">
                         <li><a href="{{ route('tienda') }}" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Todo</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Vegetales</a></li>
-                        <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Fruta</a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Frutas</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Verduras</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Legumbres</a></li>
-                        <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Queso</a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Quesos</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Tubérculos</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200 hover:pl-1">Granos</a></li>
                     </ul>
@@ -193,30 +188,47 @@
 
                 <!-- Columna 3 - Enlaces útiles -->
                 <div class="flex flex-col items-center md:items-start space-y-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Enlaces Útiles</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Navegación</h3>
                     <ul class="space-y-3 text-center md:text-left">
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">Inicio</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">Sobre Nosotros</a></li>
-                        <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">Blog</a></li>
+                        <li><a href="{{ route('tienda') }}" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">Tienda</a></li>
                         <li><a href="#" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">Contacto</a></li>
                     </ul>
                 </div>
 
-                <!-- Columna 4 - Contacto -->
+                <!-- Columna 4 - Información de la Feria -->
                 <div class="flex flex-col items-center md:items-start space-y-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Contáctanos</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Información</h3>
                     <ul class="space-y-4">
-                        <li class="flex items-center space-x-3 group">
-                            <div class="p-2 bg-green-100 rounded-full">
-                                <i class="fas fa-phone-alt text-green-600 text-sm"></i>
+                        <li class="flex items-start space-x-3 group">
+                            <div class="p-2 bg-green-100 rounded-full mt-1">
+                                <i class="fas fa-map-marker-alt text-green-600 text-sm"></i>
                             </div>
-                            <a href="tel:+51999999999" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">+51 999 999 999</a>
+                            <div class="text-gray-600 text-sm">
+                                <strong>Ubicación:</strong><br>
+                                Segundo Parque de Paucarbambilla<br>
+                                Amarilis, Huánuco, Perú
+                            </div>
                         </li>
-                        <li class="flex items-center space-x-3 group">
-                            <div class="p-2 bg-green-100 rounded-full">
+                        <li class="flex items-start space-x-3 group">
+                            <div class="p-2 bg-green-100 rounded-full mt-1">
+                                <i class="fas fa-clock text-green-600 text-sm"></i>
+                            </div>
+                            <div class="text-gray-600 text-sm">
+                                <strong>Horarios:</strong><br>
+                                Sábados 6:30 AM - 12:00 PM
+                            </div>
+                        </li>
+                        <li class="flex items-start space-x-3 group">
+                            <div class="p-2 bg-green-100 rounded-full mt-1">
                                 <i class="fas fa-envelope text-green-600 text-sm"></i>
                             </div>
-                            <a href="mailto:contacto@ecobazar.com" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">contacto@ecobazar.com</a>
+                             <div class="text-gray-600 text-sm">
+                                <strong>Correo:</strong><br>
+                                <a href="mailto:ong_idpp@islasdepazperu.org" class="text-gray-600 hover:text-green-600 text-sm transition-colors duration-200">ong_idpp@islasdepazperu.org</a>
+                            </div>
+                            
                         </li>
                     </ul>
                 </div>
@@ -226,10 +238,9 @@
             <div class="mt-12 pt-8 border-t border-gray-200">
                 <div class="flex flex-col items-center">
                     <p class="text-gray-600 text-sm text-center">
-                        © 2025 Ecobazar. Todos los derechos reservados<br class="md:hidden">
+                        © 2025 Punto Verde Agroecológico - Amarilis, Huánuco. Todos los derechos reservados<br class="md:hidden">
                         <span class="hidden md:inline"> | </span>
-                        <a href="#" class="hover:text-green-600 transition-colors duration-200">Políticas de Privacidad</a> | 
-                        <a href="#" class="hover:text-green-600 transition-colors duration-200">Términos de Servicio</a>
+                        Una iniciativa de la Asociación de Productores Agroecológicos
                     </p>
                 </div>
             </div>

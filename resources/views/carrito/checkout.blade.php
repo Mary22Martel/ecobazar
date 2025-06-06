@@ -1,179 +1,303 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mx-auto py-10 px-4 lg:px-0 bg-gray-50 rounded-lg shadow-md">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Formulario de Información de Compra -->
-        <div class="col-span-2 bg-white p-8 shadow-lg rounded-lg ml-8">
-            <h2 class="text-5xl font-bold text-center mb-5 text-green-600">Datos personales</h2>
-            <p class="text-center mb-5">Solicitamos únicamente la información esencial para la finalización de la compra.</p>
-            <h3 class="text-xl font-bold my-6 text-gray-700">Información de compra</h3>  
-            
-            <!-- Mensaje de error -->
-            <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <span id="error-text"></span>
-            </div>
-            
-            <!-- Mensaje de éxito -->
-            <div id="success-message" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                <span id="success-text"></span>
-            </div>
-
-            <form id="checkout-form">
-                @csrf
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <input type="text" 
-                           id="nombre" 
-                           name="nombre" 
-                           placeholder="Nombres" 
-                           class="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-300" 
-                           required>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-6 lg:py-10">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+            <!-- Formulario de Información de Compra -->
+            <div class="xl:col-span-2 order-2 xl:order-1">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 shadow-xl rounded-2xl">
+                    <div class="text-center mb-6 lg:mb-8">
+                        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-600 mb-2">Datos personales</h2>
+                        <p class="text-sm sm:text-base text-gray-600">Solicitamos únicamente la información esencial para finalizar tu compra</p>
+                    </div>
                     
-                    <input type="text" 
-                           id="apellido" 
-                           name="apellido" 
-                           placeholder="Apellidos" 
-                           class="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-300" 
-                           required>
-                    
-                    <input type="text" 
-                           id="empresa" 
-                           name="empresa" 
-                           placeholder="Nombre de empresa (opcional)" 
-                           class="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-300">
-                    
-                    <input type="email" 
-                           id="email" 
-                           name="email" 
-                           placeholder="Correo Electrónico" 
-                           class="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-300" 
-                           required>
-                    
-                    <input type="tel" 
-                           id="telefono" 
-                           name="telefono" 
-                           placeholder="Teléfono" 
-                           class="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-300" 
-                           required>
-                </div>
-
-                <h3 class="text-xl font-bold my-6 text-gray-700">Opciones de Delivery</h3>
-                <div class="flex flex-col space-y-4 mb-6">
-                    <label class="flex items-center text-gray-600 cursor-pointer">
-                        <input type="radio" 
-                               name="delivery" 
-                               value="puesto" 
-                               id="delivery-puesto"
-                               class="mr-2 delivery-option focus:ring-green-500" 
-                               required> 
-                        Recoger en puesto
-                    </label>
-                    <label class="flex items-center text-gray-600 cursor-pointer">
-                        <input type="radio" 
-                               name="delivery" 
-                               value="delivery" 
-                               id="delivery-delivery"
-                               class="mr-2 delivery-option focus:ring-green-500" 
-                               required> 
-                        Delivery
-                    </label>
-                </div>
-
-                <div id="delivery-fields" class="space-y-4 mb-6 hidden">
-                    <input type="text" 
-                           id="direccion" 
-                           name="direccion" 
-                           placeholder="Nombre de la calle y número de casa" 
-                           class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
-                    
-                    <input type="text" 
-                           id="direccion_opcional" 
-                           name="direccion_opcional" 
-                           placeholder="Dpto., piso, unidad, bloque (opcional)" 
-                           class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
-                    
-                    <select id="distrito" 
-                            name="distrito" 
-                            class="border border-gray-300 rounded-lg w-full px-4 py-3 focus:ring-2 focus:ring-green-300">
-                        <option value="">Seleccione una zona</option>
-                        @foreach($zones as $zone)
-                            <option value="{{ $zone->id }}" data-cost="{{ $zone->delivery_cost }}">
-                                {{ $zone->name }} - S/{{ number_format($zone->delivery_cost, 2) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <h3 class="text-xl font-bold my-6 text-gray-700">Método de Pago</h3>
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <div class="flex items-center">
-                        <input type="radio" 
-                               name="pago" 
-                               value="sistema" 
-                               id="pago-sistema"
-                               class="mr-3 focus:ring-green-500" 
-                               checked
-                               required> 
+                    <!-- Mensaje de error -->
+                    <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
                         <div class="flex items-center">
-                            <img src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadopago/logo__large@2x.png" 
-                                 alt="MercadoPago" 
-                                 class="h-8 mr-3">
-                            <div>
-                                <p class="font-semibold text-gray-800">Pagar con MercadoPago</p>
-                                <p class="text-sm text-gray-600">Tarjetas de crédito, débito y otros métodos</p>
-                            </div>
+                            <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="error-text"></span>
                         </div>
                     </div>
-                </div>
-
-                <button type="submit" 
-                        id="submit-btn"
-                        class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg hover:bg-green-600 transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    <span id="btn-text">Proceder al pago</span>
-                    <span id="btn-loading" class="hidden">
-                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Procesando...
-                    </span>
-                </button>
-            </form>
-        </div>
-
-        <!-- Resumen del pedido -->
-        <div class="bg-white p-8 shadow-lg rounded-lg mx-6">
-            <h3 class="text-2xl font-bold mb-6 text-center text-green-700">Resumen de tu compra</h3>
-            
-            <div id="carrito-items">
-                @foreach ($carrito->items as $item)
-                <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                    <div class="flex-1">
-                        <p class="font-bold text-gray-800">{{ $item->product->nombre }}</p>
-                        <p class="text-sm text-gray-600">Cantidad: {{ $item->cantidad }}</p>
-                        <p class="text-sm text-gray-600">Precio unitario: S/{{ number_format($item->product->precio, 2) }}</p>
+                    
+                    <!-- Mensaje de éxito -->
+                    <div id="success-message" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="success-text"></span>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <p class="font-semibold text-gray-800">S/{{ number_format($item->product->precio * $item->cantidad, 2) }}</p>
-                    </div>
+
+                    <form id="checkout-form" class="space-y-6 lg:space-y-8">
+                        @csrf
+                        
+                        <!-- Información Personal -->
+                        <div>
+                            <h3 class="text-lg sm:text-xl font-bold mb-4 text-gray-700 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                                Información personal
+                            </h3>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+                                <div class="space-y-2">
+                                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombres *</label>
+                                    <input type="text" 
+                                           id="nombre" 
+                                           name="nombre" 
+                                           placeholder="Ingresa tus nombres" 
+                                           class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200" 
+                                           required>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label for="apellido" class="block text-sm font-medium text-gray-700">Apellidos *</label>
+                                    <input type="text" 
+                                           id="apellido" 
+                                           name="apellido" 
+                                           placeholder="Ingresa tus apellidos" 
+                                           class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200" 
+                                           required>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label for="empresa" class="block text-sm font-medium text-gray-700">Empresa (opcional)</label>
+                                    <input type="text" 
+                                           id="empresa" 
+                                           name="empresa" 
+                                           placeholder="Nombre de tu empresa" 
+                                           class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label for="email" class="block text-sm font-medium text-gray-700">Correo Electrónico *</label>
+                                    <input type="email" 
+                                           id="email" 
+                                           name="email" 
+                                           placeholder="ejemplo@correo.com" 
+                                           class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200" 
+                                           required>
+                                </div>
+                                
+                                <div class="space-y-2 sm:col-span-2 md:col-span-1">
+                                    <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono *</label>
+                                    <input type="tel" 
+                                        id="telefono" 
+                                        name="telefono" 
+                                        placeholder="987654321" 
+                                        class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200" 
+                                        maxlength="9"
+                                        oninput="validarTelefono(this)"
+                                        required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Script de validación del teléfono -->
+                        <script>
+                        function validarTelefono(input) {
+                            input.value = input.value.replace(/[^0-9]/g, '');
+                            
+                            if (input.value.length === 9) {
+                                input.classList.remove('border-gray-300');
+                                input.classList.add('border-green-500');
+                            } else {
+                                input.classList.remove('border-green-500');
+                                input.classList.add('border-gray-300');
+                            }
+                        }
+                        </script>
+
+                        <!-- Opciones de Delivery -->
+                        <div>
+                            <h3 class="text-lg sm:text-xl font-bold mb-4 text-gray-700 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                Opciones de entrega
+                            </h3>
+                            
+                            <div class="space-y-3">
+                                <label class="flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-all duration-200">
+                                    <input type="radio" 
+                                           name="delivery" 
+                                           value="puesto" 
+                                           id="delivery-puesto"
+                                           class="mr-3 delivery-option focus:ring-green-500 text-green-600" 
+                                           required> 
+                                    <div class="flex items-center">
+                                        <svg class="w-6 h-6 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                        </svg>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Recoger en puesto</p>
+                                            <p class="text-sm text-gray-600">Recoge tu pedido directamente en nuestro local</p>
+                                        </div>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-all duration-200">
+                                    <input type="radio" 
+                                           name="delivery" 
+                                           value="delivery" 
+                                           id="delivery-delivery"
+                                           class="mr-3 delivery-option focus:ring-green-500 text-green-600" 
+                                           required> 
+                                    <div class="flex items-center">
+                                        <svg class="w-6 h-6 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                        </svg>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Delivery a domicilio</p>
+                                            <p class="text-sm text-gray-600">Enviamos tu pedido directamente a tu dirección</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Campos de Delivery -->
+                        <div id="delivery-fields" class="space-y-4 hidden">
+                            <h4 class="text-lg font-semibold text-gray-700 mb-3">Dirección de entrega</h4>
+                            
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección *</label>
+                                    <input type="text" 
+                                           id="direccion" 
+                                           name="direccion" 
+                                           placeholder="Nombre de la calle y número de casa" 
+                                           class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label for="direccion_opcional" class="block text-sm font-medium text-gray-700">Referencia (opcional)</label>
+                                    <input type="text" 
+                                           id="direccion_opcional" 
+                                           name="direccion_opcional" 
+                                           placeholder="Dpto., piso, unidad, bloque, referencia" 
+                                           class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label for="distrito" class="block text-sm font-medium text-gray-700">Zona de entrega *</label>
+                                    <select id="distrito" 
+                                            name="distrito" 
+                                            class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200">
+                                        <option value="">Seleccione una zona</option>
+                                        @foreach($zones as $zone)
+                                            <option value="{{ $zone->id }}" data-cost="{{ $zone->delivery_cost }}">
+                                                {{ $zone->name }} - S/{{ number_format($zone->delivery_cost, 2) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Método de Pago -->
+                        <div>
+                            <h3 class="text-lg sm:text-xl font-bold mb-4 text-gray-700 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                </svg>
+                                Método de pago
+                            </h3>
+                            
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 lg:p-6">
+                                <div class="flex items-center">
+                                    <input type="radio" 
+                                           name="pago" 
+                                           value="sistema" 
+                                           id="pago-sistema"
+                                           class="mr-4 focus:ring-green-500 text-green-600" 
+                                           checked
+                                           required> 
+                                    <div class="flex items-center">
+                                        <div class="bg-white p-3 rounded-lg mr-4 shadow-sm">
+                                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800 text-lg">Pagar con MercadoPago</p>
+                                            <p class="text-sm text-gray-600">Tarjetas de crédito, débito, transferencias y más métodos</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botón de envío -->
+                        <button type="submit" 
+                                id="submit-btn"
+                                class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none shadow-lg">
+                            <span id="btn-text" class="flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Proceder al pago
+                            </span>
+                            <span id="btn-loading" class="hidden flex items-center justify-center">
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Procesando...
+                            </span>
+                        </button>
+                    </form>
                 </div>
-                @endforeach
             </div>
-            
-            <div class="mt-6 space-y-2">
-                <div class="flex justify-between">
-                    <span class="text-gray-700">Subtotal:</span>
-                    <span id="subtotal" class="text-gray-800 font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
-                </div>
-                
-                <div class="flex justify-between">
-                    <span class="text-gray-700">Envío:</span>
-                    <span id="envio" class="text-gray-800 font-semibold">S/0.00</span>
-                </div>
-                
-                <div class="flex justify-between mt-4 pt-4 border-t border-gray-300 font-bold text-xl">
-                    <span class="text-gray-800">Total:</span>
-                    <span id="total" class="text-green-600">S/{{ number_format($carrito->total(), 2) }}</span>
+
+            <!-- Resumen del pedido -->
+            <div class="order-1 xl:order-2">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 shadow-xl rounded-2xl sticky top-4">
+                    <h3 class="text-xl sm:text-2xl font-bold mb-6 text-center text-green-700 flex items-center justify-center">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 005 16h12M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"/>
+                        </svg>
+                        Resumen de compra
+                    </h3>
+                    
+                    <div id="carrito-items" class="space-y-4 mb-6 max-h-60 sm:max-h-80 overflow-y-auto">
+                        @foreach ($carrito->items as $item)
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-gray-800 truncate">{{ $item->product->nombre }}</p>
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1">
+                                    <p class="text-sm text-gray-600">{{ $item->cantidad }} {{ $item->product->medida ? $item->product->medida->nombre : 'unidad' }}{{ $item->cantidad > 1 && $item->product->medida && $item->product->medida->nombre != 'Unidad' ? 's' : '' }}</p>
+                                    <p class="text-sm text-gray-600">S/{{ number_format($item->product->precio, 2) }} c/u</p>
+                                </div>
+                            </div>
+                            <div class="text-right ml-3">
+                                <p class="font-bold text-gray-800">S/{{ number_format($item->product->precio * $item->cantidad, 2) }}</p>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    
+                    <div class="border-t border-gray-200 pt-4 space-y-3">
+                        <div class="flex justify-between text-gray-700">
+                            <span>Subtotal:</span>
+                            <span id="subtotal" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
+                        </div>
+                        
+                        <div class="flex justify-between text-gray-700">
+                            <span>Envío:</span>
+                            <span id="envio" class="font-semibold">S/0.00</span>
+                        </div>
+                        
+                        <div class="flex justify-between pt-3 border-t border-gray-300 font-bold text-xl">
+                            <span class="text-gray-800">Total:</span>
+                            <span id="total" class="text-green-600">S/{{ number_format($carrito->total(), 2) }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -210,6 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
         errorText.textContent = message;
         errorMessage.classList.remove('hidden');
         successMessage.classList.add('hidden');
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         console.error('Error mostrado:', message);
     }
 
@@ -247,7 +372,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const email = document.getElementById('email').value.trim();
         const telefono = document.getElementById('telefono').value.trim();
         const delivery = document.querySelector('input[name="delivery"]:checked');
-        // El pago siempre será sistema, no necesitamos validarlo
 
         if (!nombre || !apellido || !email || !telefono || !delivery) {
             showError('Por favor, completa todos los campos obligatorios');
@@ -267,6 +391,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             showError('Por favor, ingresa un email válido');
+            return false;
+        }
+
+        if (telefono.length !== 9) {
+            showError('El teléfono debe tener exactamente 9 dígitos');
             return false;
         }
 
@@ -360,7 +489,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
 
             let responseData;
             const contentType = response.headers.get('content-type');

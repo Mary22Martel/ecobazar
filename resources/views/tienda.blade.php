@@ -152,31 +152,81 @@
                                     <h3 class="font-bold text-lg text-gray-800 group-hover:text-green-600 transition-colors line-clamp-2">{{ $producto->nombre }}</h3>
                                 </a>
                                 
+                                <!-- Precio con unidad de medida -->
                                 <div class="flex items-center justify-between mb-3">
-                                    <span class="text-2xl font-bold text-green-600">S/{{ number_format($producto->precio, 2) }}</span>
-                                    <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                        Stock: {{ $producto->cantidad_disponible }}
-                                    </span>
+                                    <div class="flex flex-col">
+                                        <span class="text-2xl font-bold text-green-600">S/{{ number_format($producto->precio, 2) }}</span>
+                                        @if($producto->medida)
+                                            <span class="text-sm text-gray-600 font-medium">por {{ $producto->medida->nombre }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full block">
+                                            Stock: {{ $producto->cantidad_disponible }}
+                                        </span>
+                                        @if($producto->medida)
+                                            <span class="text-xs text-gray-400 mt-1 block">
+                                                {{ $producto->medida->nombre }}{{ $producto->cantidad_disponible > 1 && $producto->medida->nombre != 'Unidad' ? 's' : '' }} disponible{{ $producto->cantidad_disponible > 1 ? 's' : '' }}
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
 
-                                <!-- Formulario para agregar al carrito -->
-                                <form class="add-to-cart-form" action="{{ route('carrito.add', $producto->id) }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="cantidad" value="1">
-                                    <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center space-x-2" {{ $producto->cantidad_disponible == 0 ? 'disabled' : '' }}>
-                                        @if($producto->cantidad_disponible == 0)
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
-                                            </svg>
-                                            <span>Agotado</span>
-                                        @else
+                                <!-- Selector de cantidad y formulario para agregar al carrito -->
+                                @if($producto->cantidad_disponible > 0)
+                                    <form class="add-to-cart-form" action="{{ route('carrito.add', $producto->id) }}" method="POST">
+                                        @csrf
+                                        
+                                        <!-- Selector de cantidad -->
+                                        <div class="flex items-center justify-between mb-3 p-3 bg-gray-50 rounded-xl">
+                                            <label class="text-sm font-medium text-gray-700">
+                                                Cantidad
+                                                @if($producto->medida)
+                                                    <span class="text-gray-500">({{ $producto->medida->nombre }}{{ $producto->medida->nombre != 'Unidad' ? 's' : '' }})</span>
+                                                @endif
+                                            </label>
+                                            <div class="flex items-center space-x-2">
+                                                <button type="button" class="quantity-btn minus-btn p-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-100 transition-colors" data-action="decrease">
+                                                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                                    </svg>
+                                                </button>
+                                                <input type="number" name="cantidad" class="quantity-input w-16 px-3 py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                       value="1" min="1" max="{{ $producto->cantidad_disponible }}" readonly>
+                                                <button type="button" class="quantity-btn plus-btn p-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-100 transition-colors" data-action="increase">
+                                                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Precio total dinámico -->
+                                        <div class="text-center mb-3 p-2 bg-green-50 rounded-lg">
+                                            <span class="text-sm text-gray-600">Total: </span>
+                                            <span class="total-price text-lg font-bold text-green-600" data-unit-price="{{ $producto->precio }}">
+                                                S/{{ number_format($producto->precio, 2) }}
+                                            </span>
+                                        </div>
+
+                                        <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 005 16h12M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"></path>
                                             </svg>
                                             <span>Agregar al carrito</span>
-                                        @endif
-                                    </button>
-                                </form>
+                                        </button>
+                                    </form>
+                                @else
+                                    <!-- Producto agotado -->
+                                    <div class="text-center py-4">
+                                        <button disabled class="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white font-semibold py-3 px-4 rounded-xl cursor-not-allowed flex items-center justify-center space-x-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                                            </svg>
+                                            <span>Agotado</span>
+                                        </button>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         @endforeach
@@ -239,6 +289,7 @@ $(document).ready(function() {
                                 searchResults.removeClass('hidden');
 
                                 response.forEach(function(product) {
+                                    let medidaText = product.medida ? ` / ${product.medida.nombre}` : '';
                                     let productItem = `
                                         <a href="/producto/${product.id}" class="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
                                             <div class="w-12 h-12 rounded-lg overflow-hidden mr-4 flex-shrink-0">
@@ -253,8 +304,8 @@ $(document).ready(function() {
                                             </div>
                                             <div class="flex-1">
                                                 <p class="font-semibold text-gray-800">${product.nombre}</p>
-                                                <p class="text-lg font-bold text-green-600">S/${product.precio}</p>
-                                                <p class="text-sm text-gray-500">Stock: ${product.cantidad_disponible}</p>
+                                                <p class="text-lg font-bold text-green-600">S/${product.precio}${medidaText}</p>
+                                                <p class="text-sm text-gray-500">Stock: ${product.cantidad_disponible}${medidaText ? ` ${product.medida.nombre}${product.cantidad_disponible > 1 && product.medida.nombre != 'Unidad' ? 's' : ''}` : ''}</p>
                                             </div>
                                         </a>
                                     `;
@@ -292,6 +343,59 @@ $(document).ready(function() {
 
     // Variable para prevenir múltiples envíos
     let isAddingToCart = false;
+
+    // Manejo de botones de cantidad
+    $('.quantity-btn').on('click', function() {
+        let form = $(this).closest('form');
+        let input = form.find('.quantity-input');
+        let totalPriceElement = form.find('.total-price');
+        let unitPrice = parseFloat(totalPriceElement.data('unit-price'));
+        let currentValue = parseInt(input.val());
+        let maxValue = parseInt(input.attr('max'));
+        let minValue = parseInt(input.attr('min'));
+        
+        if ($(this).hasClass('plus-btn') && currentValue < maxValue) {
+            input.val(currentValue + 1);
+        } else if ($(this).hasClass('minus-btn') && currentValue > minValue) {
+            input.val(currentValue - 1);
+        }
+        
+        // Actualizar precio total
+        let newQuantity = parseInt(input.val());
+        let totalPrice = unitPrice * newQuantity;
+        totalPriceElement.text('S/' + totalPrice.toFixed(2));
+        
+        // Actualizar estado de botones
+        form.find('.minus-btn').prop('disabled', newQuantity <= minValue);
+        form.find('.plus-btn').prop('disabled', newQuantity >= maxValue);
+    });
+
+    // También permitir escribir directamente en el input
+    $('.quantity-input').on('input', function() {
+        let form = $(this).closest('form');
+        let totalPriceElement = form.find('.total-price');
+        let unitPrice = parseFloat(totalPriceElement.data('unit-price'));
+        let currentValue = parseInt($(this).val()) || 1;
+        let maxValue = parseInt($(this).attr('max'));
+        let minValue = parseInt($(this).attr('min'));
+        
+        // Validar límites
+        if (currentValue > maxValue) {
+            $(this).val(maxValue);
+            currentValue = maxValue;
+        } else if (currentValue < minValue) {
+            $(this).val(minValue);
+            currentValue = minValue;
+        }
+        
+        // Actualizar precio total
+        let totalPrice = unitPrice * currentValue;
+        totalPriceElement.text('S/' + totalPrice.toFixed(2));
+        
+        // Actualizar estado de botones
+        form.find('.minus-btn').prop('disabled', currentValue <= minValue);
+        form.find('.plus-btn').prop('disabled', currentValue >= maxValue);
+    });
 
     // Manejo del formulario "Agregar al carrito"
     $('.add-to-cart-form').off('submit').on('submit', function(e) {
@@ -331,12 +435,16 @@ $(document).ready(function() {
                     $('#cart-badge').text(response.totalItems);
 
                     // Mostrar notificación de éxito
+                    let cantidadAgregada = form.find('.quantity-input').val();
+                    let nombreProducto = form.closest('.group').find('h3').text();
+                    let medidaTexto = form.find('label span').text().replace(/[()]/g, '') || '';
+                    
                     Swal.fire({
                         title: '¡Producto añadido!',
-                        text: response.message || 'El producto se agregó correctamente al carrito',
+                        text: `${cantidadAgregada} ${medidaTexto} de ${nombreProducto} agregado al carrito`,
                         icon: 'success',
                         showConfirmButton: false,
-                        timer: 1500,
+                        timer: 2000,
                         toast: true,
                         position: 'top-end',
                         timerProgressBar: true,
