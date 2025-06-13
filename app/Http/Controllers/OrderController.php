@@ -186,115 +186,134 @@ class OrderController extends Controller
     }
 
     private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
-    {
-        try {
-            Log::info('=== INICIANDO MERCADO PAGO ===');
-            
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-            $client = new PreferenceClient();
+{
+    try {
+        Log::info('=== INICIANDO MERCADO PAGO ===');
+        
+        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+        $client = new PreferenceClient();
 
-            // Preparar items para MercadoPago
-            $items = [];
-            
-            // Item principal con el total
-            $items[] = [
-                "title" => "Pedido #" . $orden->id . " - Punto Verde ",
-                "quantity" => 1,
-                "currency_id" => "PEN",
-                "unit_price" => floatval($subtotal + $costoEnvio)
-            ];
+        // Preparar items para MercadoPago
+        $items = [];
+        
+        // Item principal con el total
+        $items[] = [
+            "title" => "Pedido #" . $orden->id . " - Punto Verde",
+            "quantity" => 1,
+            "currency_id" => "PEN",
+            "unit_price" => floatval($subtotal + $costoEnvio)
+        ];
 
-            $preferenceData = [
-                "items" => $items,
-                "back_urls" => [
-                    "success" => "http://127.0.0.1:8000/orden-exito/" . $orden->id,
-                    "failure" => "http://127.0.0.1:8000/order/failed",
-                    "pending" => "http://127.0.0.1:8000/orden-exito/" . $orden->id
-                ],
-                "external_reference" => strval($orden->id),
-                "statement_descriptor" => "Punto Verde"
-            ];
-
-            // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
-            if ($costoEnvio > 0) {
-                $preferenceData["differential_pricing"] = [
-                    "id" => 1
-                ];
-                
-                // Agregar información adicional en el título del item
-                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
-            }
-
-            $preferenceData["items"] = $items;
-
-            Log::info('Datos para MercadoPago:', $preferenceData);
-
-            $preference = $client->create($preferenceData);
-            
-            Log::info('Preferencia creada exitosamente');
-            Log::info('Init point: ' . $preference->init_point);
-
-            return response()->json([
-                'success' => true,
-                'init_point' => $preference->init_point
-            ]);
-
-        } catch (MPApiException $e) {
-            Log::error('Error MercadoPago API: ' . $e->getMessage());
-            
-            // Manejo seguro de la respuesta del error
-            try {
-                $apiResponse = $e->getApiResponse();
-                if ($apiResponse) {
-                    $content = $apiResponse->getContent();
-                    if (is_array($content)) {
-                        Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
-                    } elseif (is_string($content)) {
-                        Log::error('MercadoPago Response (String): ' . $content);
-                    } else {
-                        Log::error('MercadoPago Response (Other): ' . print_r($content, true));
-                    }
-                } else {
-                    Log::error('No se pudo obtener respuesta de MercadoPago API');
-                }
-            } catch (Exception $logException) {
-                Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
-            }
-            
-            try {
-                if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
-                    $statusCode = $e->getApiResponse()->getStatusCode();
-                    Log::error('MercadoPago HTTP Status Code: ' . $statusCode);
-                }
-            } catch (Exception $statusException) {
-                Log::error('Error obteniendo status code: ' . $statusException->getMessage());
-            }
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
-            ], 500);
-        } catch (Exception $e) {
-            Log::error('Error general MercadoPago: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago'
-            ], 500);
+        // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
+        if ($costoEnvio > 0) {
+            // Agregar información adicional en el título del item
+            $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
         }
-    }
 
-    public function success($orderId)
+        // Configuración simplificada - removiendo elementos problemáticos
+        $preferenceData = [
+            "items" => $items,
+            "back_urls" => [
+                "success" => url("/orden-exito/{$orden->id}"),
+                "failure" => url("/order/failed"),
+                "pending" => url("/orden-exito/{$orden->id}")
+            ],
+            "external_reference" => strval($orden->id),
+            "statement_descriptor" => "Punto Verde"
+            // REMOVIDO: auto_return, payment_methods, shipments
+        ];
+
+        Log::info('Datos para MercadoPago:', $preferenceData);
+
+        $preference = $client->create($preferenceData);
+        
+        Log::info('Preferencia creada exitosamente');
+        Log::info('Init point: ' . $preference->init_point);
+
+        return response()->json([
+            'success' => true,
+            'init_point' => $preference->init_point
+        ]);
+
+    } catch (MPApiException $e) {
+        Log::error('Error MercadoPago API: ' . $e->getMessage());
+        
+        // Manejo seguro de la respuesta del error
+        try {
+            $apiResponse = $e->getApiResponse();
+            if ($apiResponse) {
+                $content = $apiResponse->getContent();
+                if (is_array($content)) {
+                    Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
+                } elseif (is_string($content)) {
+                    Log::error('MercadoPago Response (String): ' . $content);
+                } else {
+                    Log::error('MercadoPago Response (Other): ' . print_r($content, true));
+                }
+            } else {
+                Log::error('No se pudo obtener respuesta de MercadoPago API');
+            }
+        } catch (Exception $logException) {
+            Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
+        }
+        
+        try {
+            if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
+                $statusCode = $e->getApiResponse()->getStatusCode();
+                Log::error('MercadoPago HTTP Status Code: ' . $statusCode);
+            }
+        } catch (Exception $statusException) {
+            Log::error('Error obteniendo status code: ' . $statusException->getMessage());
+        }
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
+        ], 500);
+    } catch (Exception $e) {
+        Log::error('Error general MercadoPago: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al procesar el pago'
+        ], 500);
+    }
+}
+
+   public function success($orderId)
     {
         try {
             Log::info("=== ACCESO A PÁGINA DE ÉXITO ===");
             Log::info("Orden ID: {$orderId}");
+            Log::info("Parámetros de URL: " . json_encode(request()->all()));
+            Log::info("Referer: " . request()->header('referer', 'No referer'));
             
             $orden = Order::with(['items.product', 'user'])->findOrFail($orderId);
             
+            // Determinar si viene desde MercadoPago con múltiples criterios
+            $desdeMP = request()->has('payment_id') || 
+                    request()->has('collection_id') || 
+                    request()->has('collection_status') || 
+                    request()->has('from') ||
+                    str_contains(request()->header('referer', ''), 'mercadopago') ||
+                    str_contains(request()->header('referer', ''), 'mercadolibre');
+            
+            Log::info("Detectado desde MercadoPago: " . ($desdeMP ? 'SI' : 'NO'));
+            
+            // Verificar si la orden necesita actualización de estado
             if ($orden->estado === 'pendiente') {
                 Log::info("Orden pendiente, verificando pago con MercadoPago...");
-                $this->verificarYActualizarPago($orden);
+                $pagoVerificado = $this->verificarYActualizarPago($orden);
+                
+                // Si no se pudo verificar con MercadoPago, marcar como pagado automáticamente
+                // especialmente si viene desde MercadoPago
+                if (!$pagoVerificado && $orden->estado === 'pendiente') {
+                    Log::info("Fallback: Marcando orden como pagada automáticamente");
+                    $orden->estado = 'pagado';
+                    $orden->paid_at = now();
+                    $orden->save();
+                    Log::info("Orden {$orden->id} actualizada a estado pagado");
+                }
             }
 
             // Calcular subtotal y envío para la vista
@@ -310,7 +329,8 @@ class OrderController extends Controller
                 }
             }
 
-            return view('order.success', compact('orden', 'subtotal', 'costoEnvio'));
+            // Pasar la variable para mostrar el mensaje estilo MercadoPago
+            return view('order.success', compact('orden', 'subtotal', 'costoEnvio', 'desdeMP'));
             
         } catch (Exception $e) {
             Log::error('Error en success: ' . $e->getMessage());
@@ -321,29 +341,23 @@ class OrderController extends Controller
     /**
      * Verificar el estado del pago con MercadoPago y actualizar la orden
      */
-    private function verificarYActualizarPago($orden)
+   private function verificarYActualizarPago($orden)
     {
         try {
-            // NUEVO: Para desarrollo local - marcar automáticamente como pagado
+            // Para desarrollo local - marcar automáticamente como pagado
             if (config('app.env') === 'local' && $orden->estado === 'pendiente') {
                 $orden->estado = 'pagado';
                 $orden->paid_at = now();
                 $orden->save();
                 Log::info("Orden {$orden->id} marcada como pagada (desarrollo local)");
-                return;
+                return true;
             }
 
             $paymentId = request()->get('payment_id') ?? request()->get('collection_id');
             
             if (!$paymentId) {
                 Log::warning("No se encontró payment_id para verificar la orden {$orden->id}");
-                if ($orden->estado === 'pendiente') {
-                    $orden->estado = 'pagado';
-                    $orden->paid_at = now();
-                    $orden->save();
-                    Log::info("Orden {$orden->id} marcada como pagada por fallback");
-                }
-                return;
+                return false; // Indica que necesita fallback
             }
 
             Log::info("Verificando pago con ID: {$paymentId}");
@@ -364,32 +378,27 @@ class OrderController extends Controller
                         $orden->paid_at = now();
                         $orden->save();
                         Log::info("Orden {$orden->id} marcada como pagada automáticamente");
-                        break;
+                        return true;
                         
                     case 'rejected':
                     case 'cancelled':
                         $orden->estado = 'cancelado';
                         $orden->save();
                         Log::info("Orden {$orden->id} marcada como cancelada");
-                        break;
+                        return true;
                         
                     default:
                         Log::info("Pago aún en proceso, estado: {$payment->status}");
-                        break;
+                        return false;
                 }
             } else {
                 Log::warning("El external_reference del pago ({$payment->external_reference}) no coincide con la orden ({$orden->id})");
+                return false;
             }
             
         } catch (Exception $e) {
             Log::error("Error verificando pago para orden {$orden->id}: " . $e->getMessage());
-            
-            if ($orden->estado === 'pendiente') {
-                $orden->estado = 'pagado';
-                $orden->paid_at = now();
-                $orden->save();
-                Log::info("Orden {$orden->id} marcada como pagada por fallback");
-            }
+            return false; // Indica que necesita fallback
         }
     }
 
@@ -401,7 +410,13 @@ class OrderController extends Controller
     public function downloadVoucher($orderId)
     {
         try {
-            $orden = Order::with('items.product')->findOrFail($orderId);
+            // Verificar que el usuario tenga acceso a esta orden
+            $orden = Order::with(['items.product', 'user'])->findOrFail($orderId);
+            
+            // Verificar que el usuario autenticado pueda ver esta orden
+            if (Auth::id() !== $orden->user_id && Auth::user()->role !== 'admin') {
+                abort(403, 'No tienes permisos para ver este voucher');
+            }
 
             $subtotal = $orden->items->sum(function($item) {
                 return $item->precio * $item->cantidad;
@@ -409,7 +424,7 @@ class OrderController extends Controller
 
             $costoEnvio = 0;
             if ($orden->delivery === 'delivery' && $orden->distrito) {
-                $zona = Zone::where('name', $orden->distrito)->first();
+                $zona = \App\Models\Zone::where('name', $orden->distrito)->first();
                 if ($zona) {
                     $costoEnvio = $zona->delivery_cost;
                 }
@@ -417,13 +432,33 @@ class OrderController extends Controller
 
             $total = $subtotal + $costoEnvio;
 
-            $pdf = PDF::loadView('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'));
+            // Configurar PDF con opciones específicas
+            $pdf = PDF::loadView('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'))
+                    ->setPaper('a4', 'portrait')
+                    ->setOptions([
+                        'dpi' => 150,
+                        'defaultFont' => 'sans-serif',
+                        'isRemoteEnabled' => true,
+                        'isHtml5ParserEnabled' => true,
+                        'debugCss' => false,
+                        'debugLayout' => false,
+                        'debugLayoutLines' => false,
+                        'debugLayoutBlocks' => false,
+                        'debugLayoutInline' => false,
+                        'debugLayoutPaddingBox' => false,
+                    ]);
             
-            return $pdf->download("voucher_orden_{$orderId}.pdf");
+            $filename = "voucher_orden_" . str_pad($orderId, 6, '0', STR_PAD_LEFT) . ".pdf";
             
-        } catch (Exception $e) {
+            return $pdf->download($filename);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error("Orden no encontrada para voucher: {$orderId}");
+            return redirect()->back()->with('error', 'Orden no encontrada');
+        } catch (\Exception $e) {
             Log::error('Error generando voucher: ' . $e->getMessage());
-            return back()->with('error', 'Error al generar el voucher');
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return redirect()->back()->with('error', 'Error al generar el voucher. Por favor, inténtalo de nuevo.');
         }
     }
 

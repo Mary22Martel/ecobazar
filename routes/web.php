@@ -130,7 +130,7 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/create-preference', [MercadoPagoController::class, 'createPaymentPreference']);
 Route::get('/mercadopago/success', [MercadoPagoController::class, 'success'])->name('mercadopago.success');
 Route::get('/mercadopago/failed', [MercadoPagoController::class, 'failed'])->name('mercadopago.failed');
-Route::get('/order/success/{orderId}', [OrderController::class, 'success'])->name('order.id');
+// Route::get('/order/success/{orderId}', [OrderController::class, 'success'])->name('order.id');
 
 //repartidor
 Route::middleware(['auth'])->group(function () {
@@ -149,3 +149,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/reporte-pagos-periodo', [OrderController::class, 'reportePagosPeriodo'])->name('admin.reporte_pagos');
     Route::post('/admin/pago-masivo-agricultores', [OrderController::class, 'pagoMasivoAgricultores'])->name('admin.pago_masivo');
 });
+// En web.php - SOLO PARA TESTING
+Route::get('/test-voucher/{orderId}', function($orderId) {
+    $orden = \App\Models\Order::with(['items.product', 'user'])->findOrFail($orderId);
+    
+    $subtotal = $orden->items->sum(function($item) {
+        return $item->precio * $item->cantidad;
+    });
+
+    $costoEnvio = 0;
+    if ($orden->delivery === 'delivery' && $orden->distrito) {
+        $zona = \App\Models\Zone::where('name', $orden->distrito)->first();
+        if ($zona) {
+            $costoEnvio = $zona->delivery_cost;
+        }
+    }
+
+    $total = $subtotal + $costoEnvio;
+    
+    // Mostrar la vista sin PDF para verificar que funciona
+    return view('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'));
+})->middleware('auth');
