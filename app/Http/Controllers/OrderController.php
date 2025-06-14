@@ -515,7 +515,7 @@ class OrderController extends Controller
         $pedidos = Order::whereHas('items.product', function($query) {
             $query->where('user_id', Auth::id());
         })
-        ->whereIn('estado', ['armado', 'entregado']) // Ya listos = generan pago
+        ->whereIn('estado', ['listo', 'armado', 'entregado']) // Ya listos = generan pago
         ->with([
             'items.product.categoria',
             'items.product.medida', 
@@ -866,13 +866,13 @@ class OrderController extends Controller
                                 ->with('error', 'Solo se pueden marcar como listos los pedidos pagados');
             }
 
-            // Cambiar directamente a "armado" 
-            // (Esto significa: "El agricultor tiene todo listo, considerarlo para pago")
-            $pedido->estado = 'armado';
+            // CAMBIO: En lugar de cambiar el estado del pedido a 'armado',
+            // solo cambiar a 'listo' para que el admin lo vea y lo pueda armar
+            $pedido->estado = 'listo';
             $pedido->save();
 
             return redirect()->route('agricultor.pedidos_pendientes')
-                            ->with('success', '¡Pedido marcado como listo! Ya se considera para tu pago.');
+                            ->with('success', '¡Pedido marcado como listo! El admin lo armará cuando esté todo preparado.');
 
         } catch (\Exception $e) {
             Log::error('Error al confirmar pedido listo: ' . $e->getMessage());

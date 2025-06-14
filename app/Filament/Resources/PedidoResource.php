@@ -263,6 +263,7 @@ class PedidoResource extends Resource
                                 $estados = [
                                     'pagado' => ['texto' => 'Pagado - Listo para Armar', 'color' => 'warning'],
                                     'pendiente' => ['texto' => 'Pendiente de Pago', 'color' => 'gray'],
+                                    'listo' => ['texto' => 'Listo - Preparado por Agricultor', 'color' => 'info'],
                                     'armado' => ['texto' => 'Pedido Armado - Listo para Entregar', 'color' => 'success'],
                                     'en_entrega' => ['texto' => 'En Camino al Cliente', 'color' => 'info'],
                                     'entregado' => ['texto' => 'Entregado al Cliente', 'color' => 'primary'],
@@ -363,6 +364,7 @@ class PedidoResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'pagado' => 'warning',
                         'pendiente' => 'info',
+                        'listo' => 'success',
                         'armado' => 'success',
                         'en_entrega' => 'secondary',
                         'entregado' => 'primary',
@@ -372,6 +374,7 @@ class PedidoResource extends Resource
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pagado' => 'Pagado',
                         'pendiente' => 'Pendiente',
+                        'listo' => 'Listo',  
                         'armado' => 'Armado',
                         'en_entrega' => 'En Entrega',
                         'entregado' => 'Entregado',
@@ -451,7 +454,7 @@ class PedidoResource extends Resource
                     ->action(function (Order $record) {
                         $record->update(['estado' => 'armado']);
                     })
-                    ->visible(fn (Order $record): bool => $record->estado === 'pagado')
+                    ->visible(fn (Order $record): bool => $record->estado === 'listo')
                     ->requiresConfirmation()
                     ->modalHeading('¿Marcar pedido como armado?')
                     ->modalDescription('Confirma que verificaste todos los productos y armaste el pedido completo.')
