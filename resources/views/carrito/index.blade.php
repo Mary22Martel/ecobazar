@@ -118,12 +118,12 @@
                                                     </div>
                                                 @endif
                                                 <div>
-                                                    <p class="font-bold text-gray-800 text-lg">{{ $item->product->nombre }}</p>
+                                                    <p class="font-bold text-gray-800 text-sm">{{ $item->product->nombre }}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="py-6 px-6 text-center">
-                                            <span class="text-lg font-bold text-green-600">S/ {{ number_format($item->product->precio, 2) }}</span>
+                                            <span class="text-sm font-bold text-green-600">S/ {{ number_format($item->product->precio, 2) }}</span>
                                         </td>
                                         <td class="py-6 px-6 text-center">
                                             <div class="flex items-center justify-center space-x-3">
@@ -141,7 +141,7 @@
                                             </div>
                                         </td>
                                         <td class="py-6 px-6 text-center">
-                                            <span class="text-lg font-bold text-green-600 item-subtotal">S/ {{ number_format($item->product->precio * $item->cantidad, 2) }}</span>
+                                            <span class="text-sm font-bold text-green-600 item-subtotal">S/ {{ number_format($item->product->precio * $item->cantidad, 2) }}</span>
                                         </td>
                                         <td class="py-6 px-6 text-center">
                                             <form action="{{ route('carrito.remove', $item->id) }}" method="POST" class="inline">

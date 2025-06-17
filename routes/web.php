@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/checkout', [CarritoController::class, 'checkout'])->name('checkout');
     Route::get('/carrito/checkout', [CarritoController::class, 'checkout'])->name('carrito.checkout');
     Route::get('/carrito/load-data', [CarritoController::class, 'loadCartData'])->name('carrito.loadCartData');
+    Route::get('/carrito/count', [CarritoController::class, 'count'])->name('carrito.count');
 
 
 });
@@ -138,8 +139,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('repartidor.pedidos_pendientes');
     Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])->name('repartidor.pedido.entregado');
     Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])->name('repartidor.pedido.proceso');
-    
-
     Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
 
 });

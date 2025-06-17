@@ -582,8 +582,8 @@ $(document).ready(function() {
     // Variable para prevenir múltiples envíos
     let isAddingToCart = false;
 
-    // Agregar al Carrito
-    $('.add-to-cart-form').off('submit').on('submit', function(e) {
+    // Agregar al Carrito - SOLUCIÓN IMPLEMENTADA
+   $('.add-to-cart-form').off('submit').on('submit', function(e) {
         e.preventDefault();
 
         if (isAddingToCart) return false;
@@ -591,6 +591,10 @@ $(document).ready(function() {
         let form = $(this);
         let button = form.find('button[type="submit"]');
         let originalText = button.html();
+
+        // Guardar la cantidad ANTES de resetear
+        let cantidadAgregada = parseInt(form.find('.quantity-input').val()) || 1;
+        let nombreProducto = form.closest('.group').find('h3').text();
 
         // Estado de carga
         isAddingToCart = true;
@@ -608,45 +612,29 @@ $(document).ready(function() {
             data: form.serialize(),
             timeout: 10000,
             success: function(response) {
-                const isSuccess = response.success || response.status === 'success' || response.message;
-                
-                if (isSuccess) {
-                    // Actualizar badge
-                    if (response.totalItems !== undefined) {
-                        $('#cart-badge').text(response.totalItems);
-                    } else {
-                        let currentBadge = parseInt($('#cart-badge').text()) || 0;
-                        let cantidad = parseInt(form.find('.quantity-input').val()) || 1;
-                        $('#cart-badge').text(currentBadge + cantidad);
-                    }
-
-                    // Notificación
-                    let cantidad = form.find('.quantity-input').val();
-                    let nombre = form.closest('.group').find('h3').text();
-                    
-                    Swal.fire({
-                        title: '¡Producto añadido!',
-                        text: `${cantidad} unidad${cantidad > 1 ? 'es' : ''} de ${nombre} agregado al carrito`,
-                        icon: 'success',
-                        showConfirmButton: false,
-                        timer: 2000,
-                        toast: true,
-                        position: 'top-end',
-                        timerProgressBar: true,
-                    });
-
-                    // Resetear cantidad
-                    form.find('.quantity-input').val(1);
-                    form.find('.total-price').text('S/' + parseFloat(form.find('.total-price').data('unit-price')).toFixed(2));
-
+                // Actualizar badge
+                if (response.totalItems !== undefined) {
+                    $('#cart-badge').text(response.totalItems);
                 } else {
-                    Swal.fire({
-                        title: 'Error',
-                        text: response.error || response.message || 'No se pudo agregar el producto',
-                        icon: 'error',
-                        confirmButtonColor: '#10B981',
-                    });
+                    let currentBadge = parseInt($('#cart-badge').text()) || 0;
+                    $('#cart-badge').text(currentBadge + cantidadAgregada);
                 }
+
+                // Resetear cantidad
+                form.find('.quantity-input').val(1);
+                form.find('.total-price').text('S/' + parseFloat(form.find('.total-price').data('unit-price')).toFixed(2));
+
+                // Mostrar notificación de éxito
+                Swal.fire({
+                    title: '¡Producto añadido!',
+                    text: `${cantidadAgregada} unidad${cantidadAgregada > 1 ? 'es' : ''} de ${nombreProducto} agregado al carrito`,
+                    icon: 'success',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    toast: true,
+                    position: 'top-end',
+                    timerProgressBar: true,
+                });
             },
             error: function(xhr, status, error) {
                 console.error('Error:', xhr);
@@ -684,6 +672,7 @@ $(document).ready(function() {
                 });
             },
             complete: function() {
+                // Restaurar el botón SIEMPRE
                 button.prop('disabled', false).html(originalText);
                 isAddingToCart = false;
             }
