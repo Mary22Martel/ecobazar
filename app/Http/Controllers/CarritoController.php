@@ -370,4 +370,5 @@ class CarritoController extends Controller
             return $item->product->precio * $item->cantidad;
         });
     }
+  
 }
