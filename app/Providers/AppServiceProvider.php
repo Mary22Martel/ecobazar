@@ -26,5 +26,10 @@ public function boot()
     View::composer('*', function ($view) {
         $view->with('categorias', Categoria::all());
     });
+    // Configurar Carbon para español
+    \Carbon\Carbon::setLocale('es');
+    
+    // Opcional: Configurar Laravel también
+    app()->setLocale('es');
 }
 }

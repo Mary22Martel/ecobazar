@@ -9,7 +9,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\Auth\AgricultorRegisterController;
 use App\Http\Controllers\CarritoController;
-use App\Http\Controllers\CanastaController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\MercadoPagoController;
 use App\Http\Controllers\Admin\MercadoController;
@@ -79,16 +79,8 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
 
     Route::resource('usuarios', UsuarioController::class)
          ->only(['index','edit','update']);
-    
-    // Rutas para canastas
-    Route::resource('canastas', CanastaController::class);
     Route::resource('mercados', MercadoController::class);
-
-    // Rutas para pedidos (nota: sin repetir 'admin/')
-    //Route::get('/pedidos', [OrderController::class, 'todosLosPedidos'])->name('pedidos.index');
     Route::get('/pedido/{id}', [OrderController::class, 'detallePedidoAdmin'])->name('pedido.detalle');
-   // Route::get('/pedidos', [AdminController::class, 'todosLosPedidos'])->name('pedidos.index');
-
     Route::post('/pedido/{id}/actualizar-estado', [OrderController::class, 'actualizarEstado'])->name('pedido.actualizar_estado');
 
 });
@@ -119,12 +111,46 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mercadopago/webhook', [OrderController::class, 'mercadoPagoWebhook']);
     
     // Rutas para los agricultores relacionadas con pedidos
-    Route::get('/agricultor/pedidos-pendientes', [OrderController::class, 'pedidosPendientes'])->name('agricultor.pedidos_pendientes');
-    Route::get('/agricultor/pedido/{id}', [OrderController::class, 'detallePedido'])->name('agricultor.pedido.detalle');
-    Route::post('/agricultor/pedido/{id}/confirmar-listo', [OrderController::class, 'confirmarPedidoListo'])->name('agricultor.confirmar_pedido_listo');
-    Route::get('/agricultor/pedidos-listos', [OrderController::class, 'pedidosListos'])->name('agricultor.pedidos_listos');
-    Route::get('/agricultor/pagos', [OrderController::class, 'pagosProductor'])
-         ->name('agricultor.pagos');
+   // ==================== RUTAS PARA AGRICULTORES ====================
+Route::middleware(['auth'])->group(function () {
+    
+    // Dashboard del agricultor
+    Route::get('/agricultor/dashboard', [AgricultorController::class, 'index'])->name('agricultor.dashboard');
+    
+    // ========== GESTIÓN DE PRODUCTOS ==========
+    Route::get('/agricultor/productos', [AgricultorController::class, 'productos'])->name('agricultor.productos.index');
+    Route::get('/agricultor/productos/crear', [AgricultorController::class, 'crearProducto'])->name('agricultor.productos.create');
+    Route::post('/agricultor/productos', [AgricultorController::class, 'guardarProducto'])->name('agricultor.productos.store');
+    Route::get('/agricultor/productos/{id}/editar', [AgricultorController::class, 'editarProducto'])->name('agricultor.productos.edit');
+    Route::put('/agricultor/productos/{id}', [AgricultorController::class, 'actualizarProducto'])->name('agricultor.productos.update');
+    Route::delete('/agricultor/productos/{id}', [AgricultorController::class, 'eliminarProducto'])->name('agricultor.productos.destroy');
+    
+    // ========== GESTIÓN DE PEDIDOS ==========
+    // Pedidos pendientes (estado: pagado - esperando que el agricultor los prepare)
+    Route::get('/agricultor/pedidos-pendientes', [AgricultorController::class, 'pedidosPendientes'])->name('agricultor.pedidos_pendientes');
+    
+    // Pedidos listos (estado: listo - preparados por el agricultor)
+    Route::get('/agricultor/pedidos-listos', [AgricultorController::class, 'pedidosListos'])->name('agricultor.pedidos_listos');
+    
+    // Ver detalle de un pedido específico
+    Route::get('/agricultor/pedido/{id}', [AgricultorController::class, 'detallePedido'])->name('agricultor.pedido.detalle');
+    
+    // Marcar pedido como listo (agricultor confirma que preparó el pedido)
+    Route::post('/agricultor/pedido/{id}/confirmar-listo', [AgricultorController::class, 'confirmarPedidoListo'])->name('agricultor.confirmar_pedido_listo');
+    
+    // ========== GESTIÓN DE PAGOS ==========
+    // Ver pagos del agricultor (usando el sistema de semanas de feria)
+    Route::get('/agricultor/pagos', [AgricultorController::class, 'pagos'])->name('agricultor.pagos');
+    
+    // Exportar reporte de pagos
+    Route::get('/agricultor/pagos/exportar', [AgricultorController::class, 'exportarPagos'])->name('agricultor.pagos.exportar');
+    
+    // Ver detalle de pagos por semana
+    Route::get('/agricultor/pagos/detalle', [AgricultorController::class, 'detallePagos'])->name('agricultor.detalle-pagos');
+    Route::get('/admin/pagos/agricultor/{id}', [App\Http\Controllers\Admin\AdminController::class, 'detallePagoAgricultor'])
+    ->name('admin.pagos.detalle-agricultor');
+    
+});
 });
 
 //mercado pago
@@ -143,11 +169,53 @@ Route::middleware(['auth'])->group(function () {
 
 });
 
+//Rutas Admin - Agregar esto en web.php después de las rutas existentes
+
 Route::middleware(['auth'])->group(function () {
-    Route::get('/admin/resumen-pagos-agricultores', [OrderController::class, 'resumenPagosAgricultores'])->name('admin.resumen_pagos');
-    Route::get('/admin/reporte-pagos-periodo', [OrderController::class, 'reportePagosPeriodo'])->name('admin.reporte_pagos');
-    Route::post('/admin/pago-masivo-agricultores', [OrderController::class, 'pagoMasivoAgricultores'])->name('admin.pago_masivo');
+    // Admin Dashboard y gestión
+    Route::get('/admin', [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('admin.dashboard');
+    
+    // Gestión de pedidos
+    Route::get('/admin/pedidos', [App\Http\Controllers\Admin\AdminController::class, 'pedidos'])->name('admin.pedidos.index');
+    Route::get('/admin/pedidos/pagados', [App\Http\Controllers\Admin\AdminController::class, 'pedidosPagados'])->name('admin.pedidos.pagados');
+    Route::get('/admin/pedidos/listos', [App\Http\Controllers\Admin\AdminController::class, 'pedidosListos'])->name('admin.pedidos.listos');
+    Route::get('/admin/pedidos/armados', [App\Http\Controllers\Admin\AdminController::class, 'pedidosArmados'])->name('admin.pedidos.armados');
+    Route::get('/admin/pedido/{id}', [App\Http\Controllers\Admin\AdminController::class, 'detallePedido'])->name('admin.pedido.detalle');
+    Route::post('/admin/pedido/{id}/estado', [App\Http\Controllers\Admin\AdminController::class, 'cambiarEstado'])->name('admin.pedido.estado');
+    
+    // ==================== PAGOS A AGRICULTORES - CORREGIDAS ====================
+    Route::get('/admin/pagos/agricultores', [App\Http\Controllers\Admin\AdminController::class, 'pagosAgricultores'])->name('admin.pagos.agricultores');
+    Route::get('/admin/pagos/agricultor/{agricultor}', [App\Http\Controllers\Admin\AdminController::class, 'detallePagoAgricultor'])->name('admin.pagos.detalle-agricultor');
+    Route::get('/admin/pagos/exportar', [App\Http\Controllers\Admin\AdminController::class, 'exportarPagos'])->name('admin.pagos.exportar');
+    
+    // ==================== REPORTES ====================
+    Route::get('/admin/reportes/semanales', [App\Http\Controllers\Admin\AdminController::class, 'reportesSemanales'])->name('admin.reportes.semanales');
+    
+    // Configuraciones del sistema
+    Route::get('/admin/configuracion/zonas', [App\Http\Controllers\Admin\AdminController::class, 'zonas'])->name('admin.configuracion.zonas');
+    Route::get('/admin/configuracion/zonas/crear', [App\Http\Controllers\Admin\AdminController::class, 'crearZona'])->name('admin.configuracion.zonas.crear');
+    Route::post('/admin/configuracion/zonas', [App\Http\Controllers\Admin\AdminController::class, 'guardarZona'])->name('admin.configuracion.zonas.guardar');
+    Route::get('/admin/configuracion/zonas/{id}/editar', [App\Http\Controllers\Admin\AdminController::class, 'editarZona'])->name('admin.configuracion.zonas.editar');
+    Route::put('/admin/configuracion/zonas/{id}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarZona'])->name('admin.configuracion.zonas.actualizar');
+    Route::delete('/admin/configuracion/zonas/{id}', [App\Http\Controllers\Admin\AdminController::class, 'eliminarZona'])->name('admin.configuracion.zonas.eliminar');
+    
+    Route::get('/admin/configuracion/categorias', [App\Http\Controllers\Admin\AdminController::class, 'categorias'])->name('admin.configuracion.categorias');
+    Route::get('/admin/configuracion/categorias/crear', [App\Http\Controllers\Admin\AdminController::class, 'crearCategoria'])->name('admin.configuracion.categorias.crear');
+    Route::post('/admin/configuracion/categorias', [App\Http\Controllers\Admin\AdminController::class, 'guardarCategoria'])->name('admin.configuracion.categorias.guardar');
+    Route::get('/admin/configuracion/categorias/{id}/editar', [App\Http\Controllers\Admin\AdminController::class, 'editarCategoria'])->name('admin.configuracion.categorias.editar');
+    Route::put('/admin/configuracion/categorias/{id}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarCategoria'])->name('admin.configuracion.categorias.actualizar');
+    Route::delete('/admin/configuracion/categorias/{id}', [App\Http\Controllers\Admin\AdminController::class, 'eliminarCategoria'])->name('admin.configuracion.categorias.eliminar');
+        
+    Route::get('/admin/configuracion/medidas', [App\Http\Controllers\Admin\AdminController::class, 'medidas'])->name('admin.configuracion.medidas');
+    Route::get('/admin/configuracion/medidas/crear', [App\Http\Controllers\Admin\AdminController::class, 'crearMedida'])->name('admin.configuracion.medidas.crear');
+    Route::post('/admin/configuracion/medidas', [App\Http\Controllers\Admin\AdminController::class, 'guardarMedida'])->name('admin.configuracion.medidas.guardar');
+    Route::get('/admin/configuracion/medidas/{id}/editar', [App\Http\Controllers\Admin\AdminController::class, 'editarMedida'])->name('admin.configuracion.medidas.editar');
+    Route::put('/admin/configuracion/medidas/{id}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarMedida'])->name('admin.configuracion.medidas.actualizar');
+    Route::delete('/admin/configuracion/medidas/{id}', [App\Http\Controllers\Admin\AdminController::class, 'eliminarMedida'])->name('admin.configuracion.medidas.eliminar');
+    
+    Route::get('/admin/configuracion/mercados', [App\Http\Controllers\Admin\AdminController::class, 'mercados'])->name('admin.configuracion.mercados');
 });
+
 // En web.php - SOLO PARA TESTING
 Route::get('/test-voucher/{orderId}', function($orderId) {
     $orden = \App\Models\Order::with(['items.product', 'user'])->findOrFail($orderId);

@@ -136,6 +136,13 @@
                                     <i class="fas fa-seedling mr-2"></i>
                                     Panel Agricultor
                                 </a>
+                            @elseif(Auth::user()->role == 'admin')
+                                <a href="{{ route('admin.dashboard') }}" 
+                                  class="nav-link px-4 py-2 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium">
+                                 <i class="fas fa-cog mr-2"></i>
+                                    <i class="fas fa-seedling mr-2"></i>
+                                    Panel Administrador
+                                </a>
                             @endif
                         @endauth
                     </div>
@@ -227,6 +234,12 @@
                                    class="flex items-center px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 transition-all duration-200 font-medium rounded-lg mx-2">
                                     <i class="fas fa-seedling mr-3 w-5"></i>
                                     Panel Agricultor
+                                </a>
+                            @elseif(Auth::user()->role == 'admin')
+                                <a href="{{ route('admin.dashboard') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 font-medium rounded-lg mx-2">
+                                    <i class="fas fa-seedling mr-3 w-5"></i>
+                                    Panel Administrador
                                 </a>
                             @endif
                             

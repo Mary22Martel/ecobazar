@@ -1,3 +1,4 @@
+{{-- resources/views/agricultor/pagos.blade.php --}}
 @extends('layouts.app2')
 
 @section('content')
@@ -13,7 +14,7 @@
                 </p>
                 <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 text-white">
                     <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
-                    Semana Actual (Lunes a Domingo)
+                    Semana {{ $fechaInicio->weekOfYear }} del {{ $fechaInicio->year }}
                 </div>
             </div>
             
@@ -23,6 +24,39 @@
                 <p class="text-3xl sm:text-4xl font-bold">S/ {{ number_format($totalPagar, 2) }}</p>
                 <p class="text-green-100 text-sm mt-1">{{ $totalPedidos }} pedidos armados</p>
             </div>
+        </div>
+    </div>
+
+    <!-- FILTRO DE SEMANAS - IGUAL QUE EL ADMIN -->
+    <div class="mb-6">
+        <div class="bg-white rounded-xl shadow-lg p-4">
+            <form method="GET" action="{{ route('agricultor.pagos') }}" class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="flex-1">
+                    <label for="semana" class="block text-sm font-semibold text-gray-700 mb-2">
+                        📅 Seleccionar Semana
+                    </label>
+                    <select name="semana" id="semana" 
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        @foreach($opcionesSemanas as $valor => $label)
+                            <option value="{{ $valor }}" {{ $semanaSeleccionada === $valor ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">
+                        🔍 Consultar
+                    </button>
+                    @if($totalPagar > 0)
+                        <a href="{{ route('agricultor.pagos.exportar', ['semana' => $semanaSeleccionada]) }}" 
+                           class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">
+                            📥 Exportar CSV
+                        </a>
+                    @endif
+                </div>
+            </form>
         </div>
     </div>
 
@@ -42,8 +76,10 @@
         <div class="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-8 sm:p-12 text-center">
             <div class="max-w-md mx-auto">
                 <div class="text-5xl sm:text-6xl mb-4">🌱</div>
-                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">No hay ventas esta semana</h2>
-                <p class="text-gray-600 mb-6 sm:mb-8 text-base sm:text-lg">Aún no tienes productos vendidos en el período actual.</p>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">No hay ventas en esta semana</h2>
+                <p class="text-gray-600 mb-6 sm:mb-8 text-base sm:text-lg">
+                    No tienes productos vendidos en el período del {{ $fechaInicio->format('d/m/Y') }} al {{ $fechaFin->format('d/m/Y') }}.
+                </p>
                 <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <a href="{{ route('productos.create') }}" 
                        class="inline-flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all shadow-lg">
@@ -56,6 +92,13 @@
                        class="inline-flex items-center justify-center bg-gray-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold hover:bg-gray-600 transform hover:scale-105 transition-all shadow-lg">
                         📦 Ver Pedidos
                     </a>
+                </div>
+                
+                <!-- Sugerencia para cambiar semana -->
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-blue-700 text-sm">
+                        💡 <strong>Sugerencia:</strong> Prueba seleccionar una semana diferente en el filtro de arriba para ver tus ventas anteriores.
+                    </p>
                 </div>
             </div>
         </div>
@@ -96,8 +139,8 @@
                     </div>
                     <div class="ml-3 sm:ml-4 min-w-0">
                         <p class="text-sm font-medium text-gray-600 truncate">Pedidos Listos</p>
-                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ $estadisticas['armados']['count'] }}</p>
-                        <p class="text-sm text-green-600 truncate">S/ {{ number_format($estadisticas['armados']['monto'], 2) }}</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ $estadisticas['armado']['count'] ?? 0 }}</p>
+                        <p class="text-sm text-green-600 truncate">S/ {{ number_format($estadisticas['armado']['monto'] ?? 0, 2) }}</p>
                     </div>
                 </div>
             </div>
@@ -110,8 +153,8 @@
                     </div>
                     <div class="ml-3 sm:ml-4 min-w-0">
                         <p class="text-sm font-medium text-gray-600 truncate">Entregados</p>
-                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ $estadisticas['entregados']['count'] }}</p>
-                        <p class="text-sm text-gray-600 truncate">S/ {{ number_format($estadisticas['entregados']['monto'], 2) }}</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ $estadisticas['entregado']['count'] ?? 0 }}</p>
+                        <p class="text-sm text-gray-600 truncate">S/ {{ number_format($estadisticas['entregado']['monto'] ?? 0, 2) }}</p>
                     </div>
                 </div>
             </div>
@@ -153,7 +196,7 @@
             <div class="bg-white rounded-xl p-4 sm:p-6 shadow-lg">
                 <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <span class="bg-green-100 p-2 rounded-full mr-3">📅</span>
-                    Ventas por Día
+                    Ventas por Día de la Semana
                 </h3>
                 <div class="space-y-3">
                     @php
@@ -197,6 +240,9 @@
                     <span class="bg-green-200 p-2 rounded-full mr-3">📋</span>
                     Detalle de Productos Vendidos
                 </h3>
+                <p class="text-sm text-gray-600 mt-1">
+                    Semana del {{ $fechaInicio->format('d/m/Y') }} al {{ $fechaFin->format('d/m/Y') }}
+                </p>
             </div>
             
             <!-- Vista móvil (cards) -->
@@ -348,6 +394,7 @@
                         <p>• <strong>IMPORTANTE:</strong> Solo se pagan los pedidos en estado <span class="bg-green-200 text-green-800 px-2 py-1 rounded-full font-semibold">✅ ARMADO</span>.</p>
                         <p>• Los pedidos armados indican que fueron verificados y están listos para entrega.</p>
                         <p>• Los montos se pagan típicamente los <strong>sábados</strong> después del cierre semanal.</p>
+                        <p>• Puedes usar el filtro de arriba para consultar pagos de <strong>semanas anteriores</strong>.</p>
                     </div>
                 </div>
             </div>
@@ -357,7 +404,7 @@
         <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
             <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                 <span class="bg-green-100 p-2 rounded-full mr-3">📊</span>
-                Estado de tus Pedidos esta Semana
+                Estado de tus Pedidos - Semana Seleccionada
             </h4>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <!-- Pedidos Pagados -->
@@ -365,8 +412,8 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">💰 Pagados</p>
-                            <p class="text-lg font-bold text-gray-800">{{ $estadisticas['pagados']['count'] }} pedidos</p>
-                            <p class="text-sm text-gray-600">S/ {{ number_format($estadisticas['pagados']['monto'], 2) }}</p>
+                            <p class="text-lg font-bold text-gray-800">{{ $estadisticas['pagado']['count'] ?? 0 }} pedidos</p>
+                            <p class="text-sm text-gray-600">S/ {{ number_format($estadisticas['pagado']['monto'] ?? 0, 2) }}</p>
                         </div>
                         <div class="text-gray-400">
                             <span class="text-2xl">💰</span>
@@ -380,8 +427,8 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-bold text-green-600">✅ ARMADOS</p>
-                            <p class="text-lg font-bold text-green-800">{{ $estadisticas['armados']['count'] }} pedidos</p>
-                            <p class="text-sm font-bold text-green-600">S/ {{ number_format($estadisticas['armados']['monto'], 2) }}</p>
+                            <p class="text-lg font-bold text-green-800">{{ $estadisticas['armado']['count'] ?? 0 }} pedidos</p>
+                            <p class="text-sm font-bold text-green-600">S/ {{ number_format($estadisticas['armado']['monto'] ?? 0, 2) }}</p>
                         </div>
                         <div class="text-green-400">
                             <span class="text-2xl">✅</span>
@@ -395,8 +442,8 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">🚚 Entregados</p>
-                            <p class="text-lg font-bold text-gray-800">{{ $estadisticas['entregados']['count'] }} pedidos</p>
-                            <p class="text-sm text-gray-600">S/ {{ number_format($estadisticas['entregados']['monto'], 2) }}</p>
+                            <p class="text-lg font-bold text-gray-800">{{ $estadisticas['entregado']['count'] ?? 0 }} pedidos</p>
+                            <p class="text-sm text-gray-600">S/ {{ number_format($estadisticas['entregado']['monto'] ?? 0, 2) }}</p>
                         </div>
                         <div class="text-gray-400">
                             <span class="text-2xl">🚚</span>
@@ -409,4 +456,12 @@
     @endif
 
 </div>
+
+<script>
+// Auto-submit form when week selection changes (igual que en admin)
+document.getElementById('semana').addEventListener('change', function() {
+    this.form.submit();
+});
+</script>
+
 @endsection
