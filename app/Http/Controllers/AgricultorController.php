@@ -22,6 +22,119 @@ class AgricultorController extends Controller
         return view('agricultor.dashboard');
     }
 
+    // ==================== PEDIDOS PENDIENTES ====================
+    
+    /**
+     * Muestra los pedidos pendientes (pagados) que el agricultor debe preparar
+     */
+    public function pedidosPendientes()
+    {
+        $this->authorizeRoles(['agricultor']);
+        
+        $agricultor = Auth::user();
+        
+        // Obtener pedidos que están en estado 'pagado' (pendientes de preparar)
+        // y que contengan productos del agricultor actual
+        $pedidos = Order::whereIn('estado', ['pendiente', 'pagado'])
+            ->whereHas('items.product', function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            })
+            ->with(['items.product' => function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            }])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('agricultor.pedidos_pendientes', compact('pedidos'));
+    }
+
+    /**
+     * Muestra los pedidos que ya están listos (preparados por el agricultor)
+     */
+    public function pedidosListos()
+    {
+        $this->authorizeRoles(['agricultor']);
+        
+        $agricultor = Auth::user();
+        
+        // Obtener pedidos que están en estado 'listo'
+        $pedidos = Order::where('estado', 'listo')
+            ->whereHas('items.product', function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            })
+            ->with(['items.product' => function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            }])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return view('agricultor.pedidos_listos', compact('pedidos'));
+    }
+
+    /**
+     * Confirma que el agricultor tiene listo su pedido
+     * IMPORTANTE: Solo marca como listo, NO como armado
+     */
+    public function confirmarPedidoListo($pedidoId)
+    {
+        $this->authorizeRoles(['agricultor']);
+        
+        $agricultor = Auth::user();
+        
+        // Buscar el pedido
+        $pedido = Order::where('id', $pedidoId)
+            ->where('estado', 'pagado') // Solo se puede marcar como listo si está pagado
+            ->whereHas('items.product', function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            })
+            ->first();
+
+        if (!$pedido) {
+            return redirect()->back()->with('error', 'Pedido no encontrado o no tienes permisos para modificarlo.');
+        }
+
+        // Verificar que todos los productos del pedido del agricultor están listos
+        $productosDelAgricultor = $pedido->items->where('product.user_id', $agricultor->id);
+        
+        if ($productosDelAgricultor->isEmpty()) {
+            return redirect()->back()->with('error', 'No tienes productos en este pedido.');
+        }
+
+        // Marcar pedido como listo (el admin después lo marcará como armado)
+        $pedido->update([
+            'estado' => 'listo',
+            'fecha_listo' => now()
+        ]);
+
+        return redirect()->route('agricultor.pedidos_pendientes')
+            ->with('success', '¡Pedido #' . $pedido->id . ' marcado como LISTO! El administrador lo revisará para armarlo.');
+    }
+
+    /**
+     * Muestra el detalle completo de un pedido específico
+     */
+    public function detallePedido($pedidoId)
+    {
+        $this->authorizeRoles(['agricultor']);
+        
+        $agricultor = Auth::user();
+        
+        $pedido = Order::where('id', $pedidoId)
+            ->whereHas('items.product', function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            })
+            ->with(['items.product' => function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            }])
+            ->first();
+
+        if (!$pedido) {
+            return redirect()->back()->with('error', 'Pedido no encontrado.');
+        }
+
+        return view('agricultor.detalle-pedido', compact('pedido'));
+    }
+
     // ==================== LÓGICA DE SEMANA DE FERIA ====================
     
     /**

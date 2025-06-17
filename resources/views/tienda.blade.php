@@ -149,7 +149,7 @@
             </div>
             
             <!-- Resultados de búsqueda -->
-            <div id="search-results" class="absolute w-full bg-white shadow-xl z-50 mt-1 rounded-lg border border-gray-200 hidden max-h-60 overflow-y-auto">
+            <div id="search-results" class="absolute w-max bg-white shadow-xl z-50 mt-1 rounded-lg border border-gray-200 hidden max-h-60 overflow-y-auto">
                 <!-- Resultados dinámicos -->
             </div>
         </div>
