@@ -103,27 +103,19 @@ class CarritoController extends Controller
                 return $item->product->precio * $item->cantidad;
             });
 
-            DB::commit();
+             DB::commit();
 
-            // Preparar respuesta
-            $items = $carrito->items->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'nombre' => $item->product->nombre,
-                    'cantidad' => $item->cantidad,
-                    'precio' => $item->product->precio,
-                    'subtotal' => $item->product->precio * $item->cantidad,
-                    'imagen_url' => $item->product->imagen 
-                        ? asset('storage/' . $item->product->imagen)
-                        : asset('images/default-product.png'),
-                ];
-            });
+            // Recargar el carrito con las relaciones necesarias
+            $carrito = Carrito::where('user_id', Auth::id())
+                              ->with('items')
+                              ->first();
+
+            // Calcular totales
+            $totalItems = $carrito ? $carrito->items->sum('cantidad') : 0;
 
             return response()->json([
                 'success' => true,
                 'totalItems' => $totalItems,
-                'totalPrice' => $totalPrice,
-                'items' => $items,
                 'message' => 'Producto agregado al carrito'
             ]);
 
@@ -176,14 +168,12 @@ class CarritoController extends Controller
     /**
      * Detalles completos del carrito
      */
+   // En tu CarritoController, REEMPLAZAR el método getDetails() por esta versión optimizada:
+
     public function getDetails()
     {
         try {
-            $carrito = Carrito::where('user_id', Auth::id())
-                              ->with(['items.product:id,nombre,precio,imagen'])
-                              ->first();
-
-            if (!$carrito) {
+            if (!Auth::check()) {
                 return response()->json([
                     'success' => true,
                     'items' => [],
@@ -192,24 +182,46 @@ class CarritoController extends Controller
                 ]);
             }
 
-            $items = $carrito->items->map(function ($item) {
-                return [
+            // OPTIMIZACIÓN: Select solo los campos necesarios
+            $carrito = Carrito::where('user_id', Auth::id())
+                            ->with(['items' => function($query) {
+                                $query->select('id', 'carrito_id', 'producto_id', 'cantidad')
+                                        ->with(['product' => function($subQuery) {
+                                            $subQuery->select('id', 'nombre', 'precio', 'imagen');
+                                        }]);
+                            }])
+                            ->first(['id', 'user_id']);
+
+            if (!$carrito || $carrito->items->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'items' => [],
+                    'totalPrice' => 0.00,
+                    'totalItems' => 0,
+                ]);
+            }
+
+            // OPTIMIZACIÓN: Calcular todo en una sola pasada
+            $items = [];
+            $totalPrice = 0;
+            $totalItems = 0;
+
+            foreach ($carrito->items as $item) {
+                $subtotal = $item->product->precio * $item->cantidad;
+                $totalPrice += $subtotal;
+                $totalItems += $item->cantidad;
+
+                $items[] = [
                     'id' => $item->id,
                     'nombre' => $item->product->nombre,
                     'cantidad' => $item->cantidad,
                     'precio' => $item->product->precio,
-                    'subtotal' => $item->product->precio * $item->cantidad,
+                    'subtotal' => $subtotal,
                     'imagen_url' => $item->product->imagen
                         ? asset('storage/' . $item->product->imagen)
                         : asset('images/default-product.png'),
                 ];
-            });
-
-            $totalPrice = $carrito->items->sum(function ($item) {
-                return $item->product->precio * $item->cantidad;
-            });
-
-            $totalItems = $carrito->items->sum('cantidad');
+            }
 
             return response()->json([
                 'success' => true,
@@ -217,11 +229,15 @@ class CarritoController extends Controller
                 'totalPrice' => $totalPrice,
                 'totalItems' => $totalItems,
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error al obtener detalles del carrito: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => 'Error al obtener los detalles del carrito'
+                'error' => 'Error al obtener los detalles del carrito',
+                'items' => [],
+                'totalPrice' => 0.00,
+                'totalItems' => 0,
             ], 500);
         }
     }
@@ -229,25 +245,7 @@ class CarritoController extends Controller
     /**
      * Eliminar un ítem del carrito
      */
-    public function remove($itemId)
-    {
-        try {
-            $item = CarritoItem::where('id', $itemId)
-                               ->whereHas('carrito', function($query) {
-                                   $query->where('user_id', Auth::id());
-                               })
-                               ->firstOrFail();
-            
-            $item->delete();
-
-            return redirect()->route('carrito.index')
-                           ->with('success', 'Producto eliminado del carrito');
-        } catch (\Exception $e) {
-            Log::error('Error al eliminar item del carrito: ' . $e->getMessage());
-            return redirect()->route('carrito.index')
-                           ->with('error', 'Error al eliminar el producto');
-        }
-    }
+    
 
     /**
      * Actualizar cantidad de un ítem
@@ -371,5 +369,51 @@ class CarritoController extends Controller
             return $item->product->precio * $item->cantidad;
         });
     }
-  
+
+        public function count()
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json(['totalItems' => 0]);
+            }
+
+            $carrito = Carrito::where('user_id', Auth::id())
+                            ->with('items')
+                            ->first();
+            
+            $totalItems = $carrito ? $carrito->items->sum('cantidad') : 0;
+            
+            return response()->json(['totalItems' => $totalItems]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error al obtener contador del carrito: ' . $e->getMessage());
+            return response()->json(['totalItems' => 0]);
+        }
+    }
+
+    public function remove($itemId)
+{
+    try {
+        // OPTIMIZACIÓN: Eliminación directa sin cargar relaciones innecesarias
+        $deleted = CarritoItem::where('id', $itemId)
+                             ->whereHas('carrito', function($query) {
+                                 $query->where('user_id', Auth::id());
+                             })
+                             ->delete();
+
+        if ($deleted) {
+            return redirect()->route('carrito.index')
+                           ->with('success', 'Producto eliminado del carrito');
+        } else {
+            return redirect()->route('carrito.index')
+                           ->with('error', 'Producto no encontrado');
+        }
+        
+    } catch (\Exception $e) {
+        Log::error('Error al eliminar item del carrito: ' . $e->getMessage());
+        return redirect()->route('carrito.index')
+                       ->with('error', 'Error al eliminar el producto');
+    }
 }
+    
+    }

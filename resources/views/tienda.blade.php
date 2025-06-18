@@ -420,14 +420,30 @@
         </main>
     </div>
 
-    <!-- Botón Carrito Flotante -->
+    <!-- Botón Carrito Flotante Optimizado -->
     <div class="fixed bottom-4 right-4 z-40">
-        <a href="{{ route('carrito.index') }}" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-3 lg:p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 flex items-center space-x-2">
-            <svg class="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 005 16h12M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"></path>
-            </svg>
-            <span class="hidden sm:inline font-semibold text-sm lg:text-base">Ver carrito</span>
-            <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 lg:h-6 lg:w-6 flex items-center justify-center font-bold">0</span>
+    <a href="{{ route('carrito.index') }}" 
+       class="relative bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-3 lg:p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 flex items-center space-x-2 group">
+        <svg class="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 005 16h12M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"></path>
+        </svg>
+        <span class="hidden sm:inline font-semibold text-sm lg:text-base">Ir a carrito</span>
+        <span id="floating-cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 lg:h-6 lg:w-6 flex items-center justify-center font-bold">
+            @auth
+                @php
+                    $userCarrito = \App\Models\Carrito::where('user_id', auth()->id())->with('items')->first();
+                    echo $userCarrito ? $userCarrito->items->sum('cantidad') : 0;
+                @endphp
+            @else
+                0
+            @endauth
+        </span>
+        
+        <!-- Tooltip opcional -->
+        <div class="absolute bottom-full right-0 mb-2 px-3 py-2 bg-green-600 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none">
+                Yendo al carrito
+                <div class="absolute top-full right-3 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-green-600"></div>
+            </div>
         </a>
     </div>
 </div>
@@ -579,50 +595,57 @@ $(document).ready(function() {
         form.find('.plus-btn').prop('disabled', currentValue >= maxValue);
     });
 
-    // Variable para prevenir múltiples envíos
-    let isAddingToCart = false;
+ 
 
     // Agregar al Carrito - SOLUCIÓN IMPLEMENTADA
-   $('.add-to-cart-form').off('submit').on('submit', function(e) {
-        e.preventDefault();
+   // Variables globales para el carrito
+let isAddingToCart = false;
 
-        if (isAddingToCart) return false;
+// MODIFICAR el evento de agregar al carrito para que actualice el badge flotante
+$('.add-to-cart-form').off('submit').on('submit', function(e) {
+    e.preventDefault();
 
-        let form = $(this);
-        let button = form.find('button[type="submit"]');
-        let originalText = button.html();
+    if (isAddingToCart) return false;
 
-        // Guardar la cantidad ANTES de resetear
-        let cantidadAgregada = parseInt(form.find('.quantity-input').val()) || 1;
-        let nombreProducto = form.closest('.group').find('h3').text();
+    let form = $(this);
+    let button = form.find('button[type="submit"]');
+    let originalText = button.html();
 
-        // Estado de carga
-        isAddingToCart = true;
-        button.prop('disabled', true).html(`
-            <svg class="animate-spin w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-        `);
+    // Guardar la cantidad ANTES de resetear
+    let cantidadAgregada = parseInt(form.find('.quantity-input').val()) || 1;
+    let nombreProducto = form.closest('.group').find('h3').text();
 
-        // AJAX
-        $.ajax({
-            type: 'POST',
-            url: form.attr('action'),
-            data: form.serialize(),
-            timeout: 10000,
-            success: function(response) {
-                // Actualizar badge
-                if (response.totalItems !== undefined) {
-                    $('#cart-badge').text(response.totalItems);
-                } else {
-                    let currentBadge = parseInt($('#cart-badge').text()) || 0;
-                    $('#cart-badge').text(currentBadge + cantidadAgregada);
-                }
+    // Estado de carga
+    isAddingToCart = true;
+    button.prop('disabled', true).html(`
+        <svg class="animate-spin w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    `);
 
-                // Resetear cantidad
+    // AJAX
+    $.ajax({
+        type: 'POST',
+        url: form.attr('action'),
+        data: form.serialize(),
+        timeout: 10000,
+        success: function(response) {
+            if (response.success) {
+                // Actualizar TODOS los badges del carrito
+                $('#cart-badge').text(response.totalItems || 0); // Navbar
+                $('#floating-cart-badge').text(response.totalItems || 0); // Flotante
+                $('#cart-badge-mobile').text(response.totalItems || 0); // Móvil (si existe)
+
+                // Resetear cantidad del formulario
                 form.find('.quantity-input').val(1);
                 form.find('.total-price').text('S/' + parseFloat(form.find('.total-price').data('unit-price')).toFixed(2));
+
+                // Animación en el botón flotante
+                $('#floating-cart-badge').addClass('cart-bounce');
+                setTimeout(() => {
+                    $('#floating-cart-badge').removeClass('cart-bounce');
+                }, 600);
 
                 // Mostrar notificación de éxito
                 Swal.fire({
@@ -634,60 +657,86 @@ $(document).ready(function() {
                     toast: true,
                     position: 'top-end',
                     timerProgressBar: true,
+                    didOpen: () => {
+                        // Agregar un pequeño efecto al toast
+                        const toast = Swal.getPopup();
+                        toast.style.animation = 'slideInRight 0.3s ease-out';
+                    }
                 });
-            },
-            error: function(xhr, status, error) {
-                console.error('Error:', xhr);
-                
-                let errorMessage = 'Error al agregar el producto';
-                
-                if (status === 'timeout') {
-                    errorMessage = 'La solicitud tardó demasiado';
-                } else if (xhr.status === 0) {
-                    errorMessage = 'Sin conexión a internet';
-                } else if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMessage = xhr.responseJSON.error;
-                } else if (xhr.status === 401) {
-                    Swal.fire({
-                        title: 'Inicia sesión',
-                        text: 'Debes iniciar sesión para agregar productos',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#10B981',
-                        confirmButtonText: 'Ir a login',
-                        cancelButtonText: 'Cancelar'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = "{{ route('login') }}";
-                        }
-                    });
-                    return;
-                }
-                
-                Swal.fire({
-                    title: 'Error',
-                    text: errorMessage,
-                    icon: 'error',
-                    confirmButtonColor: '#10B981',
-                });
-            },
-            complete: function() {
-                // Restaurar el botón SIEMPRE
-                button.prop('disabled', false).html(originalText);
-                isAddingToCart = false;
             }
-        });
-    });
-
-    // Ajustar sidebar al redimensionar
-    $(window).resize(function() {
-        if ($(window).width() >= 1024) {
-            $('#sidebar').removeClass('-translate-x-full');
-            $('#sidebar-overlay').addClass('hidden');
-            $('body').removeClass('overflow-hidden');
-            $('#filter-icon').removeClass('rotate-180');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', xhr);
+            
+            let errorMessage = 'Error al agregar el producto';
+            
+            if (status === 'timeout') {
+                errorMessage = 'La solicitud tardó demasiado';
+            } else if (xhr.status === 0) {
+                errorMessage = 'Sin conexión a internet';
+            } else if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMessage = xhr.responseJSON.error;
+            } else if (xhr.status === 401) {
+                Swal.fire({
+                    title: 'Inicia sesión',
+                    text: 'Debes iniciar sesión para agregar productos',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3B82F6',
+                    confirmButtonText: 'Ir a login',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = "{{ route('login') }}";
+                    }
+                });
+                return;
+            }
+            
+            Swal.fire({
+                title: 'Error',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonColor: '#3B82F6',
+            });
+        },
+        complete: function() {
+            // Restaurar el botón SIEMPRE
+            button.prop('disabled', false).html(originalText);
+            isAddingToCart = false;
         }
     });
+});
+
+// Agregar animación CSS adicional si no existe
+if (!document.querySelector('#cart-animation-styles')) {
+    const style = document.createElement('style');
+    style.id = 'cart-animation-styles';
+    style.textContent = `
+        .cart-bounce {
+            animation: cartBounce 0.6s ease;
+        }
+        
+        @keyframes cartBounce {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.2); }
+            50% { transform: scale(0.9); }
+            75% { transform: scale(1.1); }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
 });
 </script>
 @endsection

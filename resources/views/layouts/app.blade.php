@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Tailwind CSS CDN -->
@@ -92,112 +93,6 @@
                 transform: translateY(0);
             }
         }
-        
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 10px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #10b981;
-            border-radius: 10px;
-        }
-        
-        /* Backdrop blur for modals */
-        .backdrop-blur-custom {
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-        }
-        
-        /* Loading states */
-        .loading {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .loading::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-            animation: loading 1.5s infinite;
-        }
-        
-        @keyframes loading {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-        
-        /* Lazy loading images */
-        img.lazy {
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        img.lazy.loaded {
-            opacity: 1;
-        }
-        
-        /* Success/Error message animations */
-        .alert-enter {
-            animation: slideInDown 0.3s ease-out;
-        }
-        
-        @keyframes slideInDown {
-            from {
-                transform: translateY(-100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        /* Focus styles for accessibility */
-        .focus-visible:focus {
-            outline: 2px solid #10b981;
-            outline-offset: 2px;
-        }
-        
-        /* High contrast mode support */
-        @media (prefers-contrast: high) {
-            .nav-link::after {
-                background: currentColor;
-            }
-        }
-        
-        /* Reduced motion support */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-        
-        /* Print styles */
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            
-            nav, footer {
-                display: none !important;
-            }
-            
-            .container {
-                max-width: none !important;
-            }
-        }
     </style>
     
     @vite('resources/css/app.css')
@@ -251,6 +146,11 @@
                                class="nav-link text-green-600 hover:text-green-700 px-3 py-2 text-sm font-medium">
                                 <i class="fas fa-seedling mr-2"></i>Panel Agricultor
                             </a>
+                        @elseif(Auth::user()->role == 'admin')
+                            <a href="{{ route('admin.dashboard') }}" 
+                               class="nav-link text-purple-600 hover:text-purple-700 px-3 py-2 text-sm font-medium">
+                                <i class="fas fa-cog mr-2"></i>Panel Admin
+                            </a>
                         @endif
                     @endauth
                 </div>
@@ -258,39 +158,22 @@
                 <!-- Right Section -->
                 <div class="flex items-center space-x-4">
                     
-                    <!-- Cart Button -->
-                    @php
-                        use Illuminate\Support\Facades\Auth;
-                        use App\Models\Carrito;
-
-                        $carrito = null;
-                        $totalItems = 0;
-                        $totalPrice = 0.00;
-
-                        if (Auth::check()) {
-                            $carrito = Carrito::where('user_id', Auth::id())->with('items.product')->first();
-                            if ($carrito) {
-                                $totalItems = $carrito->items->sum('cantidad');
-                                $totalPrice = $carrito->items->sum(function ($item) {
-                                    return $item->product->precio * $item->cantidad;
-                                });
-                            }
-                        }
-                    @endphp
-                    
-                    <button id="cart-button" 
-                            class="relative flex items-center space-x-2 bg-gradient-green text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-                        <i class="fas fa-shopping-cart text-lg"></i>
-                        <div class="hidden sm:flex flex-col items-start">
-                            <span id="cart-total-items" class="text-xs font-medium">{{ $totalItems }} items</span>
-                            <span class="text-sm font-bold">S/<span id="cart-total-price">{{ number_format($totalPrice, 2) }}</span></span>
-                        </div>
-                        @if($totalItems > 0)
-                            <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
-                                {{ $totalItems > 9 ? '9+' : $totalItems }}
+                    <!-- Carrito Optimizado -->
+                    @auth
+                        <button id="cart-button" 
+                                class="relative flex items-center space-x-2 bg-gradient-green text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                            <i class="fas fa-shopping-cart text-lg"></i>
+                            <div class="hidden sm:flex flex-col items-start">
+                                <span class="text-xs font-medium">Ver carrito</span>
+                            </div>
+                            <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                                @php
+                                    $userCarrito = \App\Models\Carrito::where('user_id', auth()->id())->with('items')->first();
+                                    echo $userCarrito ? $userCarrito->items->sum('cantidad') : 0;
+                                @endphp
                             </span>
-                        @endif
-                    </button>
+                        </button>
+                    @endauth
 
                     <!-- User Menu -->
                     @guest
@@ -371,7 +254,24 @@
                                class="block px-3 py-3 rounded-lg text-base font-medium text-green-600 hover:bg-green-50 transition-colors duration-200">
                                 <i class="fas fa-seedling mr-3"></i>Panel Agricultor
                             </a>
+                        @elseif(Auth::user()->role == 'admin')
+                            <a href="{{ route('admin.dashboard') }}" 
+                               class="block px-3 py-3 rounded-lg text-base font-medium text-purple-600 hover:bg-purple-50 transition-colors duration-200">
+                                <i class="fas fa-cog mr-3"></i>Panel Admin
+                            </a>
                         @endif
+                        
+                        <!-- Carrito en móvil -->
+                        <a href="{{ route('carrito.index') }}" 
+                           class="block px-3 py-3 rounded-lg text-base font-medium text-blue-600 hover:bg-blue-50 transition-colors duration-200">
+                            <i class="fas fa-shopping-cart mr-3"></i>Ver Carrito
+                            <span id="cart-badge-mobile" class="inline-block ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                                @php
+                                    $userCarrito = \App\Models\Carrito::where('user_id', auth()->id())->with('items')->first();
+                                    echo $userCarrito ? $userCarrito->items->sum('cantidad') : 0;
+                                @endphp
+                            </span>
+                        </a>
                     @endauth
                     
                     @guest
@@ -392,42 +292,43 @@
             </div>
         </div>
         
-        <!-- Cart Modal Mejorado -->
-        <div id="cart-summary" class="fixed hidden right-4 top-20 w-80 sm:w-96 bg-white shadow-2xl rounded-2xl z-50 border border-gray-100 fade-in">
+        <!-- Modal del Carrito Optimizado -->
+        <div id="cart-modal" class="hidden fixed right-4 top-20 w-80 sm:w-96 bg-white shadow-2xl rounded-2xl z-50 border border-gray-100 fade-in">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xl font-bold text-gray-800 flex items-center">
                         <i class="fas fa-shopping-cart text-green-600 mr-2"></i>
                         Mi Carrito
                     </h3>
-                    <button onclick="closeCartModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                    <button id="close-cart-modal" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
                         <i class="fas fa-times text-lg"></i>
                     </button>
                 </div>
                 
-                <!-- Lista de productos en el carrito -->
-                <div id="cart-items-list" class="max-h-60 overflow-y-auto custom-scrollbar space-y-3">
-                    <!-- Aquí se añadirán los productos dinámicamente -->
+                <!-- Lista de productos -->
+                <div id="cart-items-list" class="max-h-60 overflow-y-auto space-y-3">
+                    <!-- Productos se cargan dinámicamente -->
                 </div>
                 
-                <!-- Total en el carrito -->
+                <!-- Total -->
                 <div class="border-t border-gray-100 pt-4 mt-4">
                     <div class="flex justify-between items-center text-lg font-bold text-gray-800">
                         <span>Total:</span>
-                        <span class="text-green-600">S/<span id="cart-popup-total-price">0.00</span></span>
+                        <span class="text-green-600">S/<span id="cart-modal-total">0.00</span></span>
                     </div>
                 </div>
                 
-                <!-- Botones de acción -->
+                <!-- Botones -->
                 <div class="mt-6 space-y-3">
                     <a href="{{ route('carrito.index') }}" 
-                       class="block w-full bg-gradient-green text-white text-center py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                       class="block w-full bg-gradient-green text-white text-center py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300">
                         <i class="fas fa-shopping-cart mr-2"></i>Ver Carrito Completo
                     </a>
-                    <button onclick="closeCartModal()" 
-                            class="block w-full bg-gray-100 text-gray-600 text-center py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors duration-200">
-                        Continuar Comprando
-                    </button>
+                    <a href="{{ route('tienda') }}" 
+                       class="block w-full bg-gray-100 text-gray-600 text-center py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors duration-200">
+                        <i class="fas fa-shopping-cart mr-2"></i>Continuar Comprando
+                    </a>
+                   
                 </div>
             </div>
         </div>
@@ -459,145 +360,28 @@
 
         @yield('content')
     </main>
-
-    <!-- Footer Mejorado --> 
+    
+    <!-- Footer -->
     <footer class="bg-gray-900 text-gray-300 pt-16 pb-8">
         <div class="container mx-auto max-w-7xl px-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-                
-                <!-- Columna 1 - Logo y descripción -->
-                <div class="flex flex-col items-center lg:items-start space-y-6">
-                    <div class="text-center lg:text-left">
-                        <img src="{{ asset('images/logox.png') }}" alt="Punto Verde Logo" class="w-16 mx-auto lg:mx-0 mb-4">
-                        <h3 class="text-xl font-bold text-white mb-2">Punto Verde Agroecológico</h3>
-                        <p class="text-gray-400 text-sm leading-relaxed">
-                            Feria Agrícola Sabatina en Amarilis - Huánuco<br>
-                            14 productores agroecológicos de 3 provincias.<br>
-                            <span class="text-green-400 font-medium">¡Productos frescos directamente del campo!</span>
-                        </p>
-                    </div>
-                    
-                    <div class="flex space-x-4">
-                        <a href="https://www.facebook.com/islasdepazperu" target="_blank" 
-                           class="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110">
-                            <i class="fab fa-facebook-f text-white"></i>
-                        </a>
-                        <a href="https://www.instagram.com/puntoverde.huanuco/" target="_blank" 
-                           class="w-10 h-10 bg-gray-800 hover:bg-pink-600 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110">
-                            <i class="fab fa-instagram text-white"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Columna 2 - Productos -->
-                <div class="text-center lg:text-left">
-                    <h3 class="text-lg font-semibold text-white mb-6 flex items-center justify-center lg:justify-start">
-                        <i class="fas fa-leaf text-green-400 mr-2"></i>
-                        Nuestros Productos
-                    </h3>
-                    <ul class="grid grid-cols-2 gap-3">
-                        <li><a href="{{ route('tienda') }}" class="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200 flex items-center hover:translate-x-1 transform">
-                            <i class="fas fa-seedling text-xs mr-2"></i>Todos
-                        </a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200 flex items-center hover:translate-x-1 transform">
-                            <i class="fas fa-carrot text-xs mr-2"></i>Vegetales
-                        </a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200 flex items-center hover:translate-x-1 transform">
-                            <i class="fas fa-apple-alt text-xs mr-2"></i>Frutas
-                        </a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200 flex items-center hover:translate-x-1 transform">
-                            <i class="fas fa-leaf text-xs mr-2"></i>Verduras
-                        </a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200 flex items-center hover:translate-x-1 transform">
-                            <i class="fas fa-seedling text-xs mr-2"></i>Legumbres
-                        </a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200 flex items-center hover:translate-x-1 transform">
-                            <i class="fas fa-cheese text-xs mr-2"></i>Quesos
-                        </a></li>
-                    </ul>
-                </div>
-
-                <!-- Columna 3 - Navegación -->
-                <div class="text-center lg:text-left">
-                    <h3 class="text-lg font-semibold text-white mb-6 flex items-center justify-center lg:justify-start">
-                        <i class="fas fa-compass text-green-400 mr-2"></i>
-                        Navegación
-                    </h3>
-                    <ul class="space-y-3">
-                        <li><a href="{{ url('/') }}" class="text-gray-400 hover:text-green-400 text-sm transition-all duration-200 flex items-center justify-center lg:justify-start hover:translate-x-1 transform">
-                            <i class="fas fa-home text-xs mr-2"></i>Inicio
-                        </a></li>
-                        <li><a href="{{ route('nosotros') }}" class="text-gray-400 hover:text-green-400 text-sm transition-all duration-200 flex items-center justify-center lg:justify-start hover:translate-x-1 transform">
-                            <i class="fas fa-users text-xs mr-2"></i>Sobre Nosotros
-                        </a></li>
-                        <li><a href="{{ route('tienda') }}" class="text-gray-400 hover:text-green-400 text-sm transition-all duration-200 flex items-center justify-center lg:justify-start hover:translate-x-1 transform">
-                            <i class="fas fa-store text-xs mr-2"></i>Tienda
-                        </a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-green-400 text-sm transition-all duration-200 flex items-center justify-center lg:justify-start hover:translate-x-1 transform">
-                            <i class="fas fa-envelope text-xs mr-2"></i>Contacto
-                        </a></li>
-                    </ul>
-                </div>
-
-                <!-- Columna 4 - Información de contacto -->
-                <div class="text-center lg:text-left">
-                    <h3 class="text-lg font-semibold text-white mb-6 flex items-center justify-center lg:justify-start">
-                        <i class="fas fa-info-circle text-green-400 mr-2"></i>
-                        Información
-                    </h3>
-                    <ul class="space-y-4">
-                        <li class="flex items-start space-x-3 justify-center lg:justify-start">
-                            <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <i class="fas fa-map-marker-alt text-white text-xs"></i>
-                            </div>
-                            <div class="text-gray-400 text-sm text-center lg:text-left">
-                                <strong class="text-white">Ubicación:</strong><br>
-                                Segundo Parque de Paucarbambilla<br>
-                                Amarilis, Huánuco, Perú
-                            </div>
-                        </li>
-                        <li class="flex items-start space-x-3 justify-center lg:justify-start">
-                            <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <i class="fas fa-clock text-white text-xs"></i>
-                            </div>
-                            <div class="text-gray-400 text-sm text-center lg:text-left">
-                                <strong class="text-white">Horarios:</strong><br>
-                                Sábados 6:30 AM - 12:00 PM
-                            </div>
-                        </li>
-                        <li class="flex items-start space-x-3 justify-center lg:justify-start">
-                            <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <i class="fas fa-envelope text-white text-xs"></i>
-                            </div>
-                            <div class="text-gray-400 text-sm text-center lg:text-left">
-                                <strong class="text-white">Correo:</strong><br>
-                                <a href="mailto:ong_idpp@islasdepazperu.org" class="text-gray-400 hover:text-green-400 transition-colors duration-200">
-                                    ong_idpp@islasdepazperu.org
-                                </a>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Copyright -->
-            <div class="mt-12 pt-8 border-t border-gray-700">
-                <div class="text-center">
-                    <p class="text-gray-400 text-sm">
-                        © 2025 <span class="text-green-400 font-semibold">Punto Verde Agroecológico</span> - Amarilis, Huánuco. Todos los derechos reservados<br>
-                        <span class="text-xs">Una iniciativa de la Asociación de Productores Agroecológicos</span>
-                    </p>
-                </div>
+            <div class="text-center">
+                <p class="text-gray-400 text-sm">
+                    © 2025 <span class="text-green-400 font-semibold">Punto Verde Agroecológico</span> - Amarilis, Huánuco. Todos los derechos reservados
+                </p>
             </div>
         </div>
     </footer>
 </div>
 
-<!-- JavaScript mejorado -->
+<!-- JavaScript Optimizado con Cache -->
 <script>
     // Variables globales
     let mobileMenuOpen = false;
-    let cartModalOpen = false;
+    
+    // OPTIMIZACIÓN: Variables para cache del carrito
+    let cartCache = null;
+    let cacheTime = null;
+    const CACHE_DURATION = 10000; // 10 segundos
 
     // Toggle mobile menu
     function toggleMobileMenu() {
@@ -635,135 +419,189 @@
         }
     }
 
-    // Close cart modal
-    function closeCartModal() {
-        const cartSummary = document.getElementById('cart-summary');
-        cartSummary.classList.add('hidden');
-        cartModalOpen = false;
+    // OPTIMIZACIÓN: Función para mostrar productos en modal (separada para reutilizar)
+    function mostrarProductosEnModal(response) {
+        const itemsList = document.getElementById('cart-items-list');
+        
+        if (response.items && response.items.length > 0) {
+            // OPTIMIZACIÓN: Construir HTML de una vez (más rápido que múltiples innerHTML +=)
+            let itemsHTML = '';
+            response.items.forEach(function(item) {
+                itemsHTML += `
+                    <div class="flex items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
+                        <div class="w-12 h-12 bg-gradient-green rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-leaf text-white"></i>
+                        </div>
+                        <div class="flex-1 ml-3 min-w-0">
+                            <h4 class="font-semibold text-gray-800 truncate">${item.nombre}</h4>
+                            <p class="text-sm text-gray-500">Cantidad: ${item.cantidad}</p>
+                            <p class="text-sm font-bold text-green-600">S/${item.subtotal.toFixed(2)}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            itemsList.innerHTML = itemsHTML;
+        } else {
+            itemsList.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-shopping-cart text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">Tu carrito está vacío</p>
+                    <a href="{{ route('tienda') }}" class="text-green-600 hover:text-green-700 text-sm font-medium mt-2 inline-block">
+                        ¡Explorar productos!
+                    </a>
+                </div>
+            `;
+        }
+
+        document.getElementById('cart-modal-total').textContent = response.totalPrice.toFixed(2);
     }
 
-    // Cart functionality
+    // OPTIMIZACIÓN: Cargar productos del carrito con cache
+    function cargarProductosCarritoConCache() {
+        const now = Date.now();
+        
+        // Si tenemos cache reciente, usarlo
+        if (cartCache && cacheTime && (now - cacheTime) < CACHE_DURATION) {
+            mostrarProductosEnModal(cartCache);
+            return;
+        }
+
+        // Mostrar loading inmediatamente
+        const itemsList = document.getElementById('cart-items-list');
+        itemsList.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-spinner fa-spin text-xl text-gray-400"></i>
+                <p class="text-gray-500 text-sm mt-1">Cargando...</p>
+            </div>
+        `;
+
+        $.ajax({
+            url: "{{ route('carrito.getDetails') }}",
+            method: 'GET',
+            timeout: 5000,
+            success: function(response) {
+                // Guardar en cache
+                cartCache = response;
+                cacheTime = now;
+                
+                mostrarProductosEnModal(response);
+            },
+            error: function() {
+                itemsList.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle text-xl text-red-400 mb-2"></i>
+                        <p class="text-red-500 text-sm">Error al cargar</p>
+                        <button onclick="cargarProductosCarritoConCache()" class="text-green-600 text-sm mt-1 hover:text-green-700">Reintentar</button>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    // Eventos del modal del carrito
     document.getElementById('cart-button').addEventListener('click', function(e) {
         e.preventDefault();
-        const cartSummary = document.getElementById('cart-summary');
+        const modal = document.getElementById('cart-modal');
         
-        cartModalOpen = !cartModalOpen;
-        
-        if (cartModalOpen) {
-            cartSummary.classList.remove('hidden');
-            loadCartItems();
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            cargarProductosCarritoConCache(); // USAR VERSIÓN CON CACHE
         } else {
-            cartSummary.classList.add('hidden');
+            modal.classList.add('hidden');
         }
     });
 
-    // Load cart items
-    function loadCartItems() {
-        $.ajax({
-            type: 'GET',
-            url: '{{ route("carrito.getDetails") }}',
-            success: function(response) {
-                const cartItemsList = document.getElementById('cart-items-list');
-                cartItemsList.innerHTML = '';
+    document.getElementById('close-cart-modal').addEventListener('click', function() {
+        document.getElementById('cart-modal').classList.add('hidden');
+    });
 
-                if (response.items && response.items.length > 0) {
-                    response.items.forEach(function(item) {
-                        cartItemsList.innerHTML += `
-                            <div class="flex items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
-                                <div class="w-12 h-12 bg-gradient-green rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <i class="fas fa-leaf text-white"></i>
-                                </div>
-                                <div class="flex-1 ml-3 min-w-0">
-                                    <h4 class="font-semibold text-gray-800 truncate">${item.nombre}</h4>
-                                    <p class="text-sm text-gray-500">Cantidad: ${item.cantidad}</p>
-                                    <p class="text-sm font-bold text-green-600">S/${item.subtotal.toFixed(2)}</p>
-                                </div>
-                                <button class="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all duration-200 transform hover:scale-110" 
-                                        onclick="removeItem(${item.id})" title="Eliminar producto">
-                                    <i class="fas fa-trash text-sm"></i>
-                                </button>
-                            </div>
-                        `;
-                    });
-                } else {
-                    cartItemsList.innerHTML = `
-                        <div class="text-center py-8">
-                            <i class="fas fa-shopping-cart text-4xl text-gray-300 mb-4"></i>
-                            <p class="text-gray-500">Tu carrito está vacío</p>
-                            <a href="{{ route('tienda') }}" class="text-green-600 hover:text-green-700 text-sm font-medium mt-2 inline-block">
-                                ¡Explorar productos!
-                            </a>
-                        </div>
-                    `;
-                }
+    document.getElementById('continue-shopping').addEventListener('click', function() {
+        document.getElementById('cart-modal').classList.add('hidden');
+    });
 
-                document.getElementById('cart-popup-total-price').textContent = response.totalPrice.toFixed(2);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading cart items:', error);
-            }
-        });
-    }
+    // OPTIMIZACIÓN: Actualizar badge del carrito cuando se agrega un producto
+    $(document).ready(function() {
+        $('.add-to-cart-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            let form = $(this);
+            let button = form.find('button[type="submit"]');
+            let originalText = button.html();
 
-    // Remove item from cart
-    function removeItem(itemId) {
-        Swal.fire({
-            title: '¿Eliminar producto?',
-            text: "¿Estás seguro de que quieres eliminar este producto del carrito?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-            showLoaderOnConfirm: true,
-            preConfirm: () => {
-                return $.ajax({
-                    type: 'POST',
-                    url: `/carrito/eliminar/${itemId}`,
-                    data: {
-                        _token: '{{ csrf_token() }}'
+            // Estado de carga
+            button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Agregando...');
+
+            $.ajax({
+                type: 'POST',
+                url: form.attr('action'),
+                data: form.serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        // OPTIMIZACIÓN: Invalidar cache cuando se agrega producto
+                        cartCache = null;
+                        cacheTime = null;
+
+                        // Actualizar badge del carrito
+                        $('#cart-badge').text(response.totalItems || 0);
+                        $('#cart-badge-mobile').text(response.totalItems || 0);
+
+                        // Resetear cantidad del formulario
+                        form.find('.quantity-input').val(1);
+                        let unitPrice = parseFloat(form.find('.total-price').data('unit-price'));
+                        if (unitPrice) {
+                            form.find('.total-price').text('S/' + unitPrice.toFixed(2));
+                        }
+
+                        // Mensaje de éxito
+                        Swal.fire({
+                            title: '¡Agregado!',
+                            text: 'Producto agregado al carrito',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
                     }
-                });
-            },
-            allowOutsideClick: () => !Swal.isLoading()
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const response = result.value;
-                if (response.success) {
-                    // Update cart counts
-                    document.getElementById('cart-total-items').textContent = response.totalItems + ' items';
-                    document.getElementById('cart-total-price').textContent = response.totalPrice.toFixed(2);
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Error al agregar producto';
                     
-                    // Add bounce animation to cart button
-                    const cartButton = document.getElementById('cart-button');
-                    cartButton.classList.add('cart-bounce');
-                    setTimeout(() => cartButton.classList.remove('cart-bounce'), 600);
+                    if (xhr.status === 401) {
+                        errorMessage = 'Debes iniciar sesión';
+                        setTimeout(() => {
+                            window.location.href = "{{ route('login') }}";
+                        }, 2000);
+                    } else if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage = xhr.responseJSON.error;
+                    }
                     
-                    // Reload cart items
-                    loadCartItems();
-                    
-                    Swal.fire({
-                        title: '¡Eliminado!',
-                        text: 'El producto ha sido eliminado del carrito.',
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                } else {
                     Swal.fire({
                         title: 'Error',
-                        text: 'No se pudo eliminar el producto del carrito.',
-                        icon: 'error'
+                        text: errorMessage,
+                        icon: 'error',
+                        timer: 3000
                     });
+                },
+                complete: function() {
+                    // Restaurar botón
+                    button.prop('disabled', false).html(originalText);
                 }
-            }
+            });
         });
-    }
+    });
 
-    // Close dropdowns when clicking outside
+    // Cerrar modales al hacer clic afuera
     document.addEventListener('click', function(e) {
-        // Close user menu
+        // Cerrar modal del carrito
+        const modal = document.getElementById('cart-modal');
+        const button = document.getElementById('cart-button');
+        
+        if (!modal.contains(e.target) && !button.contains(e.target)) {
+            modal.classList.add('hidden');
+        }
+        
+        // Cerrar menú de usuario
         if (!e.target.closest('#userMenuButton') && !e.target.closest('#userMenu')) {
             const userMenu = document.getElementById('userMenu');
             const icon = document.getElementById('userMenuIcon');
@@ -773,152 +611,16 @@
             }
         }
         
-        // Close cart modal
-        if (!e.target.closest('#cart-button') && !e.target.closest('#cart-summary')) {
-            const cartSummary = document.getElementById('cart-summary');
-            if (cartSummary && !cartSummary.classList.contains('hidden')) {
-                closeCartModal();
-            }
-        }
-        
-        // Close mobile menu
+        // Cerrar menú móvil
         if (!e.target.closest('#mobile-menu-button') && !e.target.closest('#mobile-menu')) {
             if (mobileMenuOpen) {
                 toggleMobileMenu();
             }
         }
     });
-
-    // Enhanced form submission for adding to cart
-    $(document).ready(function() {
-        $('.add-to-cart-form').on('submit', function(e) {
-            e.preventDefault();
-
-            let form = $(this);
-            let actionUrl = form.attr('action');
-            let submitButton = form.find('button[type="submit"]');
-            
-            // Show loading state
-            let originalText = submitButton.html();
-            submitButton.html('<i class="fas fa-spinner fa-spin mr-2"></i>Agregando...').prop('disabled', true);
-
-            $.ajax({
-                type: 'POST',
-                url: actionUrl,
-                data: form.serialize(),
-                success: function(response) {
-                    if (response.totalItems !== undefined && response.totalPrice !== undefined) {
-                        // Update cart display
-                        $('#cart-total-items').text(response.totalItems + ' items');
-                        $('#cart-total-price').text(response.totalPrice.toFixed(2));
-
-                        // Add bounce animation to cart button
-                        const cartButton = document.getElementById('cart-button');
-                        cartButton.classList.add('cart-bounce');
-                        setTimeout(() => cartButton.classList.remove('cart-bounce'), 600);
-
-                        // Show success message
-                        Swal.fire({
-                            title: '¡Agregado al carrito!',
-                            text: 'El producto se ha agregado exitosamente.',
-                            icon: 'success',
-                            timer: 1500,
-                            showConfirmButton: false,
-                            toast: true,
-                            position: 'top-end'
-                        });
-
-                        // Auto-open cart modal
-                        setTimeout(() => {
-                            document.getElementById('cart-button').click();
-                        }, 500);
-
-                    } else {
-                        throw new Error('Respuesta inválida del servidor');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    let errorMessage = 'Hubo un problema al agregar el producto.';
-                    
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMessage = xhr.responseJSON.message;
-                    }
-                    
-                    Swal.fire({
-                        title: 'Error',
-                        text: errorMessage,
-                        icon: 'error',
-                        confirmButtonColor: '#10b981'
-                    });
-                },
-                complete: function() {
-                    // Restore button state
-                    submitButton.html(originalText).prop('disabled', false);
-                }
-            });
-        });
-    });
-
-    // Smooth scroll for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-
-    // Add loading state to forms
-    document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function() {
-            const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton && !submitButton.disabled) {
-                const originalText = submitButton.innerHTML;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Procesando...';
-                submitButton.disabled = true;
-                
-                // Re-enable after 5 seconds as failsafe
-                setTimeout(() => {
-                    submitButton.innerHTML = originalText;
-                    submitButton.disabled = false;
-                }, 5000);
-            }
-        });
-    });
-
-    // Initialize tooltips (if using Bootstrap tooltips)
-    if (typeof bootstrap !== 'undefined') {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    }
-
-    // Lazy loading for images
-    if ('IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    img.classList.remove('lazy');
-                    imageObserver.unobserve(img);
-                }
-            });
-        });
-
-        document.querySelectorAll('img[data-src]').forEach(img => {
-            imageObserver.observe(img);
-        });
-    }
 </script>
 
-<!-- Scripts adicionales -->
 @vite(['resources/js/app.js'])
-
 @yield('scripts')
+</body>
+</html>

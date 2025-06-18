@@ -91,6 +91,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/carrito', [CarritoController::class, 'index'])->name('carrito.index');
     Route::post('/carrito/agregar/{productId}', [CarritoController::class, 'add'])->name('carrito.add');
     Route::post('/carrito/eliminar/{itemId}', [CarritoController::class, 'remove'])->name('carrito.remove');
+    Route::post('/carrito/clear', [CarritoController::class, 'clear'])->name('carrito.clear');
     Route::post('/carrito/actualizar/{itemId}', [CarritoController::class, 'update'])->name('carrito.update');
    // Route::post('/carrito/agregar/{id}', [CarritoController::class, 'add'])->name('carrito.add');
     Route::get('/carrito/details', [CarritoController::class, 'getDetails'])->name('carrito.getDetails');

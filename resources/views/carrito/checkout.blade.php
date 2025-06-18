@@ -131,12 +131,9 @@
                                            class="mr-3 delivery-option focus:ring-green-500 text-green-600" 
                                            required> 
                                     <div class="flex items-center">
-                                        <svg class="w-6 h-6 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                        </svg>
                                         <div>
-                                            <p class="font-semibold text-gray-800">Recoger en puesto</p>
-                                            <p class="text-sm text-gray-600">Recoge tu pedido directamente en nuestro local</p>
+                                            <p class="font-semibold text-gray-800 text-sm">Recoger en puesto</p>
+                                            <p class="text-xs text-gray-600">Recoge tu pedido directamente en la feria agricola el día sábado</p>
                                         </div>
                                     </div>
                                 </label>
@@ -149,12 +146,9 @@
                                            class="mr-3 delivery-option focus:ring-green-500 text-green-600" 
                                            required> 
                                     <div class="flex items-center">
-                                        <svg class="w-6 h-6 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                        </svg>
                                         <div>
-                                            <p class="font-semibold text-gray-800">Delivery a domicilio</p>
-                                            <p class="text-sm text-gray-600">Enviamos tu pedido directamente a tu dirección</p>
+                                            <p class="font-semibold text-gray-800 text-sm">Delivery a domicilio</p>
+                                            <p class="text-xs text-gray-600">Enviamos tu pedido directamente a tu dirección el día Sábado</p>
                                         </div>
                                     </div>
                                 </label>
@@ -225,8 +219,8 @@
                                             </svg>
                                         </div>
                                         <div>
-                                            <p class="font-semibold text-gray-800 text-lg">Pagar con MercadoPago</p>
-                                            <p class="text-sm text-gray-600">Tarjetas de crédito, débito, transferencias y más métodos</p>
+                                            <p class="font-semibold text-gray-800 text-sm">Pagar con MercadoPago</p>
+                                            <p class="text-xs text-gray-600">Tarjetas de crédito, débito, transferencias y más métodos</p>
                                         </div>
                                     </div>
                                 </div>
@@ -236,7 +230,7 @@
                         <!-- Botón de envío -->
                         <button type="submit" 
                                 id="submit-btn"
-                                class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none shadow-lg">
+                                class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 rounded-xl font-semibold text-base transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none shadow-lg">
                             <span id="btn-text" class="flex items-center justify-center">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -282,7 +276,7 @@
                         @endforeach
                     </div>
                     
-                    <div class="border-t border-gray-200 pt-4 space-y-3">
+                    <div class="border-t border-gray-200 pt-4 space-y-3 mx-3">
                         <div class="flex justify-between text-gray-700">
                             <span>Subtotal:</span>
                             <span id="subtotal" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
