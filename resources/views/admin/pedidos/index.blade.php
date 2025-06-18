@@ -9,6 +9,14 @@
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold mb-2">📦 Gestión de Pedidos</h1>
                 <p class="text-blue-100 text-base sm:text-lg">Administración de órdenes del sistema</p>
+                @if(isset($inicioSemana) && isset($finSemana))
+                <p class="text-blue-100 text-sm mt-2">
+                    📅 Mostrando: {{ $inicioSemana->format('d/m/Y') }} al {{ $finSemana->format('d/m/Y') }} 
+                    @if(isset($diaEntrega))
+                        • Entrega: {{ $diaEntrega->format('d/m/Y') }}
+                    @endif
+                </p>
+                @endif
             </div>
             <a href="{{ route('admin.dashboard') }}" 
                class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all">
@@ -17,25 +25,91 @@
         </div>
     </div>
 
+    <!-- Filtro de Semanas -->
+    @if(isset($opcionesSemanas))
+    <div class="mb-6">
+        <div class="bg-white rounded-xl shadow-lg p-4">
+            <form method="GET" action="{{ request()->url() }}" class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="flex-1">
+                    <label for="semana" class="block text-sm font-semibold text-gray-700 mb-2">
+                        📅 Filtrar por Semana de Feria
+                    </label>
+                    <p class="text-xs text-gray-500 mb-2">
+                        Las ventas van de domingo a viernes, y se entregan el sábado en la feria
+                    </p>
+                    <select name="semana" id="semana" 
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        @foreach($opcionesSemanas as $valor => $label)
+                            <option value="{{ $valor }}" {{ request('semana', 0) == $valor ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors font-semibold">
+                        🔍 Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    <!-- Estadísticas rápidas de la semana -->
+    @if(isset($estadisticasSemana))
+    <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-lg p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ $estadisticasSemana['total'] }}</div>
+            <div class="text-sm text-blue-700">Total Pedidos</div>
+            <div class="text-xs text-gray-500">Esta semana</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600">{{ $estadisticasSemana['pendientes'] }}</div>
+            <div class="text-sm text-orange-700">Pendientes</div>
+            <div class="text-xs text-gray-500">Por pagar</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ $estadisticasSemana['listos'] }}</div>
+            <div class="text-sm text-green-700">Listos</div>
+            <div class="text-xs text-gray-500">Por armar</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">S/ {{ number_format($estadisticasSemana['ventas'], 2) }}</div>
+            <div class="text-sm text-purple-700">Ventas</div>
+            <div class="text-xs text-gray-500">Completadas</div>
+        </div>
+    </div>
+    @endif
+
     <!-- Filtros rápidos -->
     <div class="mb-6">
         <div class="bg-white rounded-xl shadow-lg p-4 overflow-x-auto">
             <div class="flex space-x-2 min-w-max">
-                <a href="{{ route('admin.pedidos.index') }}" 
-                   class="flex items-center px-4 py-2 rounded-lg {{ !request()->route()->named('admin.pedidos.pagados') && !request()->route()->named('admin.pedidos.listos') && !request()->route()->named('admin.pedidos.armados') ? 'bg-blue-100 text-blue-800 border-2 border-blue-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
+                @php
+                    $currentParams = request()->query();
+                @endphp
+                
+                <a href="{{ route('admin.pedidos.index', $currentParams) }}" 
+                   class="flex items-center px-4 py-2 rounded-lg {{ !request()->route()->named('admin.pedidos.pagados') && !request()->route()->named('admin.pedidos.listos') && !request()->route()->named('admin.pedidos.armados') && !request()->route()->named('admin.pedidos.expirados') ? 'bg-blue-100 text-blue-800 border-2 border-blue-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     📦 Todos los Pedidos
                 </a>
-                <a href="{{ route('admin.pedidos.pagados') }}" 
+                <a href="{{ route('admin.pedidos.pagados', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.pagados') ? 'bg-orange-100 text-orange-800 border-2 border-orange-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
-                    💳 Pagados (Por Armar)
+                    💳 Pagados 
                 </a>
-                <a href="{{ route('admin.pedidos.listos') }}" 
+                <a href="{{ route('admin.pedidos.listos', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.listos') ? 'bg-green-100 text-green-800 border-2 border-green-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     ✅ Listos (Para Armar)
                 </a>
-                <a href="{{ route('admin.pedidos.armados') }}" 
+                <a href="{{ route('admin.pedidos.armados', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.armados') ? 'bg-purple-100 text-purple-800 border-2 border-purple-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     📋 Armados (Para Entregar)
+                </a>
+                <a href="{{ route('admin.pedidos.expirados', $currentParams) }}" 
+                   class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.expirados') ? 'bg-red-100 text-red-800 border-2 border-red-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
+                    ⏰ Expirados
                 </a>
             </div>
         </div>
@@ -48,6 +122,11 @@
                 Pedidos Registrados 
                 @if(isset($pedidos))
                     ({{ method_exists($pedidos, 'total') ? $pedidos->total() : $pedidos->count() }})
+                @endif
+                @if(isset($inicioSemana) && isset($finSemana))
+                    <span class="text-sm text-gray-600 font-normal">
+                        - Semana {{ $inicioSemana->format('d/m') }} al {{ $finSemana->format('d/m') }}
+                    </span>
                 @endif
             </h3>
         </div>
@@ -87,7 +166,8 @@
                                     'armado' => ['texto' => 'Armado', 'color' => 'bg-blue-100 text-blue-800'],
                                     'en_entrega' => ['texto' => 'En Entrega', 'color' => 'bg-purple-100 text-purple-800'],
                                     'entregado' => ['texto' => 'Entregado', 'color' => 'bg-emerald-100 text-emerald-800'],
-                                    'cancelado' => ['texto' => 'Cancelado', 'color' => 'bg-red-100 text-red-800']
+                                    'cancelado' => ['texto' => 'Cancelado', 'color' => 'bg-red-100 text-red-800'],
+                                    'expirado' => ['texto' => 'Expirado', 'color' => 'bg-red-200 text-red-900']
                                 ];
                                 $config = $estadoConfig[$pedido->estado] ?? ['texto' => ucfirst($pedido->estado), 'color' => 'bg-gray-100 text-gray-800'];
                             @endphp
@@ -151,7 +231,11 @@
                         <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                             <div class="text-6xl mb-4">📦</div>
                             <h3 class="text-lg font-semibold mb-2">No hay pedidos</h3>
-                            <p class="text-sm">Los pedidos aparecerán aquí cuando los clientes hagan compras</p>
+                            @if(isset($inicioSemana) && isset($finSemana))
+                                <p class="text-sm">No hay pedidos en la semana del {{ $inicioSemana->format('d/m/Y') }} al {{ $finSemana->format('d/m/Y') }}</p>
+                            @else
+                                <p class="text-sm">Los pedidos aparecerán aquí cuando los clientes hagan compras</p>
+                            @endif
                         </td>
                     </tr>
                     @endforelse
@@ -162,21 +246,21 @@
         <!-- Paginación -->
         @if(isset($pedidos) && method_exists($pedidos, 'hasPages') && $pedidos->hasPages())
         <div class="p-4 border-t border-gray-200">
-            {{ $pedidos->links() }}
+            {{ $pedidos->appends(request()->query())->links() }}
         </div>
         @endif
     </div>
 
     <!-- Acciones rápidas -->
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <a href="{{ route('admin.reportes.semanales') }}" 
+        <a href="{{ route('admin.reportes.semanales', isset($currentParams) ? $currentParams : []) }}" 
            class="bg-green-50 border-2 border-green-200 rounded-xl p-4 hover:border-green-300 hover:shadow-lg transition-all text-center group">
             <span class="text-2xl mb-2 block group-hover:animate-bounce">💰</span>
             <h4 class="font-semibold text-green-800">Pagos Agricultores</h4>
             <p class="text-sm text-green-600">Liquidar pagos pendientes</p>
         </a>
         
-        <a href="{{ route('admin.reportes.semanales') }}" 
+        <a href="{{ route('admin.reportes.semanales', isset($currentParams) ? $currentParams : []) }}" 
            class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-lg transition-all text-center group">
             <span class="text-2xl mb-2 block group-hover:animate-bounce">📈</span>
             <h4 class="font-semibold text-blue-800">Reportes</h4>
@@ -192,6 +276,13 @@
     </div>
 
 </div>
+
+<script>
+// Auto-submit form when week selection changes
+document.getElementById('semana')?.addEventListener('change', function() {
+    this.form.submit();
+});
+</script>
 
 <style>
 @keyframes bounce {

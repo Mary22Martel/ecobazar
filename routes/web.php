@@ -150,6 +150,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agricultor/pagos/detalle', [AgricultorController::class, 'detallePagos'])->name('agricultor.detalle-pagos');
     Route::get('/admin/pagos/agricultor/{id}', [App\Http\Controllers\Admin\AdminController::class, 'detallePagoAgricultor'])
     ->name('admin.pagos.detalle-agricultor');
+     // Ruta para ver pedidos expirados (admin)
+    Route::get('/admin/pedidos/expirados', [App\Http\Controllers\Admin\AdminController::class, 'pedidosExpirados'])
+        ->name('admin.pedidos.expirados');
+    
+    // Ruta para agricultores - ver sus pedidos expirados
+    Route::get('/agricultor/pedidos/expirados', [App\Http\Controllers\OrderController::class, 'pedidosExpirados'])
+        ->name('agricultor.pedidos.expirados');
+    
     
 });
 });

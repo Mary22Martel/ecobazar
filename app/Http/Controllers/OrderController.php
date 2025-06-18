@@ -135,6 +135,8 @@ class OrderController extends Controller
             $orden->total = $total;
             $orden->estado = 'pendiente'; // Siempre pendiente hasta confirmar pago
             $orden->repartidor_id = $repartidorId;
+            $orden->expires_at = Carbon::now('America/Lima')->addMinutes(20);
+            $orden->stock_reserved = true;
             $orden->save();
 
             Log::info('Orden creada con ID: ' . $orden->id);
@@ -184,101 +186,149 @@ class OrderController extends Controller
             ], 500);
         }
     }
+    // En tu OrderController.php, agrega este método __construct:
+
+    public function __construct()
+    {
+        // Verificar y expirar pedidos automáticamente en cada carga
+        $this->checkExpiredOrders();
+    }
+
+    /**
+     * Verificar y expirar pedidos vencidos automáticamente
+     */
+    private function checkExpiredOrders()
+    {
+        try {
+            // REDUCIR el cache a 30 segundos para ser más responsivo
+            $lastCheck = cache('last_expire_check');
+            if ($lastCheck && now()->diffInSeconds($lastCheck) < 30) {
+                return; 
+            }
+            
+            // Usar la misma zona horaria
+            $expiredOrders = Order::where('estado', 'pendiente')
+                ->where('expires_at', '<=', Carbon::now('America/Lima'))
+                ->where('stock_reserved', true)
+                ->get();
+
+            foreach ($expiredOrders as $order) {
+                // Liberar stock
+                foreach ($order->items as $item) {
+                    $item->product->increment('cantidad_disponible', $item->cantidad);
+                }
+                
+                // Marcar como expirado
+                $order->update([
+                    'estado' => 'expirado',
+                    'stock_reserved' => false
+                ]);
+                
+                Log::info("Pedido #{$order->id} expirado automáticamente");
+            }
+            
+            // Cache por solo 30 segundos
+            cache(['last_expire_check' => now()], 30);
+            
+        } catch (\Exception $e) {
+            Log::error('Error verificando pedidos expirados: ' . $e->getMessage());
+        }
+    }
 
     private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
-{
-    try {
-        Log::info('=== INICIANDO MERCADO PAGO ===');
-        
-        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-        $client = new PreferenceClient();
-
-        // Preparar items para MercadoPago
-        $items = [];
-        
-        // Item principal con el total
-        $items[] = [
-            "title" => "Pedido #" . $orden->id . " - Punto Verde",
-            "quantity" => 1,
-            "currency_id" => "PEN",
-            "unit_price" => floatval($subtotal + $costoEnvio)
-        ];
-
-        // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
-        if ($costoEnvio > 0) {
-            // Agregar información adicional en el título del item
-            $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
-        }
-
-        // Configuración simplificada - removiendo elementos problemáticos
-        $preferenceData = [
-            "items" => $items,
-            "back_urls" => [
-                "success" => url("/orden-exito/{$orden->id}"),
-                "failure" => url("/order/failed"),
-                "pending" => url("/orden-exito/{$orden->id}")
-            ],
-            "external_reference" => strval($orden->id),
-            "statement_descriptor" => "Punto Verde"
-            // REMOVIDO: auto_return, payment_methods, shipments
-        ];
-
-        Log::info('Datos para MercadoPago:', $preferenceData);
-
-        $preference = $client->create($preferenceData);
-        
-        Log::info('Preferencia creada exitosamente');
-        Log::info('Init point: ' . $preference->init_point);
-
-        return response()->json([
-            'success' => true,
-            'init_point' => $preference->init_point
-        ]);
-
-    } catch (MPApiException $e) {
-        Log::error('Error MercadoPago API: ' . $e->getMessage());
-        
-        // Manejo seguro de la respuesta del error
+    {
         try {
-            $apiResponse = $e->getApiResponse();
-            if ($apiResponse) {
-                $content = $apiResponse->getContent();
-                if (is_array($content)) {
-                    Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
-                } elseif (is_string($content)) {
-                    Log::error('MercadoPago Response (String): ' . $content);
+            Log::info('=== INICIANDO MERCADO PAGO ===');
+            
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+            $client = new PreferenceClient();
+
+            // Preparar items para MercadoPago
+            $items = [];
+            
+            // Item principal con el total
+            $items[] = [
+                "title" => "Pedido #" . $orden->id . " - Punto Verde",
+                "quantity" => 1,
+                "currency_id" => "PEN",
+                "unit_price" => floatval($subtotal + $costoEnvio)
+            ];
+
+            // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
+            if ($costoEnvio > 0) {
+                // Agregar información adicional en el título del item
+                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
+            }
+
+            // Configuración simplificada - removiendo elementos problemáticos
+            $preferenceData = [
+                "items" => $items,
+                "back_urls" => [
+                    "success" => url("/orden-exito/{$orden->id}"),
+                    "failure" => url("/order/failed"),
+                    "pending" => url("/orden-exito/{$orden->id}")
+                ],
+                "external_reference" => strval($orden->id),
+                "statement_descriptor" => "Punto Verde"
+                // REMOVIDO: auto_return, payment_methods, shipments
+            ];
+
+            Log::info('Datos para MercadoPago:', $preferenceData);
+
+            $preference = $client->create($preferenceData);
+            
+            Log::info('Preferencia creada exitosamente');
+            Log::info('Init point: ' . $preference->init_point);
+
+            return response()->json([
+                'success' => true,
+                'init_point' => $preference->init_point
+            ]);
+
+        } catch (MPApiException $e) {
+            Log::error('Error MercadoPago API: ' . $e->getMessage());
+            
+            // Manejo seguro de la respuesta del error
+            try {
+                $apiResponse = $e->getApiResponse();
+                if ($apiResponse) {
+                    $content = $apiResponse->getContent();
+                    if (is_array($content)) {
+                        Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
+                    } elseif (is_string($content)) {
+                        Log::error('MercadoPago Response (String): ' . $content);
+                    } else {
+                        Log::error('MercadoPago Response (Other): ' . print_r($content, true));
+                    }
                 } else {
-                    Log::error('MercadoPago Response (Other): ' . print_r($content, true));
+                    Log::error('No se pudo obtener respuesta de MercadoPago API');
                 }
-            } else {
-                Log::error('No se pudo obtener respuesta de MercadoPago API');
+            } catch (Exception $logException) {
+                Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
             }
-        } catch (Exception $logException) {
-            Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
-        }
-        
-        try {
-            if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
-                $statusCode = $e->getApiResponse()->getStatusCode();
-                Log::error('MercadoPago HTTP Status Code: ' . $statusCode);
+            
+            try {
+                if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
+                    $statusCode = $e->getApiResponse()->getStatusCode();
+                    Log::error('MercadoPago HTTP Status Code: ' . $statusCode);
+                }
+            } catch (Exception $statusException) {
+                Log::error('Error obteniendo status code: ' . $statusException->getMessage());
             }
-        } catch (Exception $statusException) {
-            Log::error('Error obteniendo status code: ' . $statusException->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
+            ], 500);
+        } catch (Exception $e) {
+            Log::error('Error general MercadoPago: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al procesar el pago'
+            ], 500);
         }
-        
-        return response()->json([
-            'success' => false,
-            'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
-        ], 500);
-    } catch (Exception $e) {
-        Log::error('Error general MercadoPago: ' . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'error' => 'Error al procesar el pago'
-        ], 500);
     }
-}
 
    public function success($orderId)
     {
@@ -528,10 +578,34 @@ class OrderController extends Controller
         return view('agricultor.pedidos_listos', compact('pedidos'));
     }
 
+    public function pedidosExpirados()
+    {
+        if (Auth::user()->role !== 'agricultor') {
+            abort(403, 'No autorizado');
+        }
+
+        // Mostrar pedidos expirados del agricultor
+        $pedidos = Order::whereHas('items.product', function($query) {
+            $query->where('user_id', Auth::id());
+        })
+        ->where('estado', 'expirado')
+        ->with([
+            'items.product.categoria',
+            'items.product.medida', 
+            'items.product.user',
+            'user'
+        ])
+        ->orderBy('updated_at', 'desc')
+        ->get();
+
+        return view('agricultor.pedidos_expirados', compact('pedidos'));
+    }
+
     // Métodos para admin
     public function todosLosPedidos()
     {
         $pedidos = Order::with(['items.product', 'user'])
+                        ->where('estado', '!=', 'expirado')
                        ->orderBy('created_at', 'desc')
                        ->get();
                        

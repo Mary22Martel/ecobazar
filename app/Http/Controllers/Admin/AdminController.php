@@ -11,6 +11,7 @@ use App\Models\Zone;
 use App\Models\Mercado;
 use App\Models\Medida;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,6 +20,33 @@ class AdminController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+        $this->checkExpiredOrders();
+    }
+
+    private function checkExpiredOrders()
+    {
+        try {
+            $expiredOrders = Order::where('estado', 'pendiente')
+                ->where('expires_at', '<=', Carbon::now('America/Lima'))
+                ->where('stock_reserved', true)
+                ->get();
+
+            foreach ($expiredOrders as $order) {
+                foreach ($order->items as $item) {
+                    $item->product->increment('cantidad_disponible', $item->cantidad);
+                }
+                
+                $order->update([
+                    'estado' => 'expirado',
+                    'stock_reserved' => false
+                ]);
+                
+                Log::info("Pedido #{$order->id} expirado automáticamente desde AdminController");
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Error verificando pedidos expirados desde Admin: ' . $e->getMessage());
+        }
     }
 
     // ==================== LÓGICA DE SEMANA DE FERIA ====================
@@ -83,79 +111,276 @@ class AdminController extends Controller
         return $opciones;
     }
 
-    public function index()
-    {
-        $this->authorizeRoles(['admin']);
-        
-        // Estadísticas generales
-        $pedidosHoy = Order::whereDate('created_at', today())->count();
-        $pedidosPendientes = Order::whereIn('estado', ['pendiente', 'pagado'])->count();
-        $pedidosListos = Order::where('estado', 'listo')->count();
-        $pedidosArmados = Order::where('estado', 'armado')->count();
-        
-        // Estadísticas de la semana de feria actual
-        $semanaActual = $this->calcularSemanaFeria();
-        $inicioSemana = $semanaActual['inicio_ventas'];
-        $finSemana = $semanaActual['fin_ventas'];
-        
-        $ventasSemana = Order::whereBetween('created_at', [
+  
+public function index()
+{
+    $this->authorizeRoles(['admin']);
+    
+    // ========== CÁLCULO DE SEMANA DE FERIA ACTUAL ==========
+    $semanaActual = $this->calcularSemanaFeria();
+    $inicioSemana = $semanaActual['inicio_ventas'];  // Domingo
+    $finSemana = $semanaActual['fin_ventas'];        // Viernes
+    $diaEntrega = $semanaActual['dia_entrega'];      // Sábado
+    
+    // ========== RESUMEN DE PEDIDOS PARA ESTA SEMANA ==========
+    
+    // Pedidos de esta semana (domingo a viernes)
+    $pedidosSemana = Order::whereBetween('created_at', [
+                        $inicioSemana->startOfDay(), 
+                        $finSemana->endOfDay()
+                    ])
+                    ->where('estado', '!=', 'expirado')
+                    ->count();
+    
+    // Pedidos pendientes/pagados (necesitan preparación)
+    $pedidosPendientesSemana = Order::whereBetween('created_at', [
+                                $inicioSemana->startOfDay(), 
+                                $finSemana->endOfDay()
+                            ])
+                            ->whereIn('estado', ['pendiente', 'pagado'])
+                            ->count();
+    
+    // Pedidos listos (necesitan ser armados por admin)
+    $pedidosListosSemana = Order::whereBetween('created_at', [
                             $inicioSemana->startOfDay(), 
                             $finSemana->endOfDay()
                         ])
-                        ->where('estado', '!=', 'cancelado')
+                        ->where('estado', 'listo')
+                        ->count();
+    
+    // Pedidos armados (listos para entrega en sábado)
+    $pedidosArmadosSemana = Order::whereBetween('created_at', [
+                            $inicioSemana->startOfDay(), 
+                            $finSemana->endOfDay()
+                        ])
+                        ->where('estado', 'armado')
+                        ->count();
+    
+    // Pedidos expirados de esta semana
+    $pedidosExpiradosSemana = Order::whereBetween('created_at', [
+                                $inicioSemana->startOfDay(), 
+                                $finSemana->endOfDay()
+                            ])
+                            ->where('estado', 'expirado')
+                            ->count();
+    
+    // ========== VENTAS Y ESTADÍSTICAS DE LA SEMANA ==========
+    
+    // Ventas totales de la semana (solo pedidos armados = completados)
+    $ventasSemanaActual = Order::whereBetween('created_at', [
+                            $inicioSemana->startOfDay(), 
+                            $finSemana->endOfDay()
+                        ])
+                        ->where('estado', 'armado')
                         ->sum('total');
+    
+    // Ventas potenciales (todos los pedidos no cancelados ni expirados)
+    $ventasPotencialesSemana = Order::whereBetween('created_at', [
+                                $inicioSemana->startOfDay(), 
+                                $finSemana->endOfDay()
+                            ])
+                            ->whereNotIn('estado', ['cancelado', 'expirado'])
+                            ->sum('total');
+    
+    // Agricultores activos esta semana (con ventas)
+    $agricultoresActivosSemana = User::where('role', 'agricultor')
+                                   ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
+                                       $query->whereBetween('created_at', [
+                                           $inicioSemana->startOfDay(), 
+                                           $finSemana->endOfDay()
+                                       ])
+                                       ->whereNotIn('estado', ['cancelado', 'expirado']);
+                                   })
+                                   ->count();
+    
+    // Productos vendidos esta semana (cantidad total)
+    $productosVendidosSemana = \App\Models\OrderItem::whereHas('order', function($query) use ($inicioSemana, $finSemana) {
+                                    $query->whereBetween('created_at', [
+                                        $inicioSemana->startOfDay(), 
+                                        $finSemana->endOfDay()
+                                    ])
+                                    ->where('estado', 'armado');
+                                })
+                                ->sum('cantidad');
+    
+    // Clientes únicos esta semana
+    $clientesUnicosSemana = Order::whereBetween('created_at', [
+                            $inicioSemana->startOfDay(), 
+                            $finSemana->endOfDay()
+                        ])
+                        ->whereNotIn('estado', ['cancelado', 'expirado'])
+                        ->distinct('user_id')
+                        ->count('user_id');
+    
+    // ========== RESUMEN GLOBALES DEL SISTEMA ==========
+    
+    // Pedidos globales (todos los tiempos, excluyendo expirados)
+    $totalPedidosGlobal = Order::where('estado', '!=', 'expirado')->count();
+    
+    // Ventas globales (solo pedidos completados)
+    $totalVentasGlobal = Order::where('estado', 'armado')->sum('total');
+    
+    // Total de agricultores en el sistema
+    $totalAgricultores = User::where('role', 'agricultor')->count();
+    
+    // Total de productos en el catálogo
+    $totalProductos = Product::count();
+    
+    // Total de clientes registrados
+    $totalClientes = User::where('role', 'cliente')->count();
+    
+    // Promedio de venta por pedido (global)
+    $promedioVentaPorPedido = $totalPedidosGlobal > 0 ? $totalVentasGlobal / $totalPedidosGlobal : 0;
+    
+    // ========== ESTADÍSTICAS ADICIONALES ==========
+    
+    // Tasa de conversión de la semana (armados vs total)
+    $tasaConversionSemana = $pedidosSemana > 0 ? ($pedidosArmadosSemana / $pedidosSemana) * 100 : 0;
+    
+    // Valor promedio por pedido esta semana
+    $promedioVentaSemana = $pedidosArmadosSemana > 0 ? $ventasSemanaActual / $pedidosArmadosSemana : 0;
+    
+    // Top categoría de la semana
+    $topCategoriaSemana = \App\Models\Categoria::whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
+                            $query->whereBetween('created_at', [
+                                $inicioSemana->startOfDay(), 
+                                $finSemana->endOfDay()
+                            ])
+                            ->where('estado', 'armado');
+                        })
+                        ->withCount(['productos as items_vendidos' => function($query) use ($inicioSemana, $finSemana) {
+                            $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
+                                $subQuery->whereBetween('created_at', [
+                                    $inicioSemana->startOfDay(), 
+                                    $finSemana->endOfDay()
+                                ])
+                                ->where('estado', 'armado');
+                            });
+                        }])
+                        ->orderByDesc('items_vendidos')
+                        ->first();
+    
+    // ========== CONFIGURACIONES DEL SISTEMA ==========
+    $totalZonas = Zone::count();
+    $totalCategorias = Categoria::count();
+    $totalMedidas = Medida::count();
+    $totalMercados = Mercado::count();
+    
+    // ========== ALERTAS Y NOTIFICACIONES ==========
+    
+    // Pedidos que necesitan atención inmediata
+    $pedidosUrgentes = Order::where('estado', 'listo')->count();
+    
+    // Productos con stock bajo (menos de 5 unidades)
+    $productosStockBajo = Product::where('cantidad_disponible', '<', 5)
+                                ->where('cantidad_disponible', '>', 0)
+                                ->count();
+    
+    // Productos sin stock
+    $productosSinStock = Product::where('cantidad_disponible', 0)->count();
+    
+    // ========== VARIABLES DE COMPATIBILIDAD ==========
+    // ESTAS SON LAS QUE FALTABAN Y CAUSABAN EL ERROR
+    $pedidosHoy = $pedidosSemana;           // Cambiado a semana
+    $pedidosPendientes = $pedidosPendientesSemana;
+    $pedidosListos = $pedidosListosSemana;
+    $pedidosArmados = $pedidosArmadosSemana;
+    $ventasSemana = $ventasSemanaActual;
+    $agricultoresActivos = $agricultoresActivosSemana;
+    
+    return view('admin.dashboard', compact(
+        // Información de la semana de feria
+        'inicioSemana',
+        'finSemana',
+        'diaEntrega',
         
-        $agricultoresActivos = User::where('role', 'agricultor')
-                                 ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                                     $query->whereBetween('created_at', [
-                                         $inicioSemana->startOfDay(), 
-                                         $finSemana->endOfDay()
-                                     ]);
-                                 })
-                                 ->count();
+        // Resumen de pedidos para esta semana
+        'pedidosSemana',
+        'pedidosPendientesSemana', 
+        'pedidosListosSemana',
+        'pedidosArmadosSemana',
+        'pedidosExpiradosSemana',
         
-        $totalAgricultores = User::where('role', 'agricultor')->count();
-        $totalProductos = Product::count();
+        // Ventas y estadísticas de la semana
+        'ventasSemanaActual',
+        'ventasPotencialesSemana',
+        'agricultoresActivosSemana',
+        'productosVendidosSemana',
+        'clientesUnicosSemana',
+        'tasaConversionSemana',
+        'promedioVentaSemana',
+        'topCategoriaSemana',
         
-        // Pedidos urgentes (más de 1 día sin atender)
-        $pedidosUrgentes = Order::whereIn('estado', ['pagado'])
-                               ->whereDate('created_at', '<=', Carbon::now()->subDays(1))
-                               ->count();
+        // Totales globales del sistema
+        'totalPedidosGlobal',
+        'totalVentasGlobal',
+        'totalAgricultores',
+        'totalProductos',
+        'totalClientes',
+        'promedioVentaPorPedido',
         
         // Configuraciones del sistema
-        $totalZonas = Zone::count();
-        $totalCategorias = Categoria::count();
-        $totalMedidas = Medida::count();
-        $totalMercados = Mercado::count();
+        'totalZonas',
+        'totalCategorias',
+        'totalMedidas',
+        'totalMercados',
         
-        return view('admin.dashboard', compact(
-            'pedidosHoy',
-            'pedidosPendientes', 
-            'pedidosListos',
-            'pedidosArmados',
-            'ventasSemana',
-            'agricultoresActivos',
-            'totalAgricultores',
-            'totalProductos',
-            'pedidosUrgentes',
-            'totalZonas',
-            'totalCategorias', 
-            'totalMedidas',
-            'totalMercados'
-        ));
-    }
+        // Alertas y notificaciones
+        'pedidosUrgentes',
+        'productosStockBajo',
+        'productosSinStock',
+        
+        // Variables compatibles con vista actual
+        'pedidosHoy',
+        'pedidosPendientes',
+        'pedidosListos',
+        'pedidosArmados',
+        'ventasSemana',
+        'agricultoresActivos'
+    ));
+}
 
     // ==================== GESTIÓN DE PEDIDOS ====================
     
-    public function pedidos()
+    public function pedidos(Request $request)
     {
         $this->authorizeRoles(['admin']);
         
-        $pedidos = Order::with(['user', 'items.product.user'])
-                       ->orderBy('created_at', 'desc')
-                       ->paginate(20);
+        // Obtener semana seleccionada
+        $semanaSeleccionada = $request->get('semana', 0);
         
-        return view('admin.pedidos.index', compact('pedidos'));
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $inicioSemana = $semanaFeria['inicio_ventas'];
+        $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        // Consulta base con filtro de semana
+        $query = Order::with(['user', 'items.product.user'])
+                    ->where('estado', '!=', 'expirado')
+                    ->whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->orderBy('created_at', 'desc');
+        
+        $pedidos = $query->paginate(20);
+        
+        // Estadísticas de la semana
+        $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+        
+        return view('admin.pedidos.index', compact(
+            'pedidos',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega',
+            'estadisticasSemana'
+        ));
     }
 
     public function detallePedido($id)
@@ -191,40 +416,216 @@ class AdminController extends Controller
         return back()->with('success', $mensaje);
     }
 
-    public function pedidosPagados()
+    public function pedidosPagados(Request $request)
     {
         $this->authorizeRoles(['admin']);
         
-        $pedidos = Order::with(['user', 'items.product.user'])
-                       ->where('estado', 'pagado')
-                       ->orderBy('created_at', 'desc')
-                       ->paginate(20);
+        // Obtener semana seleccionada
+        $semanaSeleccionada = $request->get('semana', 0);
         
-        return view('admin.pedidos.pagados', compact('pedidos'));
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $inicioSemana = $semanaFeria['inicio_ventas'];
+        $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        // Consulta con filtros
+        $pedidos = Order::with(['user', 'items.product.user'])
+                    ->where('estado', 'pagado')
+                    ->whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20);
+        
+        // Estadísticas de la semana
+        $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+        
+        return view('admin.pedidos.pagados', compact(
+            'pedidos',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega',
+            'estadisticasSemana'
+        ));
     }
 
-    public function pedidosListos()
+
+    public function pedidosListos(Request $request)
     {
         $this->authorizeRoles(['admin']);
         
-        $pedidos = Order::with(['user', 'items.product.user'])
-                       ->where('estado', 'listo')
-                       ->orderBy('created_at', 'desc')
-                       ->paginate(20);
+        // Obtener semana seleccionada
+        $semanaSeleccionada = $request->get('semana', 0);
         
-        return view('admin.pedidos.listos', compact('pedidos'));
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $inicioSemana = $semanaFeria['inicio_ventas'];
+        $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        // Consulta con filtros
+        $pedidos = Order::with(['user', 'items.product.user'])
+                    ->where('estado', 'listo')
+                    ->whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20);
+        
+        // Estadísticas de la semana
+        $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+        
+        return view('admin.pedidos.listos', compact(
+            'pedidos',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega',
+            'estadisticasSemana'
+        ));
     }
 
-    public function pedidosArmados()
+    public function pedidosArmados(Request $request)
     {
         $this->authorizeRoles(['admin']);
         
-        $pedidos = Order::with(['user', 'items.product.user'])
-                       ->where('estado', 'armado')
-                       ->orderBy('created_at', 'desc')
-                       ->paginate(20);
+        // Obtener semana seleccionada
+        $semanaSeleccionada = $request->get('semana', 0);
         
-        return view('admin.pedidos.armados', compact('pedidos'));
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $inicioSemana = $semanaFeria['inicio_ventas'];
+        $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        // Consulta con filtros
+        $pedidos = Order::with(['user', 'items.product.user'])
+                    ->where('estado', 'armado')
+                    ->whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20);
+        
+        // Estadísticas de la semana
+        $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+        
+        return view('admin.pedidos.armados', compact(
+            'pedidos',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega',
+            'estadisticasSemana'
+        ));
+    }
+
+   public function pedidosExpirados(Request $request)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        // Obtener semana seleccionada
+        $semanaSeleccionada = $request->get('semana', 0);
+        
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $inicioSemana = $semanaFeria['inicio_ventas'];
+        $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        // Consulta con filtros
+        $pedidos = Order::with(['user', 'items.product.user'])
+                    ->where('estado', 'expirado')
+                    ->whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->orderBy('updated_at', 'desc')
+                    ->paginate(20);
+        
+        // Estadísticas de la semana
+        $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+        
+        return view('admin.pedidos.expirados', compact(
+            'pedidos',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega',
+            'estadisticasSemana'
+        ));
+    }
+
+    private function calcularEstadisticasPedidosSemana($inicioSemana, $finSemana)
+    {
+        // Total de pedidos de la semana (excluyendo expirados)
+        $total = Order::whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->where('estado', '!=', 'expirado')
+                    ->count();
+        
+        // Pedidos pendientes (pendiente + pagado)
+        $pendientes = Order::whereBetween('created_at', [
+                            $inicioSemana->startOfDay(),
+                            $finSemana->endOfDay()
+                        ])
+                        ->whereIn('estado', ['pendiente', 'pagado'])
+                        ->count();
+        
+        // Pedidos listos
+        $listos = Order::whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->where('estado', 'listo')
+                    ->count();
+        
+        // Pedidos armados
+        $armados = Order::whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->where('estado', 'armado')
+                    ->count();
+        
+        // Ventas completadas (solo armados)
+        $ventas = Order::whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->where('estado', 'armado')
+                    ->sum('total');
+        
+        return [
+            'total' => $total,
+            'pendientes' => $pendientes,
+            'listos' => $listos,
+            'armados' => $armados,
+            'ventas' => $ventas
+        ];
     }
 
     // ==================== GESTIÓN DE PAGOS ====================
