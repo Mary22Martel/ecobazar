@@ -8,7 +8,7 @@
     <div class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div class="mb-4 lg:mb-0">
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">💰 MIS PAGOS</h1>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">💰 TUS PAGOS</h1>
                 <p class="text-green-100 text-base sm:text-lg mb-2">
                     📅 Período: {{ $fechaInicio->format('d/m/Y') }} - {{ $fechaFin->format('d/m/Y') }}
                 </p>
@@ -26,40 +26,6 @@
             </div>
         </div>
     </div>
-
-    <!-- FILTRO DE SEMANAS - IGUAL QUE EL ADMIN -->
-    <div class="mb-6">
-        <div class="bg-white rounded-xl shadow-lg p-4">
-            <form method="GET" action="{{ route('agricultor.pagos') }}" class="flex flex-col sm:flex-row gap-4 items-end">
-                <div class="flex-1">
-                    <label for="semana" class="block text-sm font-semibold text-gray-700 mb-2">
-                        📅 Seleccionar Semana
-                    </label>
-                    <select name="semana" id="semana" 
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                        @foreach($opcionesSemanas as $valor => $label)
-                            <option value="{{ $valor }}" {{ $semanaSeleccionada === $valor ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="flex gap-2">
-                    <button type="submit" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">
-                        🔍 Consultar
-                    </button>
-                    @if($totalPagar > 0)
-                        <a href="{{ route('agricultor.pagos.exportar', ['semana' => $semanaSeleccionada]) }}" 
-                           class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">
-                            📥 Exportar CSV
-                        </a>
-                    @endif
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Navegación de regreso -->
     <div class="mb-4 sm:mb-6">
         <a href="{{ route('agricultor.dashboard') }}" 
@@ -67,9 +33,87 @@
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
-            Volver al panel
+            Volver al incio
         </a>
     </div>
+
+    <!-- FILTRO DE SEMANAS - Responsive mejorado -->
+    <div class="mb-6">
+        <div class="bg-white rounded-xl shadow-lg p-3 sm:p-4 filtro-container">
+            <form method="GET" action="{{ route('agricultor.pagos') }}" class="space-y-3 sm:space-y-0 sm:flex sm:gap-4 sm:items-end">
+                
+                <!-- Label y select en móvil -->
+                <div class="flex-1 space-y-2 sm:space-y-0 min-w-0">
+                    <label for="semana" class=" text-sm font-semibold text-gray-700 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Seleccionar Semana</span>
+                        <span class="sm:hidden truncate">Semana</span>
+                    </label>
+                    
+                    <!-- Select mejorado para móvil -->
+                    <div class="relative">
+                        <select name="semana" id="semana" 
+                                class="w-full appearance-none border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-10 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-white shadow-sm overflow-hidden text-ellipsis">
+                            @foreach($opcionesSemanas as $valor => $label)
+                                <option value="{{ $valor }}" {{ $semanaSeleccionada === $valor ? 'selected' : '' }}>
+                                    @if(strlen($label) > 25)
+                                        {{ substr($label, 0, 22) }}...
+                                    @else
+                                        {{ $label }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <!-- Icono de dropdown personalizado -->
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones responsive -->
+                <div class="flex gap-2 sm:flex-shrink-0">
+                    <button type="submit" 
+                            class="flex-1 sm:flex-initial bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-2 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <span class="sm:hidden">Buscar</span>
+                        <span class="hidden sm:inline">Consultar</span>
+                    </button>
+                    @if($totalPagar > 0)
+                        <a href="{{ route('agricultor.pagos.pdf', ['semana' => $semanaSeleccionada]) }}"
+                           class="flex-1 sm:flex-initial bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-2 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span class="sm:hidden">PDF</span>
+                            <span class="hidden sm:inline">Descargar PDF</span>
+                        </a>
+                    @endif
+                </div>
+            </form>
+            
+            <!-- Indicador de semana actual en móvil -->
+            <div class="mt-3 sm:hidden">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-2">
+                    <div class="flex items-center text-xs text-green-700">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">Mostrando:</span>
+                        <span class="ml-1 truncate">{{ $opcionesSemanas[$semanaSeleccionada] ?? 'Esta semana' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
 
     @if($pagos->isEmpty())
         <!-- Estado vacío mejorado -->
@@ -90,7 +134,10 @@
                     </a>
                     <a href="{{ route('agricultor.pedidos_pendientes') }}" 
                        class="inline-flex items-center justify-center bg-gray-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold hover:bg-gray-600 transform hover:scale-105 transition-all shadow-lg">
-                        📦 Ver Pedidos
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                        Ver Pedidos
                     </a>
                 </div>
                 
@@ -105,7 +152,7 @@
     @else
         <!-- Cards de estadísticas responsivas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <!-- Total Productos -->
+            <!-- Total Productos
             <div class="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-l-4 border-green-500">
                 <div class="flex items-center">
                     <div class="bg-green-100 p-3 rounded-full flex-shrink-0">
@@ -116,7 +163,7 @@
                         <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ $totalProductos }}</p>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Total Cantidad -->
             <div class="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-l-4 border-green-400">
@@ -388,68 +435,14 @@
                     <span class="text-xl">ℹ️</span>
                 </div>
                 <div>
-                    <h4 class="text-lg font-semibold text-green-800 mb-2">Información sobre Pagos</h4>
-                    <div class="text-green-700 space-y-2 text-sm sm:text-base">
-                        <p>• Los pagos se calculan de <strong>lunes a domingo</strong> de cada semana.</p>
-                        <p>• <strong>IMPORTANTE:</strong> Solo se pagan los pedidos en estado <span class="bg-green-200 text-green-800 px-2 py-1 rounded-full font-semibold">✅ ARMADO</span>.</p>
+                    <h4 class="text-base font-semibold text-green-800 mb-2">Información sobre Pagos</h4>
+                    <div class="text-green-700 space-y-2 text-sm sm:text-xs">
+                        <p>• Los pagos se calculan de <strong>domingo a viernes</strong> de cada semana.</p>
+                        <p>• <strong>IMPORTANTE:</strong> Solo se pagan los pedidos en estado <br><span class="text-green-600">✅ ARMADO</span>.</p>
                         <p>• Los pedidos armados indican que fueron verificados y están listos para entrega.</p>
-                        <p>• Los montos se pagan típicamente los <strong>sábados</strong> después del cierre semanal.</p>
+                        <p>• Los montos se pagan los <strong>sábados.</strong></p>
                         <p>• Puedes usar el filtro de arriba para consultar pagos de <strong>semanas anteriores</strong>.</p>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Panel de estados simplificado -->
-        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-            <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span class="bg-green-100 p-2 rounded-full mr-3">📊</span>
-                Estado de tus Pedidos - Semana Seleccionada
-            </h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <!-- Pedidos Pagados -->
-                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">💰 Pagados</p>
-                            <p class="text-lg font-bold text-gray-800">{{ $estadisticas['pagado']['count'] ?? 0 }} pedidos</p>
-                            <p class="text-sm text-gray-600">S/ {{ number_format($estadisticas['pagado']['monto'] ?? 0, 2) }}</p>
-                        </div>
-                        <div class="text-gray-400">
-                            <span class="text-2xl">💰</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Esperando ser armados</p>
-                </div>
-
-                <!-- Pedidos Armados (destacado) -->
-                <div class="bg-green-50 border-2 border-green-400 rounded-xl p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-bold text-green-600">✅ ARMADOS</p>
-                            <p class="text-lg font-bold text-green-800">{{ $estadisticas['armado']['count'] ?? 0 }} pedidos</p>
-                            <p class="text-sm font-bold text-green-600">S/ {{ number_format($estadisticas['armado']['monto'] ?? 0, 2) }}</p>
-                        </div>
-                        <div class="text-green-400">
-                            <span class="text-2xl">✅</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-green-600 mt-2 font-semibold">💸 Esto se te pagará</p>
-                </div>
-
-                <!-- Pedidos Entregados -->
-                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">🚚 Entregados</p>
-                            <p class="text-lg font-bold text-gray-800">{{ $estadisticas['entregado']['count'] ?? 0 }} pedidos</p>
-                            <p class="text-sm text-gray-600">S/ {{ number_format($estadisticas['entregado']['monto'] ?? 0, 2) }}</p>
-                        </div>
-                        <div class="text-gray-400">
-                            <span class="text-2xl">🚚</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Ya completados</p>
                 </div>
             </div>
         </div>
@@ -457,10 +450,86 @@
 
 </div>
 
+<style>
+/* Mejoras específicas para el select en móvil */
+@media (max-width: 640px) {
+    select {
+        font-size: 16px; /* Evita zoom en iOS */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    
+    /* Mejora del botón en móvil */
+    .filter-button {
+        min-height: 44px; /* Área de toque recomendada */
+    }
+    
+    /* Contenedor del filtro más estrecho en móvil */
+    .filtro-container {
+        overflow: hidden;
+    }
+    
+    /* Opciones del select más cortas */
+    select option {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Animación suave para el cambio de semana */
+.week-transition {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Estado focus mejorado */
+select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+/* Hover states para desktop */
+@media (min-width: 641px) {
+    select:hover {
+        border-color: #22c55e;
+    }
+}
+</style>
+
 <script>
-// Auto-submit form when week selection changes (igual que en admin)
+// Auto-submit mejorado con indicador de carga
 document.getElementById('semana').addEventListener('change', function() {
+    const button = this.form.querySelector('button[type="submit"]');
+    const originalText = button.innerHTML;
+    
+    // Mostrar estado de carga
+    button.innerHTML = `
+        <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="sm:hidden">Cargando...</span>
+        <span class="hidden sm:inline">Filtrando...</span>
+    `;
+    
+    button.disabled = true;
+    
+    // Submit el formulario
     this.form.submit();
+});
+
+// Restaurar estado si hay error
+window.addEventListener('pageshow', function() {
+    const button = document.querySelector('button[type="submit"]');
+    if (button) {
+        button.disabled = false;
+    }
 });
 </script>
 

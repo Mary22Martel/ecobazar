@@ -83,7 +83,7 @@ class AdminController extends Controller
     /**
      * Genera las opciones de semanas para los selectores
      */
-    private function generarOpcionesSemanasFeria($cantidadSemanas = 12)
+    private function generarOpcionesSemanasFeria($cantidadSemanas = 5)
     {
         $opciones = [];
         
@@ -269,7 +269,12 @@ public function index()
     // ========== ALERTAS Y NOTIFICACIONES ==========
     
     // Pedidos que necesitan atención inmediata
-    $pedidosUrgentes = Order::where('estado', 'listo')->count();
+    $pedidosUrgentes = Order::where('estado', 'listo')
+                       ->whereBetween('created_at', [
+                           $inicioSemana->startOfDay(), 
+                           $finSemana->endOfDay()
+                       ])
+                       ->count();
     
     // Productos con stock bajo (menos de 5 unidades)
     $productosStockBajo = Product::where('cantidad_disponible', '<', 5)

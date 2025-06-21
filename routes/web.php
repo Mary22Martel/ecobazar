@@ -91,6 +91,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/carrito', [CarritoController::class, 'index'])->name('carrito.index');
     Route::post('/carrito/agregar/{productId}', [CarritoController::class, 'add'])->name('carrito.add');
     Route::post('/carrito/eliminar/{itemId}', [CarritoController::class, 'remove'])->name('carrito.remove');
+    Route::delete('/carrito/eliminar-ajax/{item}', [CarritoController::class, 'removeAjax'])->name('carrito.remove.ajax');
     Route::post('/carrito/clear', [CarritoController::class, 'clear'])->name('carrito.clear');
     Route::post('/carrito/actualizar/{itemId}', [CarritoController::class, 'update'])->name('carrito.update');
    // Route::post('/carrito/agregar/{id}', [CarritoController::class, 'add'])->name('carrito.add');
@@ -132,9 +133,10 @@ Route::middleware(['auth'])->group(function () {
     
     // Pedidos listos (estado: listo - preparados por el agricultor)
     Route::get('/agricultor/pedidos-listos', [AgricultorController::class, 'pedidosListos'])->name('agricultor.pedidos_listos');
-    
+    Route::get('/agricultor/pedidos_detalle', [AgricultorController::class, 'pedidosListos'])->name('agricultor.pedidos_detalle');
+
     // Ver detalle de un pedido específico
-    Route::get('/agricultor/pedido/{id}', [AgricultorController::class, 'detallePedido'])->name('agricultor.pedido.detalle');
+     Route::get('/agricultor/pedido/{id}', [AgricultorController::class, 'detallePedido'])->name('agricultor.pedido_detalle');
     
     // Marcar pedido como listo (agricultor confirma que preparó el pedido)
     Route::post('/agricultor/pedido/{id}/confirmar-listo', [AgricultorController::class, 'confirmarPedidoListo'])->name('agricultor.confirmar_pedido_listo');
@@ -144,7 +146,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agricultor/pagos', [AgricultorController::class, 'pagos'])->name('agricultor.pagos');
     
     // Exportar reporte de pagos
-    Route::get('/agricultor/pagos/exportar', [AgricultorController::class, 'exportarPagos'])->name('agricultor.pagos.exportar');
+    // Agregar esta ruta nueva
+    Route::get('/agricultor/pagos/pdf', [AgricultorController::class, 'exportarPagosPDF'])->name('agricultor.pagos.pdf');
     
     // Ver detalle de pagos por semana
     Route::get('/agricultor/pagos/detalle', [AgricultorController::class, 'detallePagos'])->name('agricultor.detalle-pagos');
@@ -170,12 +173,29 @@ Route::get('/mercadopago/failed', [MercadoPagoController::class, 'failed'])->nam
 
 //repartidor
 Route::middleware(['auth'])->group(function () {
+    // Dashboard del repartidor
+    Route::get('/repartidor', [RepartidorController::class, 'index'])->name('repartidor.dashboard');
+    
+    // Gestión de entregas
     Route::get('/repartidor/pedidos-pendientes', [RepartidorController::class, 'pedidosPendientes'])
         ->name('repartidor.pedidos_pendientes');
-    Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])->name('repartidor.pedido.entregado');
-    Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])->name('repartidor.pedido.proceso');
-    Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])->name('repartidor.pedido.detalle');
-
+    
+    // ✅ RUTAS FALTANTES - AGREGAR ESTAS:
+    Route::get('/repartidor/rutas', [RepartidorController::class, 'rutas'])
+        ->name('repartidor.rutas');
+    
+    Route::get('/repartidor/entregas-completadas', [RepartidorController::class, 'entregasCompletadas'])
+        ->name('repartidor.entregas_completadas');
+    
+    // Detalle y acciones de pedidos
+    Route::get('/repartidor/pedido/{id}', [RepartidorController::class, 'detallePedido'])
+        ->name('repartidor.pedido.detalle');
+    
+    Route::post('/repartidor/pedido/{id}/entregado', [RepartidorController::class, 'marcarComoEntregado'])
+        ->name('repartidor.pedido.entregado');
+    
+    Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])
+        ->name('repartidor.pedido.proceso');
 });
 
 //Rutas Admin - Agregar esto en web.php después de las rutas existentes

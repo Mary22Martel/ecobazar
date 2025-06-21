@@ -118,6 +118,24 @@
             height: 24px;
             font-size: 14px;
         }
+        .swal2-toast .swal2-timer-progress-bar {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .swal2-toast {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
     }
 
     </style>
@@ -657,10 +675,11 @@ $('.add-to-cart-form').off('submit').on('submit', function(e) {
                     toast: true,
                     position: 'top-end',
                     timerProgressBar: true,
-                    didOpen: () => {
-                        // Agregar un pequeño efecto al toast
-                        const toast = Swal.getPopup();
-                        toast.style.animation = 'slideInRight 0.3s ease-out';
+                    background: '#10b981',
+                    color: '#ffffff',
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
                     }
                 });
             }

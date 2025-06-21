@@ -42,10 +42,7 @@ class CarritoController extends Controller
             // Verificar stock disponible
             if ($producto->cantidad_disponible < $cantidadSolicitada) {
                 DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No hay suficiente stock disponible. Stock actual: ' . $producto->cantidad_disponible
-                ], 400);
+                return redirect()->back()->with('error', 'No hay suficiente stock disponible. Stock actual: ' . $producto->cantidad_disponible);
             }
 
             // TEMPORAL: Comentar validación de mercado
@@ -55,10 +52,7 @@ class CarritoController extends Controller
 
             if (!$mercadoActual || $mercadoDelProducto != $mercadoActual) {
                 DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Este producto no pertenece a la feria que estás visitando.'
-                ], 400);
+                return redirect()->back()->with('error', 'Este producto no pertenece a la feria que estás visitando.');
             }
             */
 
@@ -77,56 +71,43 @@ class CarritoController extends Controller
                 $nuevaCantidad = $item->cantidad + $cantidadSolicitada;
                 if ($nuevaCantidad > $producto->cantidad_disponible) {
                     DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No puedes agregar más de este producto. Stock disponible: ' . $producto->cantidad_disponible
-                    ], 400);
+                    return redirect()->back()->with('error', 'No puedes agregar más de este producto. Stock disponible: ' . $producto->cantidad_disponible);
                 }
                 
                 $item->cantidad = $nuevaCantidad;
                 $item->save();
+                
+                $mensaje = "Cantidad actualizada: {$nuevaCantidad} unidad(es) de {$producto->nombre}";
             } else {
                 $carrito->items()->create([
                     'producto_id' => $productId,
                     'cantidad' => $cantidadSolicitada,
                 ]);
+                
+                $mensaje = "Producto agregado: {$cantidadSolicitada} unidad(es) de {$producto->nombre}";
             }
 
-            // Cargar relaciones necesarias con eager loading
+            // Calcular totales para mostrar información adicional
             $carrito->load(['items.product' => function($query) {
                 $query->select('id', 'nombre', 'precio', 'imagen', 'cantidad_disponible');
             }]);
 
-            // Calcular totales
             $totalItems = $carrito->items->sum('cantidad');
-            $totalPrice = $carrito->items->sum(function($item) {
-                return $item->product->precio * $item->cantidad;
-            });
 
-             DB::commit();
+            DB::commit();
 
-            // Recargar el carrito con las relaciones necesarias
-            $carrito = Carrito::where('user_id', Auth::id())
-                              ->with('items')
-                              ->first();
+            return redirect()->back()->with('success', $mensaje . ". Total en carrito: {$totalItems} producto(s)");
 
-            // Calcular totales
-            $totalItems = $carrito ? $carrito->items->sum('cantidad') : 0;
-
-            return response()->json([
-                'success' => true,
-                'totalItems' => $totalItems,
-                'message' => 'Producto agregado al carrito'
-            ]);
-
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            Log::error('Producto no encontrado: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'El producto solicitado no existe.');
+            
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al agregar producto al carrito: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al agregar el producto al carrito. Por favor, intenta nuevamente.'
-            ], 500);
+            return redirect()->back()->with('error', 'Error al agregar el producto al carrito. Por favor, intenta nuevamente.');
         }
     }
 
@@ -413,6 +394,62 @@ class CarritoController extends Controller
         Log::error('Error al eliminar item del carrito: ' . $e->getMessage());
         return redirect()->route('carrito.index')
                        ->with('error', 'Error al eliminar el producto');
+    }
+}
+
+    /**
+ * Eliminar item vía AJAX
+ */
+public function removeAjax($itemId)
+{
+    try {
+        DB::beginTransaction();
+        
+        // Buscar el item del carrito del usuario autenticado
+        $item = CarritoItem::with('carrito')
+                          ->where('id', $itemId)
+                          ->whereHas('carrito', function($query) {
+                              $query->where('user_id', Auth::id());
+                          })
+                          ->first();
+
+        if (!$item) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => 'Producto no encontrado en tu carrito'
+            ], 404);
+        }
+
+        // Eliminar el item
+        $item->delete();
+
+        // Calcular nuevo total del carrito
+        $cartTotal = $this->calcularTotalCarrito(Auth::id());
+        
+        // Verificar si el carrito está vacío para eliminarlo
+        $carrito = $item->carrito;
+        if ($carrito->items()->count() === 0) {
+            $carrito->delete();
+            $cartTotal = 0;
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Producto eliminado del carrito',
+            'cartTotal' => $cartTotal
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error al eliminar item del carrito vía AJAX: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al eliminar el producto. Inténtalo de nuevo.'
+        ], 500);
     }
 }
     

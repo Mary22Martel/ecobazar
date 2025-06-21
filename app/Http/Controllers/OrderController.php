@@ -924,10 +924,11 @@ class OrderController extends Controller
             }
 
             $pedido = Order::findOrFail($id);
+            $agricultorId = Auth::id();
 
             // Verificar que el agricultor tenga productos en este pedido
-            $productosAgricultor = $pedido->items->filter(function($item) {
-                return $item->product->user_id == Auth::id();
+            $productosAgricultor = $pedido->items->filter(function($item) use ($agricultorId) {
+                return $item->product->user_id == $agricultorId;
             });
 
             if ($productosAgricultor->isEmpty()) {
@@ -940,13 +941,46 @@ class OrderController extends Controller
                                 ->with('error', 'Solo se pueden marcar como listos los pedidos pagados');
             }
 
-            // CAMBIO: En lugar de cambiar el estado del pedido a 'armado',
-            // solo cambiar a 'listo' para que el admin lo vea y lo pueda armar
-            $pedido->estado = 'listo';
-            $pedido->save();
+            // **REGISTRAR CONFIRMACIÓN DEL AGRICULTOR**
+            \App\Models\OrderAgricultorConfirmation::updateOrCreate(
+                [
+                    'order_id' => $pedido->id,
+                    'agricultor_id' => $agricultorId
+                ],
+                [
+                    'confirmed_at' => now()
+                ]
+            );
 
-            return redirect()->route('agricultor.pedidos_pendientes')
-                            ->with('success', '¡Pedido marcado como listo! El admin lo armará cuando esté todo preparado.');
+            // **VERIFICAR SI TODOS LOS AGRICULTORES HAN CONFIRMADO**
+            $agricultoresEnPedido = $pedido->items->pluck('product.user_id')->unique();
+            $agricultoresConfirmados = \App\Models\OrderAgricultorConfirmation::where('order_id', $pedido->id)
+                ->pluck('agricultor_id');
+
+            Log::info("Pedido {$pedido->id}: Agricultores en pedido: " . $agricultoresEnPedido->count());
+            Log::info("Pedido {$pedido->id}: Agricultores confirmados: " . $agricultoresConfirmados->count());
+            Log::info("Pedido {$pedido->id}: Lista agricultores en pedido: " . $agricultoresEnPedido->implode(', '));
+            Log::info("Pedido {$pedido->id}: Lista agricultores confirmados: " . $agricultoresConfirmados->implode(', '));
+
+            // Solo cambiar a 'listo' si TODOS los agricultores han confirmado
+            if ($agricultoresEnPedido->count() === $agricultoresConfirmados->count() && 
+                $agricultoresEnPedido->diff($agricultoresConfirmados)->isEmpty()) {
+                
+                $pedido->estado = 'listo';
+                $pedido->save();
+                
+                Log::info("Pedido {$pedido->id} cambiado a LISTO - todos los agricultores confirmaron");
+                
+                return redirect()->route('agricultor.pedidos_pendientes')
+                                ->with('success', '¡Pedido marcado como LISTO! Todos los agricultores han confirmado. El admin lo armará pronto.');
+            } else {
+                Log::info("Pedido {$pedido->id} - agricultor confirmado pero faltan otros agricultores");
+                
+                $faltantes = $agricultoresEnPedido->count() - $agricultoresConfirmados->count();
+                
+                return redirect()->route('agricultor.pedidos_pendientes')
+                                ->with('success', "Tu confirmación fue registrada. Faltan {$faltantes} agricultor(es) por confirmar sus productos.");
+            }
 
         } catch (\Exception $e) {
             Log::error('Error al confirmar pedido listo: ' . $e->getMessage());

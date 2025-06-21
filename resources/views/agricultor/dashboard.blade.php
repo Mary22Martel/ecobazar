@@ -3,66 +3,104 @@
 @section('content')
 <div class="container mx-auto px-3 py-4 max-w-5xl">
     
-    <!-- Header principal con animación -->
+    <!-- Header principal con información de semana de feria -->
     <div class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg animate-fade-in">
         <div class="text-center">
             <div class="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 animate-bounce-slow">
                 <span class="text-2xl sm:text-3xl">🌱</span>
             </div>
             <h1 class="text-2xl sm:text-3xl font-bold mb-2">¡Hola {{ Auth::user()->name }}!</h1>
-            <p class="text-green-100 text-base sm:text-lg">Tu espacio de trabajo en Punto Verde</p>
-        </div>
-    </div>
-
-    <!-- Navegación rápida simplificada -->
-    <div class="mb-6 sm:mb-8">
-        <div class="bg-white rounded-xl shadow-lg p-2 overflow-x-auto">
-            <div class="flex space-x-1 min-w-max sm:min-w-0 sm:justify-center">
-                <a href="{{ route('agricultor.pedidos_pendientes') }}" 
-                   class="flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all font-semibold text-sm sm:text-base whitespace-nowrap transform hover:scale-105">
-                    📦 <span class="ml-1 sm:ml-2">PENDIENTES</span>
-                </a>
-                <a href="{{ route('agricultor.pedidos_listos') }}" 
-                   class="flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all font-semibold text-sm sm:text-base whitespace-nowrap transform hover:scale-105">
-                    ✅ <span class="ml-1 sm:ml-2">LISTOS</span>
-                </a>
-                <a href="{{ route('agricultor.pagos') }}" 
-                   class="flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all font-semibold text-sm sm:text-base whitespace-nowrap transform hover:scale-105">
-                    💰 <span class="ml-1 sm:ml-2">PAGOS</span>
-                </a>
-                <a href="{{ route('productos.index') }}" 
-                   class="flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all font-semibold text-sm sm:text-base whitespace-nowrap transform hover:scale-105">
-                    🥕 <span class="ml-1 sm:ml-2">PRODUCTOS</span>
-                </a>
+            <div class="mt-3 bg-white/10 rounded-lg p-3">
+                <p class="text-sm text-green-100">
+                    <strong>Para esta semana:</strong> {{ $inicioSemana->format('d/m') }} al {{ $finSemana->format('d/m') }} 
+                    • <strong>Sábado:</strong> {{ $diaEntrega->format('d/m/Y') }}
+                </p>
             </div>
         </div>
     </div>
 
-    @php
-        // Calcular estadísticas
-        $pendientesQuery = \App\Models\Order::whereHas('items.product', function($query) {
-            $query->where('user_id', Auth::id());
-        })->whereIn('estado', ['pendiente', 'pagado']);
-        $pendientes = $pendientesQuery->count();
+    <!-- BOTÓN AGREGAR PRODUCTO - NUEVO AL INICIO -->
+    <div class="mb-6">
+        <a href="{{ route('productos.create') }}" 
+           class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center text-base group">
+            <span>➕ Agregar Nuevo Producto</span>
+            <div class=" bg-white/20 px-5 py-1 ml-4 rounded-full text-xs">
+                Tienes {{ $totalProductos }} productos
+            </div>
+        </a>
+    </div>
 
-        $listosQuery = \App\Models\Order::whereHas('items.product', function($query) {
-            $query->where('user_id', Auth::id());
-        })->whereIn('estado', ['listo', 'armado', 'entregado']);
-        $listos = $listosQuery->count();
+    <!-- RECORDATORIO SEMANAL -->
+    <div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-lg p-4 shadow-sm animate-fade-in-up">
+        <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center animate-bounce-slow">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-sm font-medium text-amber-800 mb-1 flex items-center">
+                    💡 <span class="ml-1">Recordatorio Semanal</span>
+                </h3>
+                <p class="text-sm text-amber-700 leading-relaxed mb-2">
+                    <strong>¡No olvides actualizar tu stock!</strong> Revisa las cantidades de tus productos cada semana según lo que tendrás disponible para vender. Esto ayuda a los clientes a saber qué pueden comprar.
+                </p>
+                <div class="mt-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-md inline-block">
+                    📅 Se recomienda actualizar cada domingo o lunes
+                </div>
+            </div>
+            <button onclick="this.parentElement.parentElement.style.display='none'" class="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
 
-        $totalProductos = \App\Models\Product::where('user_id', Auth::id())->count();
-    @endphp
+    <!-- FLUJO PRINCIPAL 1-2-3-4 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-6 sm:mb-8">
 
-    <!-- Acciones principales con efectos -->
-    <div class="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+        <!-- PASO 1: Actualizar productos -->
+        <a href="{{ route('productos.index') }}"
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-orange-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-right relative">
+            <!-- Número de secuencia -->
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+                1
+            </div>
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center shadow-inner">
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">ACTUALIZA TUS PRODUCTOS</h2>
+                    <p class="text-xs sm:text-sm text-gray-500">Revisa la cantidad de stock de cada producto para esta semana</p>
+                    <div class="mt-2 inline-flex items-center px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        <span class="w-2 h-2 bg-orange-500 rounded-full mr-1"></span>
+                        Primer paso
+                    </div>
+                </div>
+            </div>
+        </a>
         
-        <!-- Pedidos por armar - Con urgencia animada -->
-        <a href="{{ route('agricultor.pedidos_pendientes') }}" 
-           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left {{ $pendientes > 0 ? 'border-red-400 ring-2 ring-red-100 animate-pulse-border' : 'border-gray-300' }}">
+        <!-- PASO 2: Pedidos por armar -->
+        <a href="{{ route('agricultor.pedidos_pendientes', ['semana' => 0]) }}" 
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left relative {{ $pendientes > 0 ? 'border-red-400 ring-2 ring-red-100 animate-pulse-border' : 'border-gray-300' }}">
+            <!-- Número de secuencia -->
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 {{ $pendientes > 0 ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' : 'bg-gradient-to-br from-gray-500 to-gray-600' }} text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+                2
+            </div>
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center shadow-inner {{ $pendientes > 0 ? 'animate-bounce-slow' : '' }}">
-                        <span class="text-2xl sm:text-3xl">📦</span>
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
                     </div>
                 </div>
                 <div class="ml-4 flex-1">
@@ -74,10 +112,17 @@
                             </div>
                             <p class="text-sm sm:text-base text-red-600 font-semibold">{{ $pendientes == 1 ? 'pedido esperando' : 'pedidos esperando' }}</p>
                         </div>
-                        <p class="text-xs sm:text-sm text-gray-500 mt-1">¡Necesita tu atención ahora!</p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-1">¡De esta semana!</p>
+                        <div class="mt-2 inline-flex items-center px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                            <span class="w-2 h-2 bg-red-500 rounded-full mr-1 animate-pulse"></span>
+                            Segundo paso - ¡Urgente!
+                        </div>
                     @else
-                        <p class="text-sm sm:text-base text-green-600 font-semibold">✅ Todo al día</p>
-                        <p class="text-xs sm:text-sm text-gray-400">No hay pedidos pendientes</p>
+                        <p class="text-xs sm:text-sm text-gray-400">Aún no hay pedidos esta semana</p>
+                        <div class="mt-2 inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                            <span class="w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
+                            Segundo paso
+                        </div>
                     @endif
                 </div>
                 @if($pendientes > 0)
@@ -88,116 +133,118 @@
             </div>
         </a>
 
-        <!-- Pedidos listos -->
-        <a href="{{ route('agricultor.pedidos_listos') }}" 
-           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-green-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-right">
+        <!-- PASO 3: Pedidos listos -->
+        <a href="{{ route('agricultor.pedidos_listos', ['semana' => 0]) }}" 
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-green-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-right relative">
+            <!-- Número de secuencia -->
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+                3
+            </div>
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center shadow-inner">
-                        <span class="text-2xl sm:text-3xl">✅</span>
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
                     </div>
                 </div>
                 <div class="ml-4 flex-1">
                     <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">PEDIDOS LISTOS</h2>
                     <p class="text-sm sm:text-base text-green-600 font-semibold">{{ $listos }} {{ $listos == 1 ? 'pedido preparado' : 'pedidos preparados' }}</p>
-                    <p class="text-xs sm:text-sm text-gray-500 mt-1">Esperando armado o entregados</p>
+                    <div class="mt-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                        Tercer paso - Finalizado
+                    </div>
                 </div>
             </div>
         </a>
-    </div>
 
-    <!-- Dashboard de estadísticas con animación -->
-    <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 animate-fade-in-up">
-        <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 text-center flex items-center justify-center">
-            <span class="mr-2 animate-bounce-slow">📊</span> Mi resumen de hoy
-        </h3>
-        
-        <div class="grid grid-cols-3 gap-2 sm:gap-4">
-            <a href="{{ route('agricultor.pedidos_pendientes') }}" 
-               class="bg-gradient-to-br from-gray-50 to-gray-100 border-2 p-3 sm:p-4 rounded-xl hover:border-green-300 hover:shadow-lg transition-all transform hover:scale-110 text-center group {{ $pendientes > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200' }}">
-                <div class="text-2xl sm:text-3xl font-bold text-gray-700 mb-1 group-hover:text-green-600 transition-colors {{ $pendientes > 0 ? 'text-red-500 animate-bounce-slow' : '' }}">{{ $pendientes }}</div>
-                <div class="text-xs sm:text-sm text-gray-600 font-medium group-hover:text-green-700 transition-colors">Por armar</div>
-                @if($pendientes > 0)
-                    <div class="w-2 h-2 bg-red-500 rounded-full mx-auto mt-1 animate-pulse"></div>
-                @endif
-            </a>
-            
-            <a href="{{ route('agricultor.pedidos_listos') }}" 
-               class="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-3 sm:p-4 rounded-xl hover:border-green-300 hover:shadow-lg transition-all transform hover:scale-110 text-center group">
-                <div class="text-2xl sm:text-3xl font-bold text-gray-700 mb-1 group-hover:text-green-600 transition-colors">{{ $listos }}</div>
-                <div class="text-xs sm:text-sm text-gray-600 font-medium group-hover:text-green-700 transition-colors">Listos</div>
-            </a>
-            
-            <a href="{{ route('productos.index') }}" 
-               class="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-3 sm:p-4 rounded-xl hover:border-green-300 hover:shadow-lg transition-all transform hover:scale-110 text-center group">
-                <div class="text-2xl sm:text-3xl font-bold text-gray-700 mb-1 group-hover:text-green-600 transition-colors">{{ $totalProductos }}</div>
-                <div class="text-xs sm:text-sm text-gray-600 font-medium group-hover:text-green-700 transition-colors">Productos</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- Acciones secundarias simplificadas -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 sm:mb-8">
-        
-        <!-- Mis pagos -->
-        <a href="{{ route('agricultor.pagos') }}" 
-           class="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 hover:border-green-300 hover:shadow-xl transition-all transform hover:scale-105 text-center group animate-slide-in-left">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner group-hover:from-green-100 group-hover:to-green-200 transition-all">
-                <span class="text-2xl sm:text-3xl group-hover:animate-bounce">💰</span>
+        <!-- PASO 4: Ver pagos -->
+        <a href="{{ route('agricultor.pagos', ['semana' => 0]) }}" 
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-blue-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left relative">
+            <!-- Número de secuencia -->
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+                4
             </div>
-            <h3 class="text-lg sm:text-xl font-bold text-gray-700 mb-2 group-hover:text-green-600 transition-colors">MIS PAGOS</h3>
-            <p class="text-sm text-gray-600 group-hover:text-green-700 transition-colors">Ver dinero ganado esta semana</p>
-        </a>
-
-        <!-- Mis productos -->
-        <a href="{{ route('productos.index') }}" 
-           class="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 hover:border-green-300 hover:shadow-xl transition-all transform hover:scale-105 text-center group animate-slide-in-right">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner group-hover:from-green-100 group-hover:to-green-200 transition-all">
-                <span class="text-2xl sm:text-3xl group-hover:animate-bounce">🥕</span>
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-inner">
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">REVISA TUS PAGOS</h2>
+                    <p class="text-xs sm:text-sm text-gray-500">Ver dinero ganado por semanas</p>
+                    <div class="mt-2 inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-1"></span>
+                        Cuarto paso - Cobro
+                    </div>
+                </div>
             </div>
-            <h3 class="text-lg sm:text-xl font-bold text-gray-700 mb-2 group-hover:text-green-600 transition-colors">MIS PRODUCTOS</h3>
-            <p class="text-sm text-gray-600 group-hover:text-green-700 transition-colors">Administrar mi catálogo</p>
         </a>
     </div>
 
     <!-- Guía rápida mejorada con efectos -->
     <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 sm:p-6 animate-fade-in-up">
         <h3 class="text-lg sm:text-xl font-bold text-green-800 mb-4 flex items-center">
-            <span class="mr-2 animate-bounce-slow">💡</span> ¿Cómo usar tu panel?
+            <span class="mr-2 animate-bounce-slow">💡</span> ¿Cómo funciona tu trabajo semanal?
         </h3>
         
         <div class="space-y-3">
             <div class="flex items-start space-x-3 animate-slide-in-left" style="animation-delay: 0.1s;">
                 <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">1</div>
                 <div>
-                    <p class="text-sm sm:text-base text-green-800"><strong>Revisa "PEDIDOS POR ARMAR"</strong></p>
-                    <p class="text-xs sm:text-sm text-green-600">Si hay números rojos, ¡tienes trabajo que hacer!</p>
+                    <p class="text-sm sm:text-base text-green-800"><strong>Actualiza tus productos</strong></p>
+                    <p class="text-xs sm:text-sm text-green-600">Agrega los productos que deseas vender y actualiza cada semana el stock de los productos que tienes para vender esa semana</p>
+                </div>
+            </div>
+
+            <div class="flex items-start space-x-3 animate-slide-in-left" style="animation-delay: 0.1s;">
+                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">2</div>
+                <div>
+                    <p class="text-sm sm:text-base text-green-800"><strong>Domingo a Viernes</strong></p>
+                    <p class="text-xs sm:text-sm text-green-600">Los clientes hacen pedidos durante la semana. Tú los verás en "PEDIDOS POR ARMAR" si hay números rojos.</p>
                 </div>
             </div>
             
             <div class="flex items-start space-x-3 animate-slide-in-left" style="animation-delay: 0.2s;">
-                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">2</div>
+                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">3</div>
                 <div>
                     <p class="text-sm sm:text-base text-green-800"><strong>Prepara los productos exactos</strong></p>
-                    <p class="text-xs sm:text-sm text-green-600">Revisa las cantidades y marca como "listo" cuando termines</p>
+                    <p class="text-xs sm:text-sm text-green-600">Revisa las cantidades y marca como "listo" cuando termines cada pedido.</p>
                 </div>
             </div>
             
             <div class="flex items-start space-x-3 animate-slide-in-left" style="animation-delay: 0.3s;">
-                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">3</div>
+                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">4</div>
                 <div>
-                    <p class="text-sm sm:text-base text-green-800"><strong>Lleva todo a la feria</strong></p>
-                    <p class="text-xs sm:text-sm text-green-600">Los sábados, entrega tus productos preparados</p>
+                    <p class="text-sm sm:text-base text-green-800"><strong>Sábado {{ $diaEntrega->format('d/m') }} - Entrega en feria</strong></p>
+                    <p class="text-xs sm:text-sm text-green-600">Lleva todos tus productos preparados a la feria para la entrega.</p>
                 </div>
             </div>
             
             <div class="flex items-start space-x-3 animate-slide-in-left" style="animation-delay: 0.4s;">
-                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">4</div>
+                <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center text-sm sm:text-base font-bold shadow-lg">5</div>
                 <div>
-                    <p class="text-sm sm:text-base text-green-800"><strong>Revisa tus pagos</strong></p>
-                    <p class="text-xs sm:text-sm text-green-600">Cada semana te pagamos por todo lo que vendiste</p>
+                    <p class="text-sm sm:text-base text-green-800"><strong>Revisa tus pagos semanales</strong></p>
+                    <p class="text-xs sm:text-sm text-green-600">Cada semana se te pagará por todos los pedidos entregados exitosamente.</p>
                 </div>
             </div>
+        </div>
+        
+        <!-- Información importante sobre la semana actual -->
+        <div class="mt-4 bg-white border-l-4 border-green-400 rounded-lg p-3">
+            <h4 class="font-semibold text-green-800 mb-1">🎯 Esta Semana</h4>
+            <p class="text-sm text-green-700">
+                Estás trabajando en la semana del <strong>{{ $inicioSemana->format('d/m') }}</strong> al <strong>{{ $finSemana->format('d/m') }}</strong>. 
+                @if($pendientes > 0)
+                    Tienes <strong>{{ $pendientes }}</strong> pedidos esperando preparación.
+                @else
+                    ¡Perfecto! No tienes pedidos pendientes por ahora.
+                @endif
+            </p>
         </div>
     </div>
 
@@ -211,8 +258,8 @@
             <div class="ml-3">
                 <h4 class="text-base sm:text-lg font-bold text-red-800">¡Atención!</h4>
                 <p class="text-sm sm:text-base text-red-700">
-                    Tienes <strong>{{ $pendientes }}</strong> {{ $pendientes == 1 ? 'pedido que necesita' : 'pedidos que necesitan' }} tu atención.
-                    <a href="{{ route('agricultor.pedidos_pendientes') }}" class="underline font-semibold hover:text-red-900 animate-pulse">
+                    Tienes <strong>{{ $pendientes }}</strong> {{ $pendientes == 1 ? 'pedido que necesita' : 'pedidos que necesitan' }} preparación esta semana.
+                    <a href="{{ route('agricultor.pedidos_pendientes', ['semana' => 0]) }}" class="underline font-semibold hover:text-red-900 animate-pulse">
                         Ver ahora →
                     </a>
                 </p>
@@ -224,6 +271,77 @@
 </div>
 
 <style>
+/* Todas las animaciones existentes se mantienen igual */
+@keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+}
+
+@keyframes bounce-slow {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slide-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-pulse-border {
+    animation: pulse-border 2s ease-in-out infinite;
+}
+
+.animate-bounce-slow {
+    animation: bounce-slow 3s ease-in-out infinite;
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.6s ease-out;
+}
+
+.animate-slide-in-left {
+    animation: slide-in-left 0.6s ease-out;
+}
+
+/* Efectos hover mejorados */
+.block:hover .absolute {
+    transform: scale(1.1);
+    transition: transform 0.3s ease;
+}
+
+/* Responsive para los números */
+@media (max-width: 640px) {
+    .absolute.-top-3.-left-3 {
+        top: -0.5rem;
+        left: -0.5rem;
+    }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -274,21 +392,6 @@
     }
 }
 
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-    20%, 40%, 60%, 80% { transform: translateX(2px); }
-}
-
-@keyframes pulseBorder {
-    0%, 100% { 
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); 
-    }
-    50% { 
-        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); 
-    }
-}
-
 .animate-fade-in {
     animation: fadeIn 0.6s ease-out;
 }
@@ -307,14 +410,6 @@
 
 .animate-bounce-slow {
     animation: bounceSlow 2s infinite;
-}
-
-.animate-shake {
-    animation: shake 0.5s ease-in-out infinite;
-}
-
-.animate-pulse-border {
-    animation: pulseBorder 2s infinite;
 }
 </style>
 

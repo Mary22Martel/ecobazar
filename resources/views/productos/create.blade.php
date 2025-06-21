@@ -217,7 +217,7 @@
 
     <!-- Instrucciones adicionales -->
     <div class="mt-6 sm:mt-8 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 sm:p-6">
-        <h3 class="text-lg font-bold text-green-800 mb-3 flex items-center">
+        <h3 class="text-base font-bold text-green-800 mb-3 flex items-center">
             <span class="mr-2">💡</span> Consejos para una buena foto
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm sm:text-base text-green-700">

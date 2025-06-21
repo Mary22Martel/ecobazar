@@ -7,7 +7,9 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Illuminate\Support\Facades\Auth;
 
 class AgricultorController extends Controller
@@ -19,56 +21,184 @@ class AgricultorController extends Controller
 
     public function index()
     {
-        return view('agricultor.dashboard');
+        $this->authorizeRoles(['agricultor']);
+        
+        // ========== CÁLCULO DE SEMANA DE FERIA ACTUAL ==========
+        $semanaActual = $this->calcularSemanaFeria();
+        $inicioSemana = $semanaActual['inicio_ventas'];  // Domingo
+        $finSemana = $semanaActual['fin_ventas'];        // Viernes
+        $diaEntrega = $semanaActual['dia_entrega'];      // Sábado
+        
+        $agricultor = Auth::user();
+        
+        // ========== PEDIDOS DE ESTA SEMANA SOLAMENTE ==========
+        
+        // Pedidos por armar de esta semana (pendiente + pagado)
+        $pendientesSemana = Order::whereHas('items.product', function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            })
+            ->whereIn('estado', ['pendiente', 'pagado'])
+            ->whereBetween('created_at', [
+                $inicioSemana->startOfDay(), 
+                $finSemana->endOfDay()
+            ])
+            ->count();
+        
+        // Pedidos listos de esta semana (listo + armado + entregado)
+        $listosSemana = Order::whereHas('items.product', function($query) use ($agricultor) {
+                $query->where('user_id', $agricultor->id);
+            })
+            ->whereIn('estado', ['listo', 'armado', 'entregado'])
+            ->whereBetween('created_at', [
+                $inicioSemana->startOfDay(), 
+                $finSemana->endOfDay()
+            ])
+            ->count();
+
+        // Total de productos en el catálogo (no por semana)
+        $totalProductos = Product::where('user_id', $agricultor->id)->count();
+        
+        // ========== VARIABLES PARA LA VISTA ==========
+        $pendientes = $pendientesSemana;
+        $listos = $listosSemana;
+        
+        return view('agricultor.dashboard', compact(
+            'pendientes',
+            'listos', 
+            'totalProductos',
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega'
+        ));
     }
 
-    // ==================== PEDIDOS PENDIENTES ====================
+    // ==================== PEDIDOS PENDIENTES CON FILTRO ====================
     
     /**
      * Muestra los pedidos pendientes (pagados) que el agricultor debe preparar
      */
-    public function pedidosPendientes()
+    public function pedidosPendientes(Request $request)
     {
         $this->authorizeRoles(['agricultor']);
         
+        // Configurar Carbon para español
+        Carbon::setLocale('es');
+        
+        // Obtener la semana seleccionada (por defecto la actual = 0)
+        $semanaSeleccionada = $request->get('semana', 0);
+        
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $fechaInicio = $semanaFeria['inicio_ventas'];
+        $fechaFin = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
         $agricultor = Auth::user();
         
+        // Generar opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
         // Obtener pedidos que están en estado 'pagado' (pendientes de preparar)
-        // y que contengan productos del agricultor actual
+        // filtrados por la semana seleccionada
         $pedidos = Order::whereIn('estado', ['pendiente', 'pagado'])
             ->whereHas('items.product', function($query) use ($agricultor) {
                 $query->where('user_id', $agricultor->id);
             })
+            ->whereBetween('created_at', [
+                $fechaInicio->startOfDay(), 
+                $fechaFin->endOfDay()
+            ])
             ->with(['items.product' => function($query) use ($agricultor) {
                 $query->where('user_id', $agricultor->id);
             }])
             ->orderBy('created_at', 'desc')
             ->get();
+        
+            $pedidosConProgreso = $pedidos->map(function($pedido) use ($agricultor) {
+            $agricultoresTotal = $pedido->items->pluck('product.user_id')->unique()->count();
+            $agricultoresConfirmados = \App\Models\OrderAgricultorConfirmation::where('order_id', $pedido->id)->count();
+            $yaConfirme = \App\Models\OrderAgricultorConfirmation::where('order_id', $pedido->id)
+                ->where('agricultor_id', $agricultor->id)
+                ->exists();
+            
+            $pedido->progreso_confirmacion = [
+                'total' => $agricultoresTotal,
+                'confirmados' => $agricultoresConfirmados,
+                'ya_confirme' => $yaConfirme,
+                'porcentaje' => $agricultoresTotal > 0 ? round(($agricultoresConfirmados / $agricultoresTotal) * 100) : 0,
+                'puede_confirmar' => $pedido->estado === 'pagado' && !$yaConfirme
+            ];
+            
+            return $pedido;
+        });
 
-        return view('agricultor.pedidos_pendientes', compact('pedidos'));
+        // Calcular estadísticas rápidas para esta semana
+        $estadisticas = $this->calcularEstadisticasSemanaAgricultor($agricultor->id, $fechaInicio, $fechaFin);
+
+        return view('agricultor.pedidos_pendientes', compact(
+            'pedidos',
+            'pedidosConProgreso',
+            'fechaInicio', 
+            'fechaFin', 
+            'diaEntrega',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'estadisticas'
+        ));
     }
 
     /**
      * Muestra los pedidos que ya están listos (preparados por el agricultor)
      */
-    public function pedidosListos()
+    public function pedidosListos(Request $request)
     {
         $this->authorizeRoles(['agricultor']);
         
+        // Configurar Carbon para español
+        Carbon::setLocale('es');
+        
+        // Obtener la semana seleccionada (por defecto la actual = 0)
+        $semanaSeleccionada = $request->get('semana', 0);
+        
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $fechaInicio = $semanaFeria['inicio_ventas'];
+        $fechaFin = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
         $agricultor = Auth::user();
         
-        // Obtener pedidos que están en estado 'listo'
-        $pedidos = Order::where('estado', 'listo')
+        // Generar opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        // Obtener pedidos que están en estado 'listo', 'armado' o 'entregado'
+        // filtrados por la semana seleccionada
+        $pedidos = Order::whereIn('estado', ['listo', 'armado', 'entregado'])
             ->whereHas('items.product', function($query) use ($agricultor) {
                 $query->where('user_id', $agricultor->id);
             })
+            ->whereBetween('created_at', [
+                $fechaInicio->startOfDay(), 
+                $fechaFin->endOfDay()
+            ])
             ->with(['items.product' => function($query) use ($agricultor) {
                 $query->where('user_id', $agricultor->id);
             }])
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        return view('agricultor.pedidos_listos', compact('pedidos'));
+        // Calcular estadísticas rápidas para esta semana
+        $estadisticas = $this->calcularEstadisticasSemanaAgricultor($agricultor->id, $fechaInicio, $fechaFin);
+
+        return view('agricultor.pedidos_listos', compact(
+            'pedidos', 
+            'fechaInicio', 
+            'fechaFin', 
+            'diaEntrega',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'estadisticas'
+        ));
     }
 
     /**
@@ -79,35 +209,74 @@ class AgricultorController extends Controller
     {
         $this->authorizeRoles(['agricultor']);
         
-        $agricultor = Auth::user();
-        
-        // Buscar el pedido
-        $pedido = Order::where('id', $pedidoId)
-            ->where('estado', 'pagado') // Solo se puede marcar como listo si está pagado
-            ->whereHas('items.product', function($query) use ($agricultor) {
-                $query->where('user_id', $agricultor->id);
-            })
-            ->first();
+        try {
+            $agricultor = Auth::user();
+            $agricultorId = $agricultor->id;
+            
+            // Buscar el pedido
+            $pedido = Order::findOrFail($pedidoId);
 
-        if (!$pedido) {
-            return redirect()->back()->with('error', 'Pedido no encontrado o no tienes permisos para modificarlo.');
+            // Verificar que el agricultor tenga productos en este pedido
+            $productosAgricultor = $pedido->items->filter(function($item) use ($agricultorId) {
+                return $item->product->user_id == $agricultorId;
+            });
+
+            if ($productosAgricultor->isEmpty()) {
+                return redirect()->back()->with('error', 'No tienes productos en este pedido.');
+            }
+
+            // Solo permitir marcar como listo si está pagado
+            if ($pedido->estado !== 'pagado') {
+                return redirect()->back()->with('error', 'Solo se pueden marcar como listos los pedidos pagados.');
+            }
+
+            // **REGISTRAR CONFIRMACIÓN DEL AGRICULTOR**
+            \App\Models\OrderAgricultorConfirmation::updateOrCreate(
+                [
+                    'order_id' => $pedido->id,
+                    'agricultor_id' => $agricultorId
+                ],
+                [
+                    'confirmed_at' => now()
+                ]
+            );
+
+            // **VERIFICAR SI TODOS LOS AGRICULTORES HAN CONFIRMADO**
+            $agricultoresEnPedido = $pedido->items->pluck('product.user_id')->unique();
+            $agricultoresConfirmados = \App\Models\OrderAgricultorConfirmation::where('order_id', $pedido->id)
+                ->pluck('agricultor_id');
+
+            Log::info("Pedido {$pedido->id}: Agricultores en pedido: " . $agricultoresEnPedido->count());
+            Log::info("Pedido {$pedido->id}: Agricultores confirmados: " . $agricultoresConfirmados->count());
+
+            // Solo cambiar a 'listo' si TODOS los agricultores han confirmado
+            if ($agricultoresEnPedido->count() === $agricultoresConfirmados->count() && 
+                $agricultoresEnPedido->diff($agricultoresConfirmados)->isEmpty()) {
+                
+                $pedido->update([
+                    'estado' => 'listo',
+                    'fecha_listo' => now()
+                ]);
+                
+                Log::info("Pedido {$pedido->id} cambiado a LISTO - todos los agricultores confirmaron");
+                
+                return redirect()->route('agricultor.pedidos_pendientes')
+                    ->with('success', '¡Pedido #' . $pedido->id . ' marcado como LISTO! Todos los agricultores han confirmado. El administrador lo revisará para armarlo.');
+            } else {
+                Log::info("Pedido {$pedido->id} - agricultor confirmado pero faltan otros agricultores");
+                
+                $faltantes = $agricultoresEnPedido->count() - $agricultoresConfirmados->count();
+                
+                return redirect()->route('agricultor.pedidos_pendientes')
+                    ->with('success', "Tu confirmación fue registrada para el pedido #{$pedido->id}. Faltan {$faltantes} agricultor(es) por confirmar sus productos.");
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error al confirmar pedido listo: ' . $e->getMessage());
+            
+            return redirect()->route('agricultor.pedidos_pendientes')
+                ->with('error', 'Error al confirmar el pedido. Inténtalo de nuevo.');
         }
-
-        // Verificar que todos los productos del pedido del agricultor están listos
-        $productosDelAgricultor = $pedido->items->where('product.user_id', $agricultor->id);
-        
-        if ($productosDelAgricultor->isEmpty()) {
-            return redirect()->back()->with('error', 'No tienes productos en este pedido.');
-        }
-
-        // Marcar pedido como listo (el admin después lo marcará como armado)
-        $pedido->update([
-            'estado' => 'listo',
-            'fecha_listo' => now()
-        ]);
-
-        return redirect()->route('agricultor.pedidos_pendientes')
-            ->with('success', '¡Pedido #' . $pedido->id . ' marcado como LISTO! El administrador lo revisará para armarlo.');
     }
 
     /**
@@ -132,7 +301,11 @@ class AgricultorController extends Controller
             return redirect()->back()->with('error', 'Pedido no encontrado.');
         }
 
-        return view('agricultor.detalle-pedido', compact('pedido'));
+        // AGREGAR ESTA LÍNEA: Filtrar solo los productos del agricultor
+        $productosAgricultor = $pedido->items->where('product.user_id', $agricultor->id);
+
+        // CORREGIR EL COMPACT: Agregar $productosAgricultor
+        return view('agricultor.pedido_detalle', compact('pedido', 'productosAgricultor'));
     }
 
     // ==================== LÓGICA DE SEMANA DE FERIA ====================
@@ -199,7 +372,55 @@ class AgricultorController extends Controller
         return $opciones;
     }
 
-    // ==================== PAGOS POR SEMANAS ====================
+    // ==================== ESTADÍSTICAS SIMPLIFICADAS ====================
+    
+    /**
+     * Calcula estadísticas rápidas para el agricultor en una semana específica
+     * CORREGIDO: Solo cuenta pedidos de esa semana específica como en AdminController
+     */
+    private function calcularEstadisticasSemanaAgricultor($agricultorId, $fechaInicio, $fechaFin)
+    {
+        $estadisticas = [];
+        $estados = ['pendiente', 'pagado', 'listo', 'armado', 'entregado'];
+
+        foreach($estados as $estado) {
+            // CORREGIDO: Solo pedidos de la semana específica
+            $pedidos = Order::whereHas('items.product', function($query) use ($agricultorId) {
+                    $query->where('user_id', $agricultorId);
+                })
+                ->where('estado', $estado)
+                ->whereBetween('created_at', [
+                    $fechaInicio->startOfDay(), 
+                    $fechaFin->endOfDay()
+                ])
+                ->with(['items.product' => function($query) use ($agricultorId) {
+                    $query->where('user_id', $agricultorId);
+                }])
+                ->get();
+
+            $monto = 0;
+            $cantidad = 0;
+            
+            foreach($pedidos as $pedido) {
+                foreach($pedido->items as $item) {
+                    if($item->product && $item->product->user_id == $agricultorId) {
+                        $monto += $item->cantidad * $item->precio;
+                        $cantidad += $item->cantidad;
+                    }
+                }
+            }
+
+            $estadisticas[$estado] = [
+                'count' => $pedidos->count(),
+                'monto' => $monto,
+                'cantidad' => $cantidad
+            ];
+        }
+
+        return $estadisticas;
+    }
+
+    // ==================== PAGOS POR SEMANAS (MANTENER IGUAL) ====================
     
     public function pagos(Request $request)
     {
@@ -419,59 +640,48 @@ class AgricultorController extends Controller
     }
 
     // Método para exportar pagos del agricultor individual
-    public function exportarPagos(Request $request)
-    {
-        $this->authorizeRoles(['agricultor']);
-        
-        $semanaSeleccionada = $request->get('semana', 0);
-        
-        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
-        $fechaInicio = $semanaFeria['inicio_ventas'];
-        $fechaFin = $semanaFeria['fin_ventas'];
-        $diaEntrega = $semanaFeria['dia_entrega'];
-        
-        $agricultor = Auth::user();
-        $datosCalculados = $this->calcularPagosAgricultor($agricultor->id, $fechaInicio, $fechaFin);
-        
-        // Generar CSV
-        $filename = "mis_pagos_" . str_replace(' ', '_', $agricultor->name) . "_entrega_{$diaEntrega->format('d-m-Y')}.csv";
-        
-        $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
-            'Content-Disposition' => "attachment; filename={$filename}",
-        ];
-        
-        $callback = function() use ($datosCalculados, $agricultor, $fechaInicio, $fechaFin, $diaEntrega) {
-            $file = fopen('php://output', 'w');
-            
-            // BOM para UTF-8
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // Encabezados del reporte
-            fputcsv($file, ['Reporte de Pagos - ' . $agricultor->name]);
-            fputcsv($file, ['Período de ventas: ' . $fechaInicio->format('d/m/Y') . ' - ' . $fechaFin->format('d/m/Y')]);
-            fputcsv($file, ['Entrega en feria: ' . $diaEntrega->format('l, d/m/Y')]);
-            fputcsv($file, []);
-            fputcsv($file, ['Producto', 'Cantidad', 'Precio Promedio', 'Pedidos', 'Total']);
-            
-            foreach($datosCalculados['pagos'] as $pago) {
-                fputcsv($file, [
-                    $pago['producto']->nombre,
-                    $pago['cantidad'],
-                    number_format($pago['precio_promedio'], 2),
-                    $pago['pedidos_count'],
-                    number_format($pago['monto'], 2)
-                ]);
-            }
-            
-            fputcsv($file, []);
-            fputcsv($file, ['TOTAL A COBRAR:', '', '', '', number_format($datosCalculados['totalPagar'], 2)]);
-            
-            fclose($file);
-        };
-        
-        return response()->stream($callback, 200, $headers);
-    }
+    public function exportarPagosPDF(Request $request)
+{
+    $this->authorizeRoles(['agricultor']);
+    
+    $semanaSeleccionada = $request->get('semana', 0);
+    
+    $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+    $fechaInicio = $semanaFeria['inicio_ventas'];
+    $fechaFin = $semanaFeria['fin_ventas'];
+    $diaEntrega = $semanaFeria['dia_entrega'];
+    
+    $agricultor = Auth::user();
+    $datosCalculados = $this->calcularPagosAgricultor($agricultor->id, $fechaInicio, $fechaFin);
+    
+    // Generar HTML para PDF
+    $html = view('agricultor.pagos-pdf', [
+        'agricultor' => $agricultor,
+        'pagos' => $datosCalculados['pagos'],
+        'totalPagar' => $datosCalculados['totalPagar'],
+        'totalProductos' => $datosCalculados['totalProductos'],
+        'totalCantidad' => $datosCalculados['totalCantidad'],
+        'totalPedidos' => $datosCalculados['totalPedidos'],
+        'fechaInicio' => $fechaInicio,
+        'fechaFin' => $fechaFin,
+        'diaEntrega' => $diaEntrega,
+        'estadisticas' => $datosCalculados['estadisticas']
+    ])->render();
+    
+    // Si tienes dompdf instalado:
+    $pdf = PDF::loadHtml($html);
+    $filename = "pagos_{$agricultor->name}_entrega_{$diaEntrega->format('d-m-Y')}.pdf";
+    
+    return $pdf->download($filename);
+    
+    // Si NO tienes dompdf, usa mPDF o regresa HTML simple:
+    /*
+    $filename = "pagos_{$agricultor->name}_entrega_{$diaEntrega->format('d-m-Y')}.html";
+    return response($html)
+        ->header('Content-Type', 'text/html')
+        ->header('Content-Disposition', "attachment; filename={$filename}");
+    */
+}
 
     /**
      * Método para obtener el detalle completo como el admin

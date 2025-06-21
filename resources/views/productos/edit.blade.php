@@ -8,7 +8,7 @@
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center">
             <div class="mb-3 sm:mb-0">
                 <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2">✏️ EDITAR PRODUCTO</h1>
-                <p class="text-green-100 text-base sm:text-lg">Actualiza la información de tu producto</p>
+                <p class="text-green-100 text-sm sm:text-lg">Actualiza la información de tu producto</p>
             </div>
         </div>
     </div>
@@ -52,7 +52,7 @@
         <!-- Nombre del Producto -->
         <div>
             <label for="nombre" class="block text-base sm:text-lg font-semibold text-gray-700 mb-2">
-                🏷️ Nombre del Producto
+                 Nombre del Producto
             </label>
             <input type="text" name="nombre" id="nombre" 
                    placeholder="Ej: Tomates frescos, Lechuga orgánica..." 
@@ -67,7 +67,7 @@
             <!-- Unidad de medida -->
             <div>
                 <label for="medida" class="block text-base sm:text-lg font-semibold text-gray-700 mb-2">
-                    📏 ¿Cómo lo vendes?
+                     ¿Cómo lo vendes?
                 </label>
                 <select name="medida_id" id="medida" 
                         class="block w-full p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-green-400 focus:border-green-400 text-base" 
@@ -84,7 +84,7 @@
             <!-- Categoría -->
             <div>
                 <label for="categoria" class="block text-base sm:text-lg font-semibold text-gray-700 mb-2">
-                    📂 Categoría
+                     Categoría
                 </label>
                 <select name="categoria_id" id="categoria" 
                         class="block w-full p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-green-400 focus:border-green-400 text-base" 
@@ -104,7 +104,7 @@
             <!-- Precio -->
             <div>
                 <label for="precio" class="block text-base sm:text-lg font-semibold text-gray-700 mb-2">
-                    💰 Precio por unidad
+                     Precio por unidad
                 </label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">S/</span>
@@ -121,7 +121,7 @@
             <!-- Cantidad Disponible -->
             <div>
                 <label for="cantidad_disponible" class="block text-base sm:text-lg font-semibold text-gray-700 mb-2">
-                    📦 ¿Cuánto tienes?
+                     ¿Cuánto tienes?
                 </label>
                 <input type="number" name="cantidad_disponible" id="cantidad_disponible" 
                        placeholder="100" 
@@ -129,7 +129,7 @@
                        min="0"
                        class="block w-full p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-green-400 focus:border-green-400 text-base" 
                        required>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1">Cantidad que tienes disponible para vender</p>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1">Cantidad que tienes disponible para vender esta semana</p>
             </div>
         </div>
 
@@ -242,7 +242,7 @@
 
     <!-- Instrucciones adicionales -->
     <div class="mt-6 sm:mt-8 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 sm:p-6">
-        <h3 class="text-lg font-bold text-green-800 mb-3 flex items-center">
+        <h3 class="text-base font-bold text-green-800 mb-3 flex items-center">
             <span class="mr-2">💡</span> Consejos para una buena foto
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm sm:text-base text-green-700">

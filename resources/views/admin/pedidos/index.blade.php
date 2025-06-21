@@ -11,48 +11,88 @@
                 <p class="text-blue-100 text-base sm:text-lg">Administración de órdenes del sistema</p>
                 @if(isset($inicioSemana) && isset($finSemana))
                 <p class="text-blue-100 text-sm mt-2">
-                    📅 Mostrando: {{ $inicioSemana->format('d/m/Y') }} al {{ $finSemana->format('d/m/Y') }} 
+                    📅 Semana: {{ $inicioSemana->format('d/m/Y') }} al {{ $finSemana->format('d/m/Y') }} 
                     @if(isset($diaEntrega))
                         • Entrega: {{ $diaEntrega->format('d/m/Y') }}
                     @endif
                 </p>
                 @endif
             </div>
-            <a href="{{ route('admin.dashboard') }}" 
-               class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all">
-                ← Volver
-            </a>
+            
         </div>
     </div>
+    <a href="{{ route('admin.dashboard') }}" 
+               class="inline-flex items-center text-gray-600 hover:text-green-600 transition-colors font-medium">
+                ← Volver a inicio
+    </a>
 
-    <!-- Filtro de Semanas -->
+    <!-- Filtro de Semanas - Responsive mejorado -->
     @if(isset($opcionesSemanas))
-    <div class="mb-6">
-        <div class="bg-white rounded-xl shadow-lg p-4">
-            <form method="GET" action="{{ request()->url() }}" class="flex flex-col sm:flex-row gap-4 items-end">
-                <div class="flex-1">
-                    <label for="semana" class="block text-sm font-semibold text-gray-700 mb-2">
-                        📅 Filtrar por Semana de Feria
+    <div class="mb-6 mt-3">
+        <div class="bg-white rounded-xl shadow-lg p-3 sm:p-4 filtro-container">
+            <form method="GET" action="{{ request()->url() }}" class="space-y-3 sm:space-y-0 sm:flex sm:gap-4 sm:items-end">
+                
+                <!-- Label y select en móvil -->
+                <div class="flex-1 space-y-2 sm:space-y-0 min-w-0">
+                    <label for="semana" class=" text-sm font-semibold text-gray-700 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Filtrar por Semana de Feria</span>
+                        <span class="sm:hidden truncate">Semana de Feria</span>
                     </label>
-                    <p class="text-xs text-gray-500 mb-2">
+                    <p class="text-xs text-gray-500 hidden sm:block">
                         Las ventas van de domingo a viernes, y se entregan el sábado en la feria
                     </p>
-                    <select name="semana" id="semana" 
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        @foreach($opcionesSemanas as $valor => $label)
-                            <option value="{{ $valor }}" {{ request('semana', 0) == $valor ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
+                    
+                    <!-- Select mejorado para móvil -->
+                    <div class="relative">
+                        <select name="semana" id="semana" 
+                                class="w-full appearance-none border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white shadow-sm overflow-hidden text-ellipsis">
+                            @foreach($opcionesSemanas as $valor => $label)
+                                <option value="{{ $valor }}" {{ request('semana', 0) == $valor ? 'selected' : '' }}>
+                                    @if(strlen($label) > 25)
+                                        {{ substr($label, 0, 22) }}...
+                                    @else
+                                        {{ $label }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <!-- Icono de dropdown personalizado -->
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
                 </div>
-                <div>
+
+                <!-- Botón responsive -->
+                <div class="sm:flex-shrink-0">
                     <button type="submit" 
-                            class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors font-semibold">
-                        🔍 Filtrar
+                            class="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-2 rounded-lg transition-all duration-200 font-semibold text-sm flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <span class="sm:hidden">Filtrar</span>
+                        <span class="hidden sm:inline">Filtrar</span>
                     </button>
                 </div>
             </form>
+            
+            <!-- Indicador de semana actual en móvil -->
+            <div class="mt-3 sm:hidden">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                    <div class="flex items-center text-xs text-blue-700">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">Mostrando:</span>
+                        <span class="ml-1 truncate">{{ $opcionesSemanas[request('semana', 0)] ?? 'Esta semana' }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     @endif
@@ -124,7 +164,7 @@
                     ({{ method_exists($pedidos, 'total') ? $pedidos->total() : $pedidos->count() }})
                 @endif
                 @if(isset($inicioSemana) && isset($finSemana))
-                    <span class="text-sm text-gray-600 font-normal">
+                   <br> <span class="text-sm text-gray-600 font-normal">
                         - Semana {{ $inicioSemana->format('d/m') }} al {{ $finSemana->format('d/m') }}
                     </span>
                 @endif
@@ -208,8 +248,12 @@
                         <td class="px-4 py-4">
                             <div class="flex space-x-2">
                                 <a href="{{ route('admin.pedido.detalle', $pedido->id) }}" 
-                                   class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors">
-                                    👁️ Ver
+                                   class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                    </svg>
+                                    Ver
                                 </a>
                                 
                                 @if($pedido->estado === 'listo')
@@ -218,8 +262,11 @@
                                     <input type="hidden" name="estado" value="armado">
                                     <button type="submit" 
                                             onclick="return confirm('¿Marcar pedido como ARMADO?')"
-                                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors">
-                                        ✅ Armar
+                                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Armar
                                     </button>
                                 </form>
                                 @endif
@@ -277,14 +324,57 @@
 
 </div>
 
-<script>
-// Auto-submit form when week selection changes
-document.getElementById('semana')?.addEventListener('change', function() {
-    this.form.submit();
-});
-</script>
-
 <style>
+/* Mejoras específicas para el select en móvil */
+@media (max-width: 640px) {
+    select {
+        font-size: 16px; /* Evita zoom en iOS */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    
+    /* Mejora del botón en móvil */
+    .filter-button {
+        min-height: 44px; /* Área de toque recomendada */
+    }
+    
+    /* Contenedor del filtro más estrecho en móvil */
+    .filtro-container {
+        overflow: hidden;
+    }
+    
+    /* Opciones del select más cortas */
+    select option {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Animación suave para el cambio de semana */
+.week-transition {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Estado focus mejorado */
+select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Hover states para desktop */
+@media (min-width: 641px) {
+    select:hover {
+        border-color: #3b82f6;
+    }
+}
+
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% {
         transform: translateY(0);
@@ -301,5 +391,36 @@ document.getElementById('semana')?.addEventListener('change', function() {
     animation: bounce 1s infinite;
 }
 </style>
+
+<script>
+// Auto-submit mejorado con indicador de carga
+document.getElementById('semana')?.addEventListener('change', function() {
+    const button = this.form.querySelector('button[type="submit"]');
+    const originalText = button.innerHTML;
+    
+    // Mostrar estado de carga
+    button.innerHTML = `
+        <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="sm:hidden">Cargando...</span>
+        <span class="hidden sm:inline">Filtrando...</span>
+    `;
+    
+    button.disabled = true;
+    
+    // Submit el formulario
+    this.form.submit();
+});
+
+// Restaurar estado si hay error
+window.addEventListener('pageshow', function() {
+    const button = document.querySelector('button[type="submit"]');
+    if (button) {
+        button.disabled = false;
+    }
+});
+</script>
 
 @endsection

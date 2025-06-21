@@ -1,63 +1,207 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex justify-center items-center min-h-screen bg-gray-100">
-    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-lg">
-        <!-- Título -->
-        <h2 class="text-center text-3xl font-bold text-gray-900">Iniciar Sesion</h2>
-
-        <!-- Formulario -->
-        <form method="POST" action="{{ route('login') }}" class="space-y-6">
-            @csrf
-
-            <!-- Campo de correo -->
-            <div class="relative">
-                <label for="email" class="sr-only">Correo</label>
-                <input id="email" type="email" 
-                       class="{{ $errors->has('email') ? 'border-red-500' : 'border-gray-300' }} w-full px-4 py-3 border rounded-md focus:ring-green-500 focus:border-green-500" 
-                       name="email" value="{{ old('email') }}" required autocomplete="email" autofocus placeholder="correo">
-
-                @error('email')
-                    <span class="text-red-500 text-sm mt-2 block">
-                        <strong>{{ $message }}</strong>
-                    </span>
-                @enderror
+<div class="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-lg">
+        <!-- Card principal -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            
+            <!-- Header con branding -->
+            <div class="bg-gradient-to-r from-green-500 to-emerald-600 px-6 sm:px-8 py-8 text-center">
+                <div class="mb-4">
+                    <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-3xl">🌱</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">Punto Verde</h1>
+                    <p class="text-green-100 text-sm sm:text-base">Conectando el campo con tu mesa</p>
+                </div>
             </div>
 
-            <!-- Campo de contraseña -->
-            <div class="relative">
-                <label for="password" class="sr-only">Contraseña</label>
-                <input id="password" type="password" 
-                       class="{{ $errors->has('password') ? 'border-red-500' : 'border-gray-300' }} w-full px-4 py-3 border rounded-md focus:ring-green-500 focus:border-green-500" 
-                       name="password" required autocomplete="current-password" placeholder="contraseña">
-                
-                @error('password')
-                    <span class="text-red-500 text-sm mt-2 block">
-                        <strong>{{ $message }}</strong>
-                    </span>
-                @enderror
-            </div>
+            <!-- Formulario -->
+            <div class="px-6 sm:px-8 py-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">¡Bienvenido!</h2>
+                    <p class="text-gray-600 text-sm sm:text-base">Inicia sesión para continuar</p>
+                </div>
 
-            <!-- Recordarme -->
-            <div class="flex items-center">
-                <input id="remember_me" type="checkbox" class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded" name="remember" {{ old('remember') ? 'checked' : '' }}>
-                <label for="remember_me" class="ml-2 block text-sm text-gray-900">
-                    Mantener Sesion Activa
-                </label>
-            </div>
+                <form method="POST" action="{{ route('login') }}" class="space-y-6">
+                    @csrf
 
-            <!-- Botón de inicio de sesión -->
-            <div>
-                <button type="submit" class="w-full px-4 py-3 text-white bg-green-600 rounded-md font-bold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                {{ __('Login') }}
-                </button>
-            </div>
+                    <!-- Campo de correo mejorado -->
+                    <div class="space-y-2">
+                        <label for="email" class="block text-sm font-semibold text-gray-700">
+                            Correo Electrónico
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                                </svg>
+                            </div>
+                            <input id="email" type="email" 
+                                   class="w-full pl-10 pr-4 py-3 border {{ $errors->has('email') ? 'border-red-300 bg-red-50' : 'border-gray-300' }} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 text-sm sm:text-base" 
+                                   name="email" 
+                                   value="{{ old('email') }}" 
+                                   required 
+                                   autocomplete="email" 
+                                   autofocus 
+                                   placeholder="tu@email.com">
+                        </div>
+                        @error('email')
+                            <div class="flex items-center space-x-2 text-red-600 text-sm">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>{{ $message }}</span>
+                            </div>
+                        @enderror
+                    </div>
 
-            <!-- Enlace para registrar -->
-            <div class="text-center text-sm text-gray-600">
-                No tienes una cuenta? <a href="{{ route('register') }}" class="text-green-600 font-medium hover:text-green-500">Registrarse</a>
+                    <!-- Campo de contraseña mejorado -->
+                    <div class="space-y-2">
+                        <label for="password" class="block text-sm font-semibold text-gray-700">
+                            Contraseña
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                            </div>
+                            <input id="password" type="password" 
+                                   class="w-full pl-10 pr-4 py-3 border {{ $errors->has('password') ? 'border-red-300 bg-red-50' : 'border-gray-300' }} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 text-sm sm:text-base" 
+                                   name="password" 
+                                   required 
+                                   autocomplete="current-password" 
+                                   placeholder="Tu contraseña">
+                        </div>
+                        @error('password')
+                            <div class="flex items-center space-x-2 text-red-600 text-sm">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>{{ $message }}</span>
+                            </div>
+                        @enderror
+                    </div>
+
+                    <!-- Recordarme mejorado -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input id="remember_me" type="checkbox" 
+                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded transition-colors" 
+                                   name="remember" 
+                                   {{ old('remember') ? 'checked' : '' }}>
+                            <label for="remember_me" class="ml-2 block text-sm text-gray-700">
+                                Mantener sesión activa
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Botón de inicio de sesión mejorado -->
+                    <div>
+                        <button type="submit" 
+                                class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl text-sm sm:text-base">
+                            <span class="flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span>Iniciar Sesión</span>
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Separador -->
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-white text-gray-500">o</span>
+                        </div>
+                    </div>
+
+                    <!-- Enlace para registrar mejorado -->
+                    <div class="text-center">
+                        <p class="text-sm text-gray-600 mb-3">
+                            ¿No tienes una cuenta?
+                        </p>
+                        <a href="{{ route('register') }}" 
+                           class="inline-flex items-center justify-center w-full bg-white border-2 border-green-600 text-green-600 font-semibold py-3 px-4 rounded-lg hover:bg-green-50 transition-all duration-200 transform hover:scale-105 text-sm sm:text-base">
+                            <span class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                </svg>
+                                <span>Crear cuenta nueva</span>
+                            </span>
+                        </a>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+
+        <!-- Footer informativo -->
+        <div class="text-center mt-8 px-4">
+            <p class="text-sm text-gray-600 mb-2">
+                🌱 Conectamos productores locales con consumidores conscientes
+            </p>
+            <div class="flex justify-center space-x-4 text-xs text-gray-500">
+                <span>🥕 Productos frescos</span>
+                <span>🚚 Entrega directa</span>
+                <span>💚 Apoyo local</span>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+/* Animaciones suaves */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bg-white {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Efectos hover mejorados */
+input:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+}
+
+button:hover {
+    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.3);
+}
+
+/* Responsive mejorado */
+@media (max-width: 640px) {
+    .w-full.max-w-lg {
+        margin: 1rem;
+    }
+}
+
+/* Estados de error mejorados */
+.border-red-300 {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Loading state para el botón */
+button:active {
+    transform: scale(0.98);
+}
+</style>
 @endsection

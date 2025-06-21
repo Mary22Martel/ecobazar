@@ -48,14 +48,11 @@
                                         <h3 class="text-base font-bold text-gray-800 mb-1 truncate">{{ $item->product->nombre }}</h3>
                                         <div class="flex items-center justify-between">
                                             <span class="text-base font-bold text-green-600">S/ {{ number_format($item->product->precio, 2) }}</span>
-                                            <form action="{{ route('carrito.remove', $item->id) }}" method="POST" class="inline remove-form">
-                                                @csrf
-                                                <button type="submit" class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-all duration-200 transform hover:scale-110">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                    </svg>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-all duration-200 transform hover:scale-110 remove-item-btn" data-item-id="{{ $item->id }}" data-product-name="{{ $item->product->nombre }}">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -144,14 +141,11 @@
                                             <span class="text-sm font-bold text-green-600 item-subtotal" data-item-id="{{ $item->id }}">S/ {{ number_format($item->product->precio * $item->cantidad, 2) }}</span>
                                         </td>
                                         <td class="py-6 px-6 text-center">
-                                            <form action="{{ route('carrito.remove', $item->id) }}" method="POST" class="inline remove-form">
-                                                @csrf
-                                                <button type="submit" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-110">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                    </svg>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-110 remove-item-btn" data-item-id="{{ $item->id }}" data-product-name="{{ $item->product->nombre }}">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
                                         </td>
                                     </tr>
                                     @endforeach
@@ -238,6 +232,9 @@
 @endsection
 
 @section('scripts')
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
@@ -265,7 +262,29 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (action === 'decrement' && quantity > 1) {
             quantity--;
         } else if (action === 'decrement' && quantity === 1) {
-            removeItem(itemId);
+            // Usar SweetAlert para confirmar eliminación cuando la cantidad llega a 0
+            const productName = document.querySelector(`[data-item-id*="${itemId}"]`)?.querySelector('h3, p')?.textContent || 'este producto';
+            
+            Swal.fire({
+                title: '¿Eliminar producto?',
+                text: `¿Estás seguro de que quieres eliminar "${productName}" del carrito?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'rounded-2xl',
+                    confirmButton: 'rounded-lg px-6 py-3 font-semibold',
+                    cancelButton: 'rounded-lg px-6 py-3 font-semibold'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    removeItem(itemId);
+                }
+            });
             return;
         }
         
@@ -332,21 +351,54 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Función para mostrar confirmación con SweetAlert antes de eliminar
+    function confirmRemoveItem(itemId, productName) {
+        Swal.fire({
+            title: '¿Eliminar producto?',
+            text: `¿Estás seguro de que quieres eliminar "${productName}" del carrito?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            customClass: {
+                popup: 'rounded-2xl',
+                confirmButton: 'rounded-lg px-6 py-3 font-semibold',
+                cancelButton: 'rounded-lg px-6 py-3 font-semibold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                removeItem(itemId);
+            }
+        });
+    }
+
     // Función optimizada para eliminar item
     async function removeItem(itemId) {
-        if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
-        
         const mobileItem = document.querySelector(`[data-item-id="mobile-${itemId}"]`);
         const desktopItem = document.querySelector(`[data-item-id="desktop-${itemId}"]`);
         const cartItems = [mobileItem, desktopItem].filter(item => item !== null);
+        
+        // Mostrar loading en SweetAlert
+        Swal.fire({
+            title: 'Eliminando producto...',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
         
         cartItems.forEach(item => {
             item.classList.add('opacity-50', 'pointer-events-none');
         });
         
         try {
-            const response = await fetch(`/carrito/eliminar/${itemId}`, {
-                method: 'POST',
+            const response = await fetch(`/carrito/eliminar-ajax/${itemId}`, {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF_TOKEN
@@ -356,6 +408,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data.success) {
+                // Cerrar el loading y mostrar éxito
+                Swal.fire({
+                    title: '¡Eliminado!',
+                    text: 'El producto ha sido eliminado del carrito.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: 'rounded-2xl'
+                    }
+                });
+                
                 // Eliminar elementos del DOM con animación
                 cartItems.forEach(item => {
                     item.style.transition = 'all 0.3s ease';
@@ -377,7 +441,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             // Si no quedan items, recargar
                             if (!document.querySelector('[data-item-id^="mobile-"], [data-item-id^="desktop-"]')) {
-                                location.reload();
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1000);
                             }
                             
                             // Actualizar badge
@@ -386,14 +452,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 10);
                 });
             } else {
-                showError(data.error || 'Error al eliminar');
+                Swal.fire({
+                    title: 'Error',
+                    text: data.error || 'Error al eliminar el producto',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'rounded-lg px-6 py-3 font-semibold'
+                    }
+                });
+                
                 cartItems.forEach(item => {
                     item.classList.remove('opacity-50', 'pointer-events-none');
                 });
             }
         } catch (error) {
             console.error('Error:', error);
-            showError('Error de conexión');
+            
+            Swal.fire({
+                title: 'Error de conexión',
+                text: 'No se pudo conectar con el servidor. Inténtalo de nuevo.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444',
+                customClass: {
+                    popup: 'rounded-2xl',
+                    confirmButton: 'rounded-lg px-6 py-3 font-semibold'
+                }
+            });
+            
             cartItems.forEach(item => {
                 item.classList.remove('opacity-50', 'pointer-events-none');
             });
@@ -422,18 +509,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para mostrar errores (optimizada)
     function showError(message) {
-        const existingError = document.querySelector('.error-message');
-        if (existingError) existingError.remove();
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message fixed top-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-fadeIn';
-        errorDiv.textContent = message;
-        document.body.appendChild(errorDiv);
-        
-        setTimeout(() => {
-            errorDiv.classList.add('animate-fadeOut');
-            setTimeout(() => errorDiv.remove(), 300);
-        }, 3000);
+        Swal.fire({
+            title: 'Error',
+            text: message,
+            icon: 'error',
+            confirmButtonColor: '#ef4444',
+            customClass: {
+                popup: 'rounded-2xl',
+                confirmButton: 'rounded-lg px-6 py-3 font-semibold'
+            }
+        });
     }
 
     // Event delegation para mejor rendimiento
@@ -446,13 +531,12 @@ document.addEventListener('DOMContentLoaded', function() {
             updateQuantity(itemId, action);
         }
         
-        const removeForm = e.target.closest('.remove-form');
-        if (removeForm) {
+        const removeBtn = e.target.closest('.remove-item-btn');
+        if (removeBtn) {
             e.preventDefault();
-            // Extraer el ID del item desde la URL del formulario
-            const actionUrl = removeForm.getAttribute('action');
-            const itemId = actionUrl.split('/').pop();
-            removeItem(itemId);
+            const itemId = removeBtn.getAttribute('data-item-id');
+            const productName = removeBtn.getAttribute('data-product-name');
+            confirmRemoveItem(itemId, productName);
         }
     });
 });
@@ -468,5 +552,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     .animate-fadeIn { animation: fadeIn 0.3s ease forwards; }
     .animate-fadeOut { animation: fadeOut 0.3s ease forwards; }
+
+    /* Estilos personalizados para SweetAlert2 */
+    .swal2-popup {
+        font-family: inherit !important;
+    }
+    
+    .swal2-title {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+    }
+    
+    .swal2-content {
+        font-size: 1rem !important;
+    }
+    
+    .swal2-confirm {
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .swal2-cancel {
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .swal2-confirm:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+    }
+    
+    .swal2-cancel:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4) !important;
+    }
 </style>
 @endsection
