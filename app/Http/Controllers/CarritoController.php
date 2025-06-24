@@ -307,25 +307,85 @@ class CarritoController extends Controller
     public function checkout()
     {
         $carrito = Carrito::where('user_id', Auth::id())
-                          ->with(['items.product.user', 'items.product.categoria'])
-                          ->first();
+                        ->with(['items.product.user', 'items.product.categoria'])
+                        ->first();
 
         if (!$carrito || $carrito->items->isEmpty()) {
             return redirect()->route('carrito.index')
-                           ->with('error', 'El carrito está vacío.');
+                        ->with('error', 'El carrito está vacío.');
         }
 
-        // Verificar stock de todos los productos
+        // Verificar stock de todos los productos y recopilar información detallada
+        $productosConProblemas = [];
+        $stockDisponible = [];
+        
         foreach ($carrito->items as $item) {
             if ($item->cantidad > $item->product->cantidad_disponible) {
-                return redirect()->route('carrito.index')
-                               ->with('error', 'Algunos productos no tienen stock suficiente. Por favor, revisa tu carrito.');
+                $productosConProblemas[] = [
+                    'item_id' => $item->id,
+                    'nombre' => $item->product->nombre,
+                    'cantidad_solicitada' => $item->cantidad,
+                    'stock_disponible' => $item->product->cantidad_disponible,
+                    'diferencia' => $item->cantidad - $item->product->cantidad_disponible
+                ];
             }
+            
+            // Guardar stock disponible para mostrar en la vista
+            $stockDisponible[$item->product->id] = $item->product->cantidad_disponible;
+        }
+
+        if (!empty($productosConProblemas)) {
+            return redirect()->route('carrito.index')
+                        ->with('stock_error', $productosConProblemas)
+                        ->with('stock_disponible', $stockDisponible);
         }
 
         $zones = Zone::orderBy('name')->get();
 
         return view('carrito.checkout', compact('carrito', 'zones'));
+    }
+
+    public function verificarStock()
+    {
+        try {
+            $carrito = Carrito::where('user_id', Auth::id())
+                            ->with(['items.product'])
+                            ->first();
+
+            if (!$carrito) {
+                return response()->json(['success' => true, 'problemas' => []]);
+            }
+
+            $problemas = [];
+            
+            foreach ($carrito->items as $item) {
+                // Refrescar el stock del producto desde la base de datos
+                $item->product->refresh();
+                
+                if ($item->cantidad > $item->product->cantidad_disponible) {
+                    $problemas[] = [
+                        'item_id' => $item->id,
+                        'producto_nombre' => $item->product->nombre,
+                        'cantidad_carrito' => $item->cantidad,
+                        'stock_disponible' => $item->product->cantidad_disponible,
+                        'exceso' => $item->cantidad - $item->product->cantidad_disponible
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'tiene_problemas' => !empty($problemas),
+                'problemas' => $problemas
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error verificando stock: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al verificar stock'
+            ], 500);
+        }
     }
 
     /**

@@ -19,6 +19,46 @@
                 </p>
             </div>
         </div>
+        <!-- Alertas de Stock -->
+            @if(session('stock_error'))
+            <div class="mb-6">
+                <div class="bg-red-50 border-l-4 border-red-400 rounded-lg p-4 shadow-md">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h3 class="text-sm font-bold text-red-800 mb-2">⚠️ Productos sin stock suficiente</h3>
+                            <div class="space-y-2">
+                                @foreach(session('stock_error') as $problema)
+                                <div class="bg-white rounded-lg p-3 border border-red-200">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                        <div>
+                                            <p class="font-semibold text-red-900 text-sm">{{ $problema['nombre'] }}</p>
+                                            <p class="text-xs text-red-700">
+                                                Solicitaste: <span class="font-semibold">{{ $problema['cantidad_solicitada'] }} unidades</span>
+                                            </p>
+                                            <p class="text-xs text-red-600">
+                                                Stock disponible: <span class="font-semibold">{{ $problema['stock_disponible'] }} unidades</span>
+                                            </p>
+                                        </div>
+                                      
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                            <div class="mt-3 p-2 bg-red-100 rounded-md">
+                                <p class="text-xs text-red-800">
+                                    <strong>💡 Tip:</strong> Ajusta las cantidades o elimina los productos para continuar con tu compra.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
 
         @if($carrito && $carrito->items->count())
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -539,6 +579,57 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmRemoveItem(itemId, productName);
         }
     });
+
+    // Función para ajustar cantidad automáticamente
+window.ajustarCantidad = async function(itemId, stockDisponible) {
+    if (stockDisponible === 0) {
+        Swal.fire({
+            title: '¿Eliminar producto?',
+            text: 'Este producto no tiene stock disponible. ¿Deseas eliminarlo del carrito?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            customClass: { popup: 'rounded-2xl' }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                removeItem(itemId);
+            }
+        });
+        return;
+    }
+
+    try {
+        const response = await fetch(`/carrito/actualizar/${itemId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN
+            },
+            body: JSON.stringify({ cantidad: stockDisponible })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            Swal.fire({
+                title: '¡Cantidad ajustada!',
+                text: `La cantidad ha sido ajustada a ${stockDisponible} unidades.`,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-2xl' }
+            }).then(() => {
+                location.reload();
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('Error al ajustar la cantidad');
+    }
+}
 });
 </script>
 <style>

@@ -239,39 +239,44 @@
     </div>
 
     <!-- Alertas y notificaciones importantes -->
-    @if($productosStockBajo > 0 || $productosSinStock > 0)
-    <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
-        <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 text-center flex items-center justify-center">
-            <span class="mr-2">⚠️</span> Alertas de Inventario
-        </h3>
+    <!-- Alertas y notificaciones importantes -->
+@if($productosStockBajo > 0 || $productosSinStock > 0)
+<div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+    <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 text-center flex items-center justify-center">
+        <span class="mr-2">⚠️</span> Alertas de Inventario
+    </h3>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @if($productosSinStock > 0)
+        <a href="{{ route('admin.productos.stock-bajo') }}" 
+           class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">🚫</span>
+                <div>
+                    <h4 class="font-semibold text-red-800">Sin Stock</h4>
+                    <p class="text-sm text-red-700">{{ $productosSinStock }} productos sin inventario</p>
+                    <p class="text-xs text-red-600 mt-1">👆 Click para ver detalles</p>
+                </div>
+            </div>
+        </a>
+        @endif
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            @if($productosSinStock > 0)
-            <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-                <div class="flex items-center">
-                    <span class="text-2xl mr-3">🚫</span>
-                    <div>
-                        <h4 class="font-semibold text-red-800">Sin Stock</h4>
-                        <p class="text-sm text-red-700">{{ $productosSinStock }} productos sin inventario</p>
-                    </div>
+        @if($productosStockBajo > 0)
+        <a href="{{ route('admin.productos.stock-bajo') }}" 
+           class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">⚠️</span>
+                <div>
+                    <h4 class="font-semibold text-yellow-800">Stock Bajo</h4>
+                    <p class="text-sm text-yellow-700">{{ $productosStockBajo }} productos con menos de 5 unidades</p>
+                    <p class="text-xs text-yellow-600 mt-1">👆 Click para ver detalles</p>
                 </div>
             </div>
-            @endif
-            
-            @if($productosStockBajo > 0)
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-                <div class="flex items-center">
-                    <span class="text-2xl mr-3">⚠️</span>
-                    <div>
-                        <h4 class="font-semibold text-yellow-800">Stock Bajo</h4>
-                        <p class="text-sm text-yellow-700">{{ $productosStockBajo }} productos con menos de 5 unidades</p>
-                    </div>
-                </div>
-            </div>
-            @endif
-        </div>
+        </a>
+        @endif
     </div>
-    @endif
+</div>
+@endif
 
     <!-- Acciones rápidas principales -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 sm:mb-8">

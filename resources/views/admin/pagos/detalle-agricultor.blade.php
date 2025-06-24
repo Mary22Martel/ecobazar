@@ -10,47 +10,20 @@
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold mb-2">📋 Detalle de Mis Ventas</h1>
                 <p class="text-green-100 text-base sm:text-lg">
-                    {{ $agricultor->name }} - {{ $fechaInicio->format('d/m/Y') }} al {{ $fechaFin->format('d/m/Y') }}
+                    {{ $agricultor->name }} - {{ $inicioSemana->format('d/m/Y') }} al {{ $finSemana->format('d/m/Y') }}
                 </p>
                 <p class="text-green-100 text-sm">
                     🗓️ Para entrega: {{ $diaEntrega->format('l, d/m/Y') }}
                 </p>
             </div>
             <div class="text-right">
-                <a href="{{ route('agricultor.pagos', ['semana' => $semanaSeleccionada]) }}" 
+                <a href="{{ route('admin.pagos.agricultores', ['semana' => $semanaSeleccionada]) }}" 
                    class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all block mb-2 no-print">
                     ← Volver a Pagos
                 </a>
                 <div class="text-2xl font-bold">S/ {{ number_format($totalPago, 2) }}</div>
                 <div class="text-green-100 text-sm">total a cobrar</div>
             </div>
-        </div>
-    </div>
-
-    <!-- Filtro de Semanas -->
-    <div class="mb-6">
-        <div class="bg-white rounded-xl shadow-lg p-4">
-            <form method="GET" action="{{ route('agricultor.detalle-pagos') }}" class="flex flex-col sm:flex-row gap-4 items-end">
-                <div class="flex-1">
-                    <label for="semana" class="block text-sm font-semibold text-gray-700 mb-2">
-                        📅 Cambiar Semana de Consulta
-                    </label>
-                    <select name="semana" id="semana" 
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                        @foreach($opcionesSemanas as $valor => $label)
-                            <option value="{{ $valor }}" {{ $semanaSeleccionada == $valor ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <button type="submit" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors font-semibold">
-                        🔍 Consultar
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -253,46 +226,13 @@
             @endforeach
         </div>
     </div>
-
-    <!-- Lista de preparación -->
-    <div class="mt-6 bg-yellow-50 rounded-xl border border-yellow-200 p-4 sm:p-6">
-        <h3 class="text-lg font-bold text-yellow-800 mb-4 flex items-center">
-            <span class="mr-2">📝</span> Lista de Preparación para la Feria
-        </h3>
-        
-        <div class="space-y-2">
-            @foreach($resumenProductos as $resumen)
-            <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-                <div class="flex items-center">
-                    <input type="checkbox" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 mr-3">
-                    <span class="font-medium">{{ $resumen['producto'] }}</span>
-                </div>
-                <div class="text-sm text-gray-600">
-                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        {{ $resumen['cantidad_total'] }} unidades
-                    </span>
-                    <span class="ml-2 font-semibold text-green-600">
-                        S/ {{ number_format($resumen['total_vendido'], 2) }}
-                    </span>
-                </div>
-            </div>
-            @endforeach
-        </div>
-        
-        <div class="mt-4 p-3 bg-yellow-100 rounded-lg">
-            <p class="text-sm text-yellow-800">
-                <strong>💡 Consejo:</strong> Marca cada producto preparado y etiquétalo con "Pedido #XX - Cliente". 
-                Esto te ayudará a organizarte mejor el día de la feria.
-            </p>
-        </div>
-    </div>
     @endif
 
     <!-- Acciones -->
     <div class="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
-        <a href="{{ route('agricultor.pagos', ['semana' => $semanaSeleccionada]) }}" 
+        <a href="{{ route('admin.pagos.agricultores', ['semana' => $semanaSeleccionada]) }}" 
            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors font-semibold text-center">
-            ← Volver a Mis Pagos
+            ← Volver a pagos
         </a>
         
         @if(count($detallesPago) > 0)
@@ -301,10 +241,7 @@
             🖨️ Imprimir Lista
         </button>
         
-        <a href="{{ route('agricultor.pagos.exportar', ['semana' => $semanaSeleccionada]) }}" 
-           class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors font-semibold text-center">
-            📥 Exportar CSV
-        </a>
+       
         @endif
     </div>
 

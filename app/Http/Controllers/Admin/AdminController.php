@@ -863,7 +863,7 @@ public function index()
         ];
     }
 
-    public function detallePagoAgricultor(Request $request, $agricultorId)
+   public function detallePagoAgricultor(Request $request, $agricultorId)
     {
         $this->authorizeRoles(['admin']);
         
@@ -872,15 +872,19 @@ public function index()
         $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
         $inicioSemana = $semanaFeria['inicio_ventas'];
         $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Generar opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();  // ← Agregar esta línea
         
         $agricultor = User::where('role', 'agricultor')
             ->with(['productos.orderItems' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('order', function($subQuery) use ($inicioSemana, $finSemana) {
                     $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
-                             ->whereBetween('created_at', [
-                                 $inicioSemana->startOfDay(), 
-                                 $finSemana->endOfDay()
-                             ]);
+                            ->whereBetween('created_at', [
+                                $inicioSemana->startOfDay(), 
+                                $finSemana->endOfDay()
+                            ]);
                 })->with(['order', 'product']);
             }])
             ->findOrFail($agricultorId);
@@ -906,12 +910,20 @@ public function index()
             }
         }
         
+        // Variables de compatibilidad
+        $fechaInicio = $inicioSemana;
+        $fechaFin = $finSemana;
+        
         return view('admin.pagos.detalle-agricultor', compact(
             'agricultor',
             'detallesPago',
             'totalPago',
             'inicioSemana',
             'finSemana',
+            'diaEntrega',
+            'fechaInicio',
+            'fechaFin',
+            'opcionesSemanas',      // ← Ahora sí está definida
             'semanaSeleccionada'
         ));
     }
@@ -1660,6 +1672,29 @@ public function pedidosRecojoPuesto(Request $request)
         'finSemana',
         'diaEntrega',
         'estadisticasSemana'
+    ));
+}
+
+public function productosStockBajo()
+{
+    $this->authorizeRoles(['admin']);
+    
+    // Productos sin stock
+    $productosSinStock = Product::with(['user', 'categoria', 'medida'])
+                               ->where('cantidad_disponible', 0)
+                               ->orderBy('nombre')
+                               ->get();
+    
+    // Productos con stock bajo (menos de 5)
+    $productosStockBajo = Product::with(['user', 'categoria', 'medida'])
+                                ->where('cantidad_disponible', '>', 0)
+                                ->where('cantidad_disponible', '<', 5)
+                                ->orderBy('cantidad_disponible')
+                                ->get();
+    
+    return view('admin.productos.stock-bajo', compact(
+        'productosSinStock',
+        'productosStockBajo'
     ));
 }
 }

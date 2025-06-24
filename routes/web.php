@@ -100,6 +100,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/carrito/checkout', [CarritoController::class, 'checkout'])->name('carrito.checkout');
     Route::get('/carrito/load-data', [CarritoController::class, 'loadCartData'])->name('carrito.loadCartData');
     Route::get('/carrito/count', [CarritoController::class, 'count'])->name('carrito.count');
+    Route::get('/carrito/verificar-stock', [CarritoController::class, 'verificarStock'])
+     ->name('carrito.verificar-stock');
 
 
 });
@@ -144,6 +146,7 @@ Route::middleware(['auth'])->group(function () {
     // ========== GESTIÓN DE PAGOS ==========
     // Ver pagos del agricultor (usando el sistema de semanas de feria)
     Route::get('/agricultor/pagos', [AgricultorController::class, 'pagos'])->name('agricultor.pagos');
+
     
     // Exportar reporte de pagos
     // Agregar esta ruta nueva
@@ -279,6 +282,9 @@ Route::middleware(['auth'])->group(function () {
     // Vista de pedidos agrupados por zona
     Route::get('/admin/pedidos/por-zona', [App\Http\Controllers\Admin\AdminController::class, 'pedidosPorZona'])
         ->name('admin.pedidos.por-zona');
+
+    Route::get('/admin/productos/stock-bajo', [App\Http\Controllers\Admin\AdminController::class, 'productosStockBajo'])
+     ->name('admin.productos.stock-bajo');
 
     // ==================== CREAR AdminRepartidorController ====================
     Route::prefix('admin/repartidores')->name('admin.repartidores.')->group(function () {
