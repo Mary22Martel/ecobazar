@@ -145,10 +145,6 @@
                    class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
                     📦 Todos
                 </a>
-                <a href="{{ route('admin.pedidos.pagados', $currentParams) }}" 
-                   class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
-                    💳 Pagados
-                </a>
                 <a href="{{ route('admin.pedidos.listos', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
                     ✅ Listos
@@ -157,9 +153,13 @@
                    class="flex items-center px-4 py-2 rounded-lg bg-purple-100 text-purple-800 border-2 border-purple-200 transition-all font-semibold text-sm whitespace-nowrap">
                     📋 Armados ({{ $pedidos->total() ?? $pedidos->count() }})
                 </a>
-                <a href="{{ route('admin.pedidos.expirados', $currentParams) }}" 
-                   class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
-                    ⏰ Expirados
+                  <a href="{{ route('admin.pedidos.delivery', $currentParams) }}" 
+               class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
+                🚚 Delivery
+                </a>
+                <a href="{{ route('admin.pedidos.recojo-puesto', $currentParams) }}" 
+                class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
+                    🏪 Recojo Puesto
                 </a>
             </div>
         </div>
@@ -239,27 +239,49 @@
                             </div>
                         </td>
                         <td class="px-4 py-4">
-                            @if($esDelivery)
-                                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-                                    🚚 Delivery
-                                </span>
-                                @php
-                                    $zona = \App\Models\Zone::where('name', $pedido->distrito)->first();
-                                    $costoEnvio = $zona ? $zona->delivery_cost : 0;
-                                @endphp
-                                @if($costoEnvio > 0)
-                                    <div class="text-xs text-yellow-600 mt-1">
-                                        Costo: S/ {{ number_format($costoEnvio, 2) }}
-                                    </div>
-                                @endif
-                            @else
-                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                                    🏪 Recoger en Puesto
-                                </span>
-                                <div class="text-xs text-green-600 mt-1">
-                                    Cliente debe recoger
-                                </div>
-                            @endif
+                           @if($esDelivery)
+    @if($pedido->estado === 'armado')
+        <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
+            @csrf
+            <input type="hidden" name="estado" value="en_entrega">
+            <button type="submit" 
+                    onclick="return confirm('¿Marcar como EN ENTREGA el pedido #{{ $pedido->id }}?')"
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
+                🚚 DELIVERY
+            </button>
+        </form>
+    @elseif($pedido->estado === 'en_entrega')
+        <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
+            @csrf
+            <input type="hidden" name="estado" value="entregado">
+            <button type="submit" 
+                    onclick="return confirm('¿Confirmar entrega del pedido #{{ $pedido->id }}?')"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
+                ✅ ENTREGADO
+            </button>
+        </form>
+    @else
+        <span class="w-full bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm text-center font-semibold">
+            ✅ Ya Entregado
+        </span>
+    @endif
+@else
+    @if($pedido->estado === 'armado')
+        <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
+            @csrf
+            <input type="hidden" name="estado" value="entregado">
+            <button type="submit" 
+                    onclick="return confirm('¿Confirmar que el cliente recogió el pedido #{{ $pedido->id }}?')"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
+                ✅ PUESTO
+            </button>
+        </form>
+    @else
+        <span class="w-full bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm text-center font-semibold">
+            ✅ Ya Entregado
+        </span>
+    @endif
+@endif
                         </td>
                         <td class="px-4 py-4">
                             @if($esDelivery)

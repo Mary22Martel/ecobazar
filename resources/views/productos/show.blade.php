@@ -57,7 +57,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <p class="font-semibold text-gray-700 text-sm sm:text-base">
                         Disponibles: 
-                        <span class="text-green-600">{{ $producto->cantidad_disponible }}</span>
+                        <span class="text-green-600" id="stock-display">{{ $producto->cantidad_disponible }}</span>
                     </p>
                     
                     <!-- Selector de cantidad -->
@@ -89,10 +89,10 @@
                 </a>
 
                 <!-- Formulario para agregar al carrito -->
-                <form class="add-to-cart-form flex-1" action="{{ route('carrito.add', $producto->id) }}" method="POST">
+                <form id="addToCartForm" class="add-to-cart-form flex-1" action="{{ route('carrito.add', $producto->id) }}" method="POST">
                     @csrf
                     <input type="hidden" name="cantidad" value="1" id="cantidadInput">
-                    <button type="submit" 
+                    <button type="submit" id="addToCartBtn"
                             class="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg w-full transition-colors duration-200 font-medium text-sm sm:text-base shadow-md hover:shadow-lg">
                         🛒 Agregar al carrito
                     </button>
@@ -114,12 +114,24 @@
     </div>
 </div>
 
+<!-- 🔥 NOTIFICACIÓN PERSONALIZADA -->
+<div id="notification" class="fixed top-4 right-4 z-50 hidden">
+    <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+        <span id="notification-message">Producto agregado al carrito</span>
+        <button onclick="hideNotification()" class="ml-4 text-white hover:text-gray-200">
+            ✕
+        </button>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const decreaseButton = document.getElementById('decrease');
         const increaseButton = document.getElementById('increase');
         const quantityInput = document.getElementById('quantity');
         const cantidadInput = document.getElementById('cantidadInput');
+        const addToCartForm = document.getElementById('addToCartForm');
+        const addToCartBtn = document.getElementById('addToCartBtn');
 
         // Convertir el valor máximo del input en un número a través de JavaScript
         const maxQuantity = parseInt("{{ $producto->cantidad_disponible }}");
@@ -161,8 +173,99 @@
 
         // Inicializar el input oculto
         updateHiddenInput();
+
+        // 🔥 MANEJAR FORMULARIO DE AGREGAR AL CARRITO CON AJAX
+        addToCartForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevenir envío normal
+
+            const formData = new FormData(this);
+            const url = this.action;
+
+            // Mostrar estado de carga
+            const originalText = addToCartBtn.textContent;
+            addToCartBtn.textContent = '⏳ Agregando...';
+            addToCartBtn.disabled = true;
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // ✅ MOSTRAR NOTIFICACIÓN DE ÉXITO
+                    showNotification(data.message, 'success');
+                    
+                    // 🔄 ACTUALIZAR CONTADOR DEL CARRITO (si tienes)
+                    updateCartCounter(data.totalItems);
+                    
+                } else {
+                    // ❌ MOSTRAR ERROR
+                    showNotification(data.error || 'Error al agregar producto', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error de conexión. Intenta nuevamente.', 'error');
+            })
+            .finally(() => {
+                // Restaurar botón
+                addToCartBtn.textContent = originalText;
+                addToCartBtn.disabled = false;
+            });
+        });
     });
 
+    // 🎨 FUNCIÓN PARA MOSTRAR NOTIFICACIONES
+    function showNotification(message, type = 'success') {
+        const notification = document.getElementById('notification');
+        const messageElement = document.getElementById('notification-message');
+        
+        messageElement.textContent = message;
+        
+        // Cambiar color según el tipo
+        const notificationDiv = notification.querySelector('div');
+        if (type === 'success') {
+            notificationDiv.className = 'bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2';
+        } else {
+            notificationDiv.className = 'bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2';
+        }
+        
+        // Mostrar notificación
+        notification.classList.remove('hidden');
+        
+        // Ocultar automáticamente después de 3 segundos
+        setTimeout(() => {
+            hideNotification();
+        }, 3000);
+    }
+
+    // Función para ocultar notificación
+    function hideNotification() {
+        document.getElementById('notification').classList.add('hidden');
+    }
+
+    // 🔄 FUNCIÓN PARA ACTUALIZAR CONTADOR DEL CARRITO
+    function updateCartCounter(totalItems) {
+        // Buscar elementos del contador de carrito (ajusta los selectores según tu layout)
+        const cartCounters = document.querySelectorAll('.cart-count, .carrito-count, #cart-counter, [data-cart-count]');
+        
+        cartCounters.forEach(counter => {
+            counter.textContent = totalItems;
+            
+            // Opcional: Animación de rebote
+            counter.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                counter.style.transform = 'scale(1)';
+            }, 200);
+        });
+    }
+
+    // FUNCIÓN EXISTENTE (mantener)
     function updateProductStock(productId) {
         fetch('/producto/' + productId)
             .then(response => response.json())

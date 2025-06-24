@@ -135,10 +135,7 @@
                    class="flex items-center px-4 py-2 rounded-lg {{ !request()->route()->named('admin.pedidos.pagados') && !request()->route()->named('admin.pedidos.listos') && !request()->route()->named('admin.pedidos.armados') && !request()->route()->named('admin.pedidos.expirados') ? 'bg-blue-100 text-blue-800 border-2 border-blue-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     📦 Todos los Pedidos
                 </a>
-                <a href="{{ route('admin.pedidos.pagados', $currentParams) }}" 
-                   class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.pagados') ? 'bg-orange-100 text-orange-800 border-2 border-orange-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
-                    💳 Pagados 
-                </a>
+               
                 <a href="{{ route('admin.pedidos.listos', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.listos') ? 'bg-green-100 text-green-800 border-2 border-green-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     ✅ Listos (Para Armar)
@@ -147,10 +144,18 @@
                    class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.armados') ? 'bg-purple-100 text-purple-800 border-2 border-purple-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     📋 Armados (Para Entregar)
                 </a>
-                <a href="{{ route('admin.pedidos.expirados', $currentParams) }}" 
+                  <a href="{{ route('admin.pedidos.delivery', $currentParams) }}" 
+               class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
+                🚚 Delivery
+                </a>
+                <a href="{{ route('admin.pedidos.recojo-puesto', $currentParams) }}" 
+                class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
+                    🏪 Recojo Puesto
+                </a>
+                <!-- <a href="{{ route('admin.pedidos.expirados', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg {{ request()->route()->named('admin.pedidos.expirados') ? 'bg-red-100 text-red-800 border-2 border-red-200' : 'text-gray-700 hover:bg-gray-50' }} transition-all font-semibold text-sm whitespace-nowrap">
                     ⏰ Expirados
-                </a>
+                </a> -->
             </div>
         </div>
     </div>

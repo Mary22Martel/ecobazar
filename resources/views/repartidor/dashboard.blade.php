@@ -20,6 +20,39 @@
         </div>
     </div>
 
+    <!-- INFORMACIÓN DE ZONAS ASIGNADAS -->
+    @if($zonasAsignadas->isNotEmpty())
+    <div class="mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-4 sm:p-6 shadow-sm animate-fade-in-up">
+        <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-lg font-semibold text-indigo-800 mb-2">Zonas de Entrega Asignadas</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-{{ min(count($zonasAsignadas), 3) }} gap-3">
+                    @foreach($zonasAsignadas as $zona)
+                    <div class="bg-white rounded-lg p-3 border-l-4 border-indigo-400 shadow-sm">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-semibold text-gray-800">{{ $zona->name }}</h4>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Activa
+                            </span>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- RECORDATORIO SEMANAL -->
     <div class="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 rounded-lg p-4 shadow-sm animate-fade-in-up">
         <div class="flex items-start space-x-3">
@@ -154,6 +187,57 @@
         </div>
     </div>
 
+    <!-- ESTADÍSTICAS POR ZONA -->
+    @if(!empty($estadisticasPorZona) && count($estadisticasPorZona) > 0)
+    <div class="mb-6 bg-white rounded-xl shadow-lg p-4 sm:p-6 animate-fade-in-up">
+        <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <span class="mr-2">📊</span> Estadísticas por Zona - Esta Semana
+        </h3>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-{{ min(count($estadisticasPorZona), 3) }} gap-4">
+            @foreach($estadisticasPorZona as $estadistica)
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-800 flex items-center">
+                        <span class="w-3 h-3 bg-indigo-500 rounded-full mr-2"></span>
+                        {{ $estadistica['zona']->name }}
+                    </h4>
+                </div>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Pendientes:</span>
+                        <span class="font-semibold text-orange-600">{{ $estadistica['pendientes'] }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Completadas:</span>
+                        <span class="font-semibold text-green-600">{{ $estadistica['completadas'] }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-300">
+                        <span class="text-sm font-medium text-gray-700">Total:</span>
+                        <span class="font-bold text-blue-600">{{ $estadistica['total'] }}</span>
+                    </div>
+                </div>
+                
+                @if($estadistica['total'] > 0)
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        @php
+                            $porcentaje = round(($estadistica['completadas'] / $estadistica['total']) * 100);
+                        @endphp
+                        <div class="bg-green-500 h-2 rounded-full progress-bar" data-width="{{ $porcentaje }}"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 text-center">
+                        {{ $estadistica['total'] > 0 ? round(($estadistica['completadas'] / $estadistica['total']) * 100, 1) : 0 }}% completado
+                    </p>
+                </div>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <!-- Guía rápida mejorada con efectos -->
     <div class="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 sm:p-6 animate-fade-in-up">
         <h3 class="text-lg sm:text-xl font-bold text-purple-800 mb-4 flex items-center">
@@ -192,7 +276,10 @@
             <p class="text-sm text-purple-700">
                 Semana de ventas del <strong>{{ $inicioSemana->format('d/m') }}</strong> al <strong>{{ $finSemana->format('d/m') }}</strong>. 
                 @if($entregasPendientes > 0)
-                    Tienes <strong>{{ $entregasPendientes }}</strong> entregas para el <strong>{{ $diaEntrega->format('d/m/Y') }}</strong>.
+                    Tienes <strong>{{ $entregasPendientes }}</strong> entregas para el <strong>{{ $diaEntrega->format('d/m/Y') }}</strong>
+                    @if($zonasAsignadas->isNotEmpty())
+                        en {{ $zonasAsignadas->count() == 1 ? 'la zona' : 'las zonas' }}: <strong>{{ $zonasAsignadas->pluck('name')->join(', ') }}</strong>.
+                    @endif
                 @else
                     ¡Perfecto! No tienes entregas pendientes para esta semana.
                 @endif
@@ -210,7 +297,10 @@
             <div class="ml-3">
                 <h4 class="text-base sm:text-lg font-bold text-orange-800">¡Tienes entregas programadas!</h4>
                 <p class="text-sm sm:text-base text-orange-700">
-                    {{ $entregasPendientes }} {{ $entregasPendientes == 1 ? 'entrega programada' : 'entregas programadas' }} para el <strong>{{ $diaEntrega->format('d/m/Y') }}</strong>.
+                    {{ $entregasPendientes }} {{ $entregasPendientes == 1 ? 'entrega programada' : 'entregas programadas' }} para el <strong>{{ $diaEntrega->format('d/m/Y') }}</strong>
+                    @if($zonasAsignadas->isNotEmpty())
+                        en {{ $zonasAsignadas->count() == 1 ? 'tu zona asignada' : 'tus zonas asignadas' }}.
+                    @endif
                     <a href="{{ route('repartidor.pedidos_pendientes') }}" class="underline font-semibold hover:text-orange-900 animate-pulse">
                         Ver detalles →
                     </a>
@@ -316,6 +406,24 @@
         left: -0.5rem;
     }
 }
+
+/* Progress bar dinámico */
+.progress-bar {
+    transition: width 0.5s ease-in-out;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animar las barras de progreso
+    const progressBars = document.querySelectorAll('.progress-bar');
+    progressBars.forEach(function(bar) {
+        const width = bar.getAttribute('data-width');
+        setTimeout(function() {
+            bar.style.width = width + '%';
+        }, 100);
+    });
+});
+</script>
 
 @endsection

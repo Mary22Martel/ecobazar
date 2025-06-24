@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Arr;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\Exceptions\MPApiException;
@@ -21,105 +22,128 @@ use Carbon\Carbon;
 class OrderController extends Controller
 {
     public function store(Request $request)
-    {
+{
+    try {
+        Log::info('=== INICIO CREACIÓN DE ORDEN ===');
+        Log::info('Usuario ID: ' . Auth::id());
+        
+        // Validar campos básicos
+        $validatedData = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
+            'empresa' => 'nullable|string|max:255',
+            'email' => 'required|email',
+            'telefono' => 'required|string',
+            'delivery' => 'required|in:puesto,delivery',
+            'direccion' => 'required_if:delivery,delivery|nullable|string',
+            'distrito' => 'required_if:delivery,delivery|nullable|exists:zones,id',
+            'pago' => 'required|in:sistema' // Solo permitir pago por sistema
+        ]);
+
+        Log::info('Datos validados:', $validatedData);
+
+        // Obtener el carrito del usuario
+        $carrito = Carrito::with(['items.product.user'])
+                        ->where('user_id', Auth::id())
+                        ->first();
+
+        if (!$carrito || $carrito->items->isEmpty()) {
+            Log::warning('Carrito vacío para usuario: ' . Auth::id());
+            return response()->json([
+                'success' => false,
+                'error' => 'Tu carrito está vacío'
+            ], 400);
+        }
+
+        Log::info('Carrito encontrado con ' . $carrito->items->count() . ' items');
+
+        // TEMPORAL: Forzar mercado 1 hasta que se implemente la selección de mercados
+        $mercadoActual = 1; // Siempre usar mercado 1
+        Log::info('Mercado forzado a: ' . $mercadoActual);
+
+        // COMENTADO TEMPORALMENTE: Validación de mercado
+        /*
+        // Verificar que todos los productos pertenezcan al mismo mercado
+        $mercadoActual = session('mercado_actual');
+        if (!$mercadoActual) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No hay un mercado seleccionado'
+            ], 400);
+        }
+
+        // Validar que todos los productos sean del mercado actual
+        foreach ($carrito->items as $item) {
+            if ($item->product->user->mercado_id != $mercadoActual) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Hay productos de diferentes mercados en tu carrito'
+                ], 400);
+            }
+        }
+        */
+
+        // Calcular totales
+        $subtotal = 0;
+        foreach ($carrito->items as $item) {
+            $subtotal += ($item->product->precio * $item->cantidad);
+        }
+
+        $costoEnvio = 0;
+        $zonaInfo = null;
+        $repartidorId = null;
+
+        // Procesar información de delivery
+        if ($validatedData['delivery'] === 'delivery') {
+            $zona = Zone::find($validatedData['distrito']);
+            if (!$zona) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zona de delivery no válida'
+                ], 400);
+            }
+
+            $costoEnvio = $zona->delivery_cost;
+            $zonaInfo = $zona->name;
+
+            // ⭐ MEJORADO: Buscar repartidor asignado para esta zona HOY
+            $repartidor = User::whereHas('zones', function($query) use ($zona) {
+                $query->where('zones.id', $zona->id)
+                      ->where('fecha_asignacion', now()->toDateString()) // Solo repartidores asignados HOY
+                      ->where('activa', true); // Solo asignaciones activas
+            })->where('role', 'repartidor')
+              ->where('email', '!=', 'sistema.repartidor@puntoVerde.com') // Excluir repartidor del sistema
+              ->first();
+
+            if ($repartidor) {
+                $repartidorId = $repartidor->id;
+                Log::info('Repartidor específico asignado para zona ' . $zonaInfo . ': ' . $repartidor->name . ' (ID: ' . $repartidor->id . ')');
+            } else {
+                // ⭐ FALLBACK: Si no hay repartidor asignado, usar el repartidor del sistema
+                $repartidorId = Order::getRepartidorSistemaId();
+                Log::info('No hay repartidor asignado para zona ' . $zonaInfo . ', usando repartidor del sistema (ID: ' . $repartidorId . ')');
+            }
+        } else {
+            // ⭐ PICKUP: También usar repartidor del sistema como base
+            $repartidorId = Order::getRepartidorSistemaId();
+            Log::info('Pedido pickup - usando repartidor del sistema (ID: ' . $repartidorId . ')');
+        }
+
+        // ⭐ VALIDACIÓN FINAL: Asegurar que siempre hay un repartidor asignado
+        if (!$repartidorId) {
+            $repartidorId = Order::getRepartidorSistemaId();
+            Log::warning('No se pudo determinar repartidor, usando sistema como fallback (ID: ' . $repartidorId . ')');
+        }
+
+        $total = $subtotal + $costoEnvio;
+
+        Log::info("Totales calculados - Subtotal: {$subtotal}, Envío: {$costoEnvio}, Total: {$total}");
+        Log::info("Repartidor final asignado: {$repartidorId}");
+
+        // ⭐ INICIAR TRANSACCIÓN PARA ASEGURAR CONSISTENCIA
+        DB::beginTransaction();
+
         try {
-            Log::info('=== INICIO CREACIÓN DE ORDEN ===');
-            Log::info('Usuario ID: ' . Auth::id());
-            
-            // Validar campos básicos
-            $validatedData = $request->validate([
-                'nombre' => 'required|string|max:255',
-                'apellido' => 'required|string|max:255',
-                'empresa' => 'nullable|string|max:255',
-                'email' => 'required|email',
-                'telefono' => 'required|string',
-                'delivery' => 'required|in:puesto,delivery',
-                'direccion' => 'required_if:delivery,delivery|nullable|string',
-                'distrito' => 'required_if:delivery,delivery|nullable|exists:zones,id',
-                'pago' => 'required|in:sistema' // Solo permitir pago por sistema
-            ]);
-
-            Log::info('Datos validados:', $validatedData);
-
-            // Obtener el carrito del usuario
-            $carrito = Carrito::with(['items.product.user'])
-                            ->where('user_id', Auth::id())
-                            ->first();
-
-            if (!$carrito || $carrito->items->isEmpty()) {
-                Log::warning('Carrito vacío para usuario: ' . Auth::id());
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Tu carrito está vacío'
-                ], 400);
-            }
-
-            Log::info('Carrito encontrado con ' . $carrito->items->count() . ' items');
-
-            // TEMPORAL: Forzar mercado 1 hasta que se implemente la selección de mercados
-            $mercadoActual = 1; // Siempre usar mercado 1
-            Log::info('Mercado forzado a: ' . $mercadoActual);
-
-            // COMENTADO TEMPORALMENTE: Validación de mercado
-            /*
-            // Verificar que todos los productos pertenezcan al mismo mercado
-            $mercadoActual = session('mercado_actual');
-            if (!$mercadoActual) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No hay un mercado seleccionado'
-                ], 400);
-            }
-
-            // Validar que todos los productos sean del mercado actual
-            foreach ($carrito->items as $item) {
-                if ($item->product->user->mercado_id != $mercadoActual) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Hay productos de diferentes mercados en tu carrito'
-                    ], 400);
-                }
-            }
-            */
-
-            // Calcular totales
-            $subtotal = 0;
-            foreach ($carrito->items as $item) {
-                $subtotal += ($item->product->precio * $item->cantidad);
-            }
-
-            $costoEnvio = 0;
-            $zonaInfo = null;
-            $repartidorId = null;
-
-            // Procesar información de delivery
-            if ($validatedData['delivery'] === 'delivery') {
-                $zona = Zone::find($validatedData['distrito']);
-                if (!$zona) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Zona de delivery no válida'
-                    ], 400);
-                }
-
-                $costoEnvio = $zona->delivery_cost;
-                $zonaInfo = $zona->name;
-
-                // Buscar repartidor disponible para esta zona
-                $repartidor = User::whereHas('zones', function($query) use ($zona) {
-                    $query->where('zones.id', $zona->id);
-                })->where('role', 'repartidor')->first();
-
-                if ($repartidor) {
-                    $repartidorId = $repartidor->id;
-                    Log::info('Repartidor asignado: ' . $repartidor->id);
-                }
-            }
-
-            $total = $subtotal + $costoEnvio;
-
-            Log::info("Totales calculados - Subtotal: {$subtotal}, Envío: {$costoEnvio}, Total: {$total}");
-
             // Crear la orden
             $orden = new Order();
             $orden->user_id = Auth::id();
@@ -134,17 +158,18 @@ class OrderController extends Controller
             $orden->pago = 'sistema'; // Siempre sistema
             $orden->total = $total;
             $orden->estado = 'pendiente'; // Siempre pendiente hasta confirmar pago
-            $orden->repartidor_id = $repartidorId;
+            $orden->repartidor_id = $repartidorId; // ⭐ ASIGNAR REPARTIDOR
             $orden->expires_at = Carbon::now('America/Lima')->addMinutes(20);
             $orden->stock_reserved = true;
             $orden->save();
 
-            Log::info('Orden creada con ID: ' . $orden->id);
+            Log::info('Orden creada con ID: ' . $orden->id . ' - Repartidor asignado: ' . $repartidorId);
 
             // Crear los items de la orden y actualizar inventario
             foreach ($carrito->items as $item) {
                 // Verificar stock disponible
                 if ($item->product->cantidad_disponible < $item->cantidad) {
+                    DB::rollback();
                     return response()->json([
                         'success' => false,
                         'error' => "Stock insuficiente para: {$item->product->nombre}"
@@ -168,24 +193,85 @@ class OrderController extends Controller
             $carrito->delete();
             Log::info('Carrito limpiado');
 
+            // Confirmar transacción hasta aquí
+            DB::commit();
+            Log::info('Transacción confirmada - Orden y stock actualizados');
+
             // Siempre procesar pago con MercadoPago
             return $this->procesarPagoMercadoPago($orden, $subtotal, $costoEnvio);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Error de validación:', $e->errors());
-            return response()->json([
-                'success' => false,
-                'error' => 'Datos inválidos: ' . implode(', ', Arr::flatten($e->errors()))
-            ], 422);
-        } catch (Exception $e) {
-            Log::error('Error general en store: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json([
-                'success' => false,
-                'error' => 'Error interno del servidor'
-            ], 500);
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error en transacción de orden: ' . $e->getMessage());
+            throw $e; // Re-lanzar para que lo capture el catch externo
         }
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        Log::error('Error de validación:', $e->errors());
+        return response()->json([
+            'success' => false,
+            'error' => 'Datos inválidos: ' . implode(', ', Arr::flatten($e->errors()))
+        ], 422);
+    } catch (Exception $e) {
+        Log::error('Error general en store: ' . $e->getMessage());
+        Log::error('Stack trace: ' . $e->getTraceAsString());
+        return response()->json([
+            'success' => false,
+            'error' => 'Error interno del servidor'
+        ], 500);
     }
+}
+
+// ⭐ AGREGAR ESTOS MÉTODOS HELPER AL FINAL DE TU ORDERCONTROLLER
+
+/**
+ * Transferir pedidos del sistema a repartidores reales
+ * Este método puede ser llamado por el AdminRepartidorController
+ */
+public function transferirPedidosDelSistema($zonaId, $nuevoRepartidorId)
+{
+    try {
+        $repartidorSistemaId = Order::getRepartidorSistemaId();
+        $zona = Zone::findOrFail($zonaId);
+        
+        $pedidosTransferidos = Order::where('repartidor_id', $repartidorSistemaId)
+                                   ->where('distrito', $zona->name)
+                                   ->whereIn('estado', ['armado', 'en_entrega'])
+                                   ->update(['repartidor_id' => $nuevoRepartidorId]);
+        
+        Log::info("Transferidos {$pedidosTransferidos} pedidos de zona {$zona->name} al repartidor {$nuevoRepartidorId}");
+        
+        return $pedidosTransferidos;
+        
+    } catch (\Exception $e) {
+        Log::error('Error transfiriendo pedidos: ' . $e->getMessage());
+        throw $e;
+    }
+}
+
+/**
+ * Devolver pedidos de repartidor al sistema
+ */
+public function devolverPedidosAlSistema($zonaId, $repartidorId)
+{
+    try {
+        $repartidorSistemaId = Order::getRepartidorSistemaId();
+        $zona = Zone::findOrFail($zonaId);
+        
+        $pedidosDevueltos = Order::where('repartidor_id', $repartidorId)
+                                 ->where('distrito', $zona->name)
+                                 ->whereIn('estado', ['armado', 'en_entrega'])
+                                 ->update(['repartidor_id' => $repartidorSistemaId]);
+        
+        Log::info("Devueltos {$pedidosDevueltos} pedidos de zona {$zona->name} al sistema");
+        
+        return $pedidosDevueltos;
+        
+    } catch (\Exception $e) {
+        Log::error('Error devolviendo pedidos al sistema: ' . $e->getMessage());
+        throw $e;
+    }
+}
     // En tu OrderController.php, agrega este método __construct:
 
     public function __construct()

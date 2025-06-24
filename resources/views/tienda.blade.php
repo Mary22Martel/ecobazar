@@ -464,6 +464,265 @@
             </div>
         </a>
     </div>
+<!-- 🎯 MODAL DE ESTADO DE PEDIDOS - VERSIÓN COMPLETA CON 'ENTREGADO' -->
+<!-- REEMPLAZAR todo el modal en tu tienda.blade.php por este código -->
+
+@if($pedidoActivo)
+@php
+    $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
+    $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
+    $proximoSabado = \Carbon\Carbon::now('America/Lima')->next(\Carbon\Carbon::SATURDAY);
+    
+    // Si ya pasó el sábado de esta semana, el próximo sábado es de la siguiente semana
+    if (\Carbon\Carbon::now('America/Lima')->dayOfWeek === \Carbon\Carbon::SATURDAY && 
+        \Carbon\Carbon::now('America/Lima')->hour >= 14) { // Después de las 2 PM del sábado
+        $proximoSabado = \Carbon\Carbon::now('America/Lima')->next(\Carbon\Carbon::SATURDAY)->addWeek();
+    }
+@endphp
+
+<div id="pedido-status-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 mx-4 max-w-md w-full shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="modal-content">
+        
+        <!-- Header del Modal -->
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center
+                @if($pedidoActivo->estado === 'pagado') bg-blue-100
+                @elseif($pedidoActivo->estado === 'listo') bg-yellow-100
+                @elseif($pedidoActivo->estado === 'armado') bg-green-100
+                @elseif($pedidoActivo->estado === 'en_entrega') bg-purple-100
+                @elseif($pedidoActivo->estado === 'entregado') bg-green-100
+                @endif">
+                
+                @if($pedidoActivo->estado === 'pagado')
+                    <i class="fas fa-clock text-blue-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'listo')
+                    <i class="fas fa-check-circle text-yellow-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'armado')
+                    <i class="fas fa-box text-green-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'en_entrega')
+                    <i class="fas fa-truck text-purple-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'entregado')
+                    <i class="fas fa-check-double text-green-600 text-3xl"></i>
+                @endif
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-2">
+                @if($pedidoActivo->estado === 'pagado')
+                    ¡Pedido Confirmado! 🎉
+                @elseif($pedidoActivo->estado === 'listo')
+                    ¡Productos Listos! ✅
+                @elseif($pedidoActivo->estado === 'armado')
+                    ¡Pedido Armado! 📦
+                @elseif($pedidoActivo->estado === 'en_entrega')
+                    ¡En Camino! 🚚
+                @elseif($pedidoActivo->estado === 'entregado')
+                    ¡Entregado Exitosamente! 🎊
+                @endif
+            </h3>
+            
+            <!-- 🗓️ INFORMACIÓN DE LA SEMANA ACTUAL -->
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p class="text-sm font-semibold text-gray-800">
+                    📅 Semana del {{ $inicioSemana->format('d/m') }} al {{ $finSemana->format('d/m/Y') }}
+                </p>
+                <p class="text-xs text-gray-600 mt-1">
+                    @if($pedidoActivo->estado === 'entregado')
+                        🎪 Feria completada: {{ $pedidoActivo->updated_at->format('d/m/Y') }}
+                    @else
+                        🎪 Feria: {{ $proximoSabado->format('d/m/Y') }} ({{ $proximoSabado->diffForHumans() }})
+                    @endif
+                </p>
+            </div>
+            
+            <p class="text-sm text-gray-500 mb-4">
+                Pedido #{{ str_pad($pedidoActivo->id, 6, '0', STR_PAD_LEFT) }} • 
+                {{ $pedidoActivo->created_at->format('d/m/Y H:i') }}
+            </p>
+        </div>
+
+        <!-- Contenido según el estado -->
+        <div class="text-center mb-6">
+            @if($pedidoActivo->estado === 'pagado')
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        Tu pedido será entregado en la feria de 
+                        <strong class="text-blue-600">{{ $proximoSabado->format('d/m/Y') }}</strong> 
+                        ({{ $proximoSabado->diffForHumans() }}). 
+                        <br><br>
+                        Estado actual: <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">PAGADO</span>
+                        <br>Te avisaremos cuando los agricultores preparen tus productos.
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Los agricultores están preparando tus productos para el {{ $proximoSabado->format('d/m') }}
+                </div>
+
+            @elseif($pedidoActivo->estado === 'listo')
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        ¡Los agricultores ya prepararon tus productos para la feria del 
+                        <strong class="text-yellow-600">{{ $proximoSabado->format('d/m/Y') }}</strong>!
+                        <br><br>
+                        El administrador los armará en un solo pedido y estará listo para 
+                        @if($pedidoActivo->delivery === 'delivery')
+                            <strong class="text-yellow-600">entrega a domicilio</strong> ese día.
+                        @else
+                            <strong class="text-yellow-600">recoger en la feria</strong> ese día.
+                        @endif
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-clock mr-1"></i>
+                    El admin está armando tu pedido para el {{ $proximoSabado->format('d/m') }}
+                </div>
+
+            @elseif($pedidoActivo->estado === 'armado')
+                @if($pedidoActivo->delivery === 'delivery')
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p class="text-gray-700 text-sm leading-relaxed">
+                            ¡Tu pedido ya está armado para la feria del 
+                            <strong class="text-green-600">{{ $proximoSabado->format('d/m/Y') }}</strong>!
+                            <br><br>
+                            Será entregado a domicilio en <strong class="text-green-600">{{ $pedidoActivo->direccion }}</strong> 
+                            el día de la feria.
+                        </p>
+                    </div>
+                    
+                    <div class="text-xs text-gray-600">
+                        <i class="fas fa-shipping-fast mr-1"></i>
+                        Listo para entrega a domicilio el {{ $proximoSabado->format('d/m') }}
+                    </div>
+                @else
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p class="text-gray-700 text-sm leading-relaxed">
+                            ¡Tu pedido ya está armado! Puedes recogerlo en la feria del 
+                            <strong class="text-green-600">{{ $proximoSabado->format('d/m/Y') }}</strong>
+                            <strong class="text-green-600">hasta las 1:00 PM</strong>.
+                        </p>
+                    </div>
+                    
+                    <div class="text-xs text-gray-600">
+                        <i class="fas fa-store mr-1"></i>
+                        Listo para recoger el {{ $proximoSabado->format('d/m') }} hasta la 1:00 PM
+                    </div>
+                @endif
+
+            @elseif($pedidoActivo->estado === 'en_entrega')
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        ¡Tu pedido está siendo entregado el día de hoy 
+                        {{ \Carbon\Carbon::now('America/Lima')->format('d/m/Y') }}!
+                        <br><br>
+                        <strong class="text-purple-600">Por favor, mantente atento a la llamada del repartidor</strong> 
+                        y asegúrate de estar disponible para recibirlo.
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-phone mr-1"></i>
+                    Entrega en curso - Día de feria {{ \Carbon\Carbon::now('America/Lima')->format('d/m') }}
+                </div>
+
+            @elseif($pedidoActivo->estado === 'entregado')
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        ¡Tu pedido fue entregado exitosamente el 
+                        <strong class="text-green-600">{{ $pedidoActivo->updated_at->format('d/m/Y') }}</strong>!
+                        <br><br>
+                        @if($pedidoActivo->delivery === 'delivery')
+                            Gracias por confiar en nosotros para llevarte productos frescos a tu domicilio.
+                        @else
+                            Gracias por visitarnos en la feria y recoger tu pedido.
+                        @endif
+                        <br><br>
+                        ¡Esperamos verte en la próxima feria! 🌱
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-check-circle mr-1 text-green-600"></i>
+                    Pedido completado exitosamente
+                </div>
+            @endif
+        </div>
+
+        <!-- Información adicional del pedido -->
+        <div class="bg-gray-50 rounded-lg p-3 mb-6">
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-600">Total del pedido:</span>
+                <span class="font-semibold text-gray-800">S/ {{ number_format($pedidoActivo->total, 2) }}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm mt-1">
+                <span class="text-gray-600">Tipo de entrega:</span>
+                <span class="font-semibold text-gray-800">
+                    @if($pedidoActivo->delivery === 'delivery')
+                        🚚 Delivery
+                    @else
+                        🏪 Recoger en feria
+                    @endif
+                </span>
+            </div>
+            <div class="flex justify-between items-center text-sm mt-1">
+                <span class="text-gray-600">
+                    @if($pedidoActivo->estado === 'entregado')
+                        Feria completada:
+                    @else
+                        Feria programada:
+                    @endif
+                </span>
+                <span class="font-semibold text-gray-800">
+                    @if($pedidoActivo->estado === 'entregado')
+                        {{ $pedidoActivo->updated_at->format('d/m/Y') }}
+                    @else
+                        {{ $proximoSabado->format('d/m/Y') }}
+                    @endif
+                </span>
+            </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3">
+            @if($pedidoActivo->estado === 'entregado')
+                <!-- Botones para pedido entregado -->
+                <button onclick="closeModal()" 
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    ¡Perfecto!
+                </button>
+                <a href="{{ route('order.voucher', $pedidoActivo->id) }}" 
+                   class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-lg text-center transition-colors">
+                    Ver Voucher
+                </a>
+            @else
+                <!-- Botones para pedidos en proceso -->
+                <button onclick="closeModal()" 
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-colors">
+                    Entendido
+                </button>
+                <a href="{{ route('order.voucher', $pedidoActivo->id) }}" 
+                   class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition-colors">
+                    Ver Voucher
+                </a>
+            @endif
+        </div>
+
+        <!-- Nota sobre el ciclo semanal -->
+        <div class="mt-4 text-center">
+            <p class="text-xs text-gray-500">
+                <i class="fas fa-calendar-week mr-1"></i>
+                @if($pedidoActivo->estado === 'entregado')
+                    ¡Gracias por elegirnos! Una nueva semana de feria inicia cada lunes.
+                @else
+                    Este pedido es para la feria del {{ $proximoSabado->format('d/m/Y') }}. 
+                    ¡Una nueva semana inicia cada lunes!
+                @endif
+            </p>
+        </div>
+    </div>
+</div>
+@endif
 </div>
 @endsection
 
@@ -756,6 +1015,48 @@ if (!document.querySelector('#cart-animation-styles')) {
     `;
     document.head.appendChild(style);
 }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('pedido-status-modal');
+    const modalContent = document.getElementById('modal-content');
+    
+    if (modal) {
+        // Animar entrada del modal
+        setTimeout(() => {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+        }, 100);
+    }
+});
+
+function closeModal() {
+    const modal = document.getElementById('pedido-status-modal');
+    const modalContent = document.getElementById('modal-content');
+    
+    if (modal && modalContent) {
+        // Animar salida
+        modalContent.classList.add('scale-95', 'opacity-0');
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+}
+
+// Cerrar con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Cerrar al hacer clic fuera del modal
+document.getElementById('pedido-status-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
 });
 </script>
 @endsection

@@ -68,7 +68,7 @@ class AdminController extends Controller
         }
         
         // El viernes de esa semana es el último día de ventas
-        $finVentas = $inicioSemana->copy()->addDays(5); // Viernes
+        $finVentas = $inicioSemana->copy()->addDays(6); // Viernes
         
         // El sábado es día de entrega en la feria
         $diaEntrega = $inicioSemana->copy()->addDays(6); // Sábado
@@ -153,7 +153,7 @@ public function index()
                             $inicioSemana->startOfDay(), 
                             $finSemana->endOfDay()
                         ])
-                        ->where('estado', 'armado')
+                        ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                         ->count();
     
     // Pedidos expirados de esta semana
@@ -171,7 +171,7 @@ public function index()
                             $inicioSemana->startOfDay(), 
                             $finSemana->endOfDay()
                         ])
-                        ->where('estado', 'armado')
+                        ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                         ->sum('total');
     
     // Ventas potenciales (todos los pedidos no cancelados ni expirados)
@@ -199,7 +199,7 @@ public function index()
                                         $inicioSemana->startOfDay(), 
                                         $finSemana->endOfDay()
                                     ])
-                                    ->where('estado', 'armado');
+                                    ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
                                 })
                                 ->sum('cantidad');
     
@@ -218,7 +218,7 @@ public function index()
     $totalPedidosGlobal = Order::where('estado', '!=', 'expirado')->count();
     
     // Ventas globales (solo pedidos completados)
-    $totalVentasGlobal = Order::where('estado', 'armado')->sum('total');
+    $totalVentasGlobal = Order::whereIn('estado', ['armado', 'en_entrega', 'entregado'])->sum('total');
     
     // Total de agricultores en el sistema
     $totalAgricultores = User::where('role', 'agricultor')->count();
@@ -246,7 +246,7 @@ public function index()
                                 $inicioSemana->startOfDay(), 
                                 $finSemana->endOfDay()
                             ])
-                            ->where('estado', 'armado');
+                            ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
                         })
                         ->withCount(['productos as items_vendidos' => function($query) use ($inicioSemana, $finSemana) {
                             $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
@@ -254,7 +254,7 @@ public function index()
                                     $inicioSemana->startOfDay(), 
                                     $finSemana->endOfDay()
                                 ])
-                                ->where('estado', 'armado');
+                                ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
                             });
                         }])
                         ->orderByDesc('items_vendidos')
@@ -518,9 +518,10 @@ public function index()
         // Opciones de semanas
         $opcionesSemanas = $this->generarOpcionesSemanasFeria();
         
-        // Consulta con filtros
+        // MODIFICACIÓN: Solo mostrar pedidos que están exactamente en estado 'armado'
+        // Los que están 'en_entrega' o 'entregado' ya no aparecen aquí
         $pedidos = Order::with(['user', 'items.product.user'])
-                    ->where('estado', 'armado')
+                    ->where('estado', 'armado') // Solo estado armado
                     ->whereBetween('created_at', [
                         $inicioSemana->startOfDay(),
                         $finSemana->endOfDay()
@@ -621,7 +622,7 @@ public function index()
                         $inicioSemana->startOfDay(),
                         $finSemana->endOfDay()
                     ])
-                    ->where('estado', 'armado')
+                    ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                     ->sum('total');
         
         return [
@@ -671,7 +672,7 @@ public function index()
             $inicioSemana->startOfDay(), 
             $finSemana->endOfDay()
         ])
-        ->where('estado', 'armado')
+        ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
         ->get();
     
     // Estadísticas por estado (todos los estados de pedidos en esa semana) - CORREGIDO
@@ -773,7 +774,7 @@ public function index()
     {
         return User::where('role', 'agricultor')
             ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                $query->where('estado', 'armado')
+                $query->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                       ->whereBetween('created_at', [
                           $inicioSemana->startOfDay(), 
                           $finSemana->endOfDay()
@@ -781,7 +782,7 @@ public function index()
             })
             ->with(['productos.orderItems' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('order', function($subQuery) use ($inicioSemana, $finSemana) {
-                    $subQuery->where('estado', 'armado')
+                    $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                              ->whereBetween('created_at', [
                                  $inicioSemana->startOfDay(), 
                                  $finSemana->endOfDay()
@@ -796,7 +797,7 @@ public function index()
                 
                 foreach($agricultor->productos as $producto) {
                     foreach($producto->orderItems as $item) {
-                        if ($item->order->estado === 'armado' && 
+                        if (in_array($item->order->estado, ['armado', 'en_entrega', 'entregado']) && 
                             $item->order->created_at >= $inicioSemana->startOfDay() && 
                             $item->order->created_at <= $finSemana->endOfDay()) {
                             
@@ -814,7 +815,7 @@ public function index()
                     'pedidos_atendidos' => $pedidosAtendidos->unique()->count(),
                     'productos_vendidos' => $agricultor->productos->filter(function($producto) use ($inicioSemana, $finSemana) {
                         return $producto->orderItems->filter(function($item) use ($inicioSemana, $finSemana) {
-                            return $item->order->estado === 'armado' && 
+                            return in_array($item->order->estado, ['armado', 'en_entrega', 'entregado']) &&
                                    $item->order->created_at >= $inicioSemana->startOfDay() && 
                                    $item->order->created_at <= $finSemana->endOfDay();
                         })->count() > 0;
@@ -829,7 +830,7 @@ public function index()
 
     private function calcularEstadisticasSemana($inicioSemana, $finSemana)
     {
-        $pedidosArmados = Order::where('estado', 'armado')
+        $pedidosArmados = Order::whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                               ->whereBetween('created_at', [
                                   $inicioSemana->startOfDay(), 
                                   $finSemana->endOfDay()
@@ -841,7 +842,7 @@ public function index()
         
         $agricultoresActivos = User::where('role', 'agricultor')
             ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                $query->where('estado', 'armado')
+                $query->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                       ->whereBetween('created_at', [
                           $inicioSemana->startOfDay(), 
                           $finSemana->endOfDay()
@@ -875,7 +876,7 @@ public function index()
         $agricultor = User::where('role', 'agricultor')
             ->with(['productos.orderItems' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('order', function($subQuery) use ($inicioSemana, $finSemana) {
-                    $subQuery->where('estado', 'armado')
+                    $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                              ->whereBetween('created_at', [
                                  $inicioSemana->startOfDay(), 
                                  $finSemana->endOfDay()
@@ -996,7 +997,7 @@ public function index()
 
     private function generarReporteVentas($inicioSemana, $finSemana)
     {
-        $pedidosPorDia = Order::where('estado', 'armado')
+        $pedidosPorDia = Order::whereIn('estado', ['armado', 'en_entrega', 'entregado'])
             ->whereBetween('created_at', [
                 $inicioSemana->startOfDay(), 
                 $finSemana->endOfDay()
@@ -1006,7 +1007,7 @@ public function index()
             ->orderBy('fecha')
             ->get();
         
-        $ventasPorTipo = Order::where('estado', 'armado')
+        $ventasPorTipo = Order::whereIn('estado', ['armado', 'en_entrega', 'entregado'])
             ->whereBetween('created_at', [
                 $inicioSemana->startOfDay(), 
                 $finSemana->endOfDay()
@@ -1024,7 +1025,7 @@ public function index()
     private function generarReporteProductos($inicioSemana, $finSemana)
     {
         $productosTop = Product::whereHas('orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                $query->where('estado', 'armado')
+                $query->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                       ->whereBetween('created_at', [
                           $inicioSemana->startOfDay(), 
                           $finSemana->endOfDay()
@@ -1032,7 +1033,7 @@ public function index()
             })
             ->withSum(['orderItems' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('order', function($subQuery) use ($inicioSemana, $finSemana) {
-                    $subQuery->where('estado', 'armado')
+                    $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                              ->whereBetween('created_at', [
                                  $inicioSemana->startOfDay(), 
                                  $finSemana->endOfDay()
@@ -1045,7 +1046,7 @@ public function index()
             ->take(10);
         
         $categorias = Categoria::whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                $query->where('estado', 'armado')
+                $query->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                       ->whereBetween('created_at', [
                           $inicioSemana->startOfDay(), 
                           $finSemana->endOfDay()
@@ -1053,7 +1054,7 @@ public function index()
             })
             ->withCount(['productos as ventas_count' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
-                    $subQuery->where('estado', 'armado')
+                    $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                              ->whereBetween('created_at', [
                                  $inicioSemana->startOfDay(), 
                                  $finSemana->endOfDay()
@@ -1073,7 +1074,7 @@ public function index()
     {
         return User::where('role', 'agricultor')
             ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                $query->where('estado', 'armado')
+                $query->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                       ->whereBetween('created_at', [
                           $inicioSemana->startOfDay(), 
                           $finSemana->endOfDay()
@@ -1081,7 +1082,7 @@ public function index()
             })
             ->withCount(['productos as pedidos_count' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
-                    $subQuery->where('estado', 'armado')
+                    $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                              ->whereBetween('created_at', [
                                  $inicioSemana->startOfDay(), 
                                  $finSemana->endOfDay()
@@ -1090,14 +1091,14 @@ public function index()
             }])
             ->with(['productos' => function($query) use ($inicioSemana, $finSemana) {
                 $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
-                    $subQuery->where('estado', 'armado')
+                    $subQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                              ->whereBetween('created_at', [
                                  $inicioSemana->startOfDay(), 
                                  $finSemana->endOfDay()
                              ]);
                 })->with(['orderItems' => function($itemQuery) use ($inicioSemana, $finSemana) {
                     $itemQuery->whereHas('order', function($orderQuery) use ($inicioSemana, $finSemana) {
-                        $orderQuery->where('estado', 'armado')
+                        $orderQuery->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                                  ->whereBetween('created_at', [
                                      $inicioSemana->startOfDay(), 
                                      $finSemana->endOfDay()
@@ -1414,4 +1415,251 @@ public function index()
     {
         return $this->reportesSemanales($request);
     }
+
+    public function repartidores()
+{
+    $this->authorizeRoles(['admin']);
+    
+    // Redirigir al controlador específico de repartidores
+    return redirect()->route('admin.repartidores.index');
+}
+
+/**
+ * Vista de resumen de entregas del día
+ */
+public function resumenEntregas(Request $request)
+{
+    $this->authorizeRoles(['admin']);
+    
+    // Obtener la fecha seleccionada o usar hoy
+    $fecha = $request->get('fecha', now()->toDateString());
+    $fechaCarbon = Carbon::parse($fecha);
+    
+    // Calcular la semana de feria correspondiente
+    $semanaFeria = $this->calcularSemanaFeria($fechaCarbon);
+    $inicioSemana = $semanaFeria['inicio_ventas'];
+    $finSemana = $semanaFeria['fin_ventas'];
+    $diaEntrega = $semanaFeria['dia_entrega'];
+    
+    // Obtener pedidos de entrega para esa semana
+    $pedidosEntrega = Order::whereBetween('created_at', [
+                            $inicioSemana->startOfDay(),
+                            $finSemana->endOfDay()
+                        ])
+                        ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
+                        ->with(['repartidor', 'user'])
+                        ->get();
+    
+    // Agrupar por repartidor
+    $pedidosPorRepartidor = $pedidosEntrega->groupBy('repartidor_id');
+    
+    // Obtener estadísticas
+    $estadisticas = [
+        'total_pedidos' => $pedidosEntrega->count(),
+        'entregados' => $pedidosEntrega->where('estado', 'entregado')->count(),
+        'en_proceso' => $pedidosEntrega->whereIn('estado', ['armado', 'en_entrega'])->count(),
+        'repartidores_activos' => $pedidosPorRepartidor->keys()
+                                                      ->filter(function($id) {
+                                                          return $id != Order::getRepartidorSistemaId();
+                                                      })
+                                                      ->count()
+    ];
+    
+    // Obtener repartidores con sus zonas asignadas
+    $repartidores = User::where('role', 'repartidor')
+                       ->with(['zones' => function($query) use ($diaEntrega) {
+                           $query->where('fecha_asignacion', $diaEntrega->toDateString());
+                       }])
+                       ->get();
+    
+    return view('admin.entregas.resumen', compact(
+        'pedidosPorRepartidor',
+        'estadisticas',
+        'repartidores',
+        'diaEntrega',
+        'fechaCarbon'
+    ));
+}
+
+/**
+ * Transferir manualmente un pedido a otro repartidor
+ */
+public function transferirPedido(Request $request)
+{
+    $this->authorizeRoles(['admin']);
+    
+    $request->validate([
+        'pedido_id' => 'required|exists:orders,id',
+        'repartidor_id' => 'required|exists:users,id'
+    ]);
+    
+    try {
+        $pedido = Order::findOrFail($request->pedido_id);
+        $nuevoRepartidor = User::findOrFail($request->repartidor_id);
+        
+        // Verificar que el nuevo usuario sea repartidor
+        if ($nuevoRepartidor->role !== 'repartidor') {
+            return back()->with('error', 'El usuario seleccionado no es un repartidor');
+        }
+        
+        $antiguoRepartidor = $pedido->repartidor;
+        
+        // Transferir el pedido
+        $pedido->update(['repartidor_id' => $nuevoRepartidor->id]);
+        
+        $mensaje = "Pedido #{$pedido->id} transferido de {$antiguoRepartidor->name} a {$nuevoRepartidor->name}";
+        
+        Log::info("Admin " . Auth::id() . " - " . $mensaje);
+        
+        return back()->with('success', $mensaje);
+        
+    } catch (\Exception $e) {
+        Log::error('Error transfiriendo pedido: ' . $e->getMessage());
+        return back()->with('error', 'Error al transferir pedido: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Vista para gestionar pedidos por zona
+ */
+public function pedidosPorZona(Request $request)
+{
+    $this->authorizeRoles(['admin']);
+    
+    // Obtener semana seleccionada
+    $semanaSeleccionada = $request->get('semana', 0);
+    
+    // Calcular fechas de la semana de feria
+    $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+    $inicioSemana = $semanaFeria['inicio_ventas'];
+    $finSemana = $semanaFeria['fin_ventas'];
+    $diaEntrega = $semanaFeria['dia_entrega'];
+    
+    // Opciones de semanas
+    $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+    
+    // Obtener pedidos de la semana agrupados por zona
+    $pedidos = Order::whereBetween('created_at', [
+                        $inicioSemana->startOfDay(),
+                        $finSemana->endOfDay()
+                    ])
+                    ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
+                    ->with(['repartidor', 'user'])
+                    ->get();
+    
+    // Agrupar por distrito/zona
+    $pedidosPorZona = $pedidos->groupBy('distrito');
+    
+    // Obtener información de zonas
+    $zonas = Zone::whereIn('name', $pedidosPorZona->keys())->get()->keyBy('name');
+    
+    // Obtener repartidores disponibles
+    $repartidoresDisponibles = User::where('role', 'repartidor')->get();
+    
+    return view('admin.pedidos.por-zona', compact(
+        'pedidosPorZona',
+        'zonas',
+        'repartidoresDisponibles',
+        'opcionesSemanas',
+        'semanaSeleccionada',
+        'inicioSemana',
+        'finSemana',
+        'diaEntrega'
+    ));
+}
+
+/**
+ * Método helper: Obtener repartidor del sistema
+ */
+private function getRepartidorSistema()
+{
+    return User::where('email', 'sistema.repartidor@puntoVerde.com')
+               ->where('role', 'repartidor')
+               ->first();
+}
+
+public function pedidosDelivery(Request $request)
+{
+    $this->authorizeRoles(['admin']);
+    
+    // Obtener semana seleccionada
+    $semanaSeleccionada = $request->get('semana', 0);
+    
+    // Calcular fechas de la semana de feria
+    $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+    $inicioSemana = $semanaFeria['inicio_ventas'];
+    $finSemana = $semanaFeria['fin_ventas'];
+    $diaEntrega = $semanaFeria['dia_entrega'];
+    
+    // Opciones de semanas
+    $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+    
+    // Consulta con filtros específicos para delivery
+    $pedidos = Order::with(['user', 'items.product.user'])
+                ->where('delivery', 'delivery')
+                ->whereIn('estado', ['en_entrega', 'entregado'])
+                ->whereBetween('created_at', [
+                    $inicioSemana->startOfDay(),
+                    $finSemana->endOfDay()
+                ])
+                ->orderBy('created_at', 'desc')
+                ->paginate(20);
+    
+    // Estadísticas de la semana
+    $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+    
+    return view('admin.pedidos.delivery', compact(
+        'pedidos',
+        'opcionesSemanas',
+        'semanaSeleccionada',
+        'inicioSemana',
+        'finSemana',
+        'diaEntrega',
+        'estadisticasSemana'
+    ));
+}
+
+/**
+ * Pedidos de recojo en puesto (entregados)
+ */
+public function pedidosRecojoPuesto(Request $request)
+{
+    $this->authorizeRoles(['admin']);
+    
+    // Obtener semana seleccionada
+    $semanaSeleccionada = $request->get('semana', 0);
+    
+    // Calcular fechas de la semana de feria
+    $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+    $inicioSemana = $semanaFeria['inicio_ventas'];
+    $finSemana = $semanaFeria['fin_ventas'];
+    $diaEntrega = $semanaFeria['dia_entrega'];
+    
+    // Opciones de semanas
+    $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+    
+    // CORRECCIÓN: Pedidos de puesto solo tienen estado 'armado'
+    $pedidos = Order::with(['user', 'items.product.user'])
+                ->where('delivery', 'puesto')
+                ->where('estado', 'armado')  // Solo estado armado para puesto
+                ->whereBetween('created_at', [
+                    $inicioSemana->startOfDay(),
+                    $finSemana->endOfDay()
+                ])
+                ->orderBy('created_at', 'desc')
+                ->paginate(20);
+    
+    // Estadísticas de la semana
+    $estadisticasSemana = $this->calcularEstadisticasPedidosSemana($inicioSemana, $finSemana);
+    
+    return view('admin.pedidos.recojo-puesto', compact(
+        'pedidos',
+        'opcionesSemanas',
+        'semanaSeleccionada',
+        'inicioSemana',
+        'finSemana',
+        'diaEntrega',
+        'estadisticasSemana'
+    ));
+}
 }

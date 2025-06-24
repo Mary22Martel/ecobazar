@@ -328,7 +328,7 @@ class AgricultorController extends Controller
         }
         
         // El viernes de esa semana es el último día de ventas
-        $finVentas = $inicioSemana->copy()->addDays(5); // Viernes
+        $finVentas = $inicioSemana->copy()->addDays(6); // Viernes
         
         // El sábado es día de entrega en la feria
         $diaEntrega = $inicioSemana->copy()->addDays(6); // Sábado
@@ -474,7 +474,7 @@ class AgricultorController extends Controller
         $pedidosArmados = Order::whereHas('items.product', function($query) use ($agricultorId) {
                 $query->where('user_id', $agricultorId);
             })
-            ->where('estado', 'armado')
+            ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
             ->whereBetween('created_at', [
                 $fechaInicio->startOfDay(), 
                 $fechaFin->endOfDay()
@@ -549,7 +549,7 @@ class AgricultorController extends Controller
     private function calcularEstadisticasAgricultor($agricultorId, $fechaInicio, $fechaFin)
     {
         $estadisticas = [];
-        $estados = ['pagado', 'listo', 'armado', 'entregado'];
+        $estados = ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'];
 
         foreach($estados as $estado) {
             $pedidos = Order::whereHas('items.product', function($query) use ($agricultorId) {
@@ -603,7 +603,7 @@ class AgricultorController extends Controller
         $pedidos = Order::whereHas('items.product', function($query) use ($agricultorId) {
                 $query->where('user_id', $agricultorId);
             })
-            ->where('estado', 'armado')
+            ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
             ->whereBetween('created_at', [
                 $fechaInicio->startOfDay(), 
                 $fechaFin->endOfDay()
@@ -706,7 +706,7 @@ class AgricultorController extends Controller
         $pedidosArmados = Order::whereHas('items.product', function($query) use ($agricultor) {
                 $query->where('user_id', $agricultor->id);
             })
-            ->where('estado', 'armado')
+            ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
             ->whereBetween('created_at', [
                 $fechaInicio->startOfDay(), 
                 $fechaFin->endOfDay()

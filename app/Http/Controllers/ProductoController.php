@@ -8,7 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Medida;
 use App\Models\Categoria;
+use App\Models\Order;
 use App\Models\Mercado;
+use Illuminate\Support\Facades\Log;
+
 
 class ProductoController extends Controller
 {
@@ -254,58 +257,107 @@ public function buscarProductosAjax(Request $request)
     $categorias = Categoria::all();
     $productores = User::whereHas('productos')->get();
 
-    return view('tienda', compact('productos', 'categorias', 'productores'));
+    // ⭐ NUEVA LÓGICA PARA EL MODAL - SOLO SEMANA ACTUAL
+    $pedidoActivo = null;
+    if (Auth::check()) {
+        Log::info("🔍 Usuario autenticado: " . Auth::id());
+        
+        // 🗓️ CALCULAR SEMANA ACTUAL (lunes a domingo, la feria es el sábado)
+        $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek(); // Lunes 00:00
+        $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek(); // Domingo 23:59
+        
+        Log::info("📅 Modal semana actual - Inicio: {$inicioSemana}, Fin: {$finSemana}");
+        
+        // 🔍 BUSCAR TODOS LOS PEDIDOS DEL USUARIO PARA DEBUGGING
+        $todosPedidos = Order::where('user_id', Auth::id())->get();
+        Log::info("📦 Total pedidos del usuario: " . $todosPedidos->count());
+        
+        foreach ($todosPedidos as $pedido) {
+            Log::info("   - Pedido #{$pedido->id}: Estado = {$pedido->estado}, Fecha = {$pedido->created_at}");
+        }
+        
+        // 📦 BUSCAR PEDIDOS SOLO DE LA SEMANA ACTUAL (INCLUYENDO 'entregado')
+        $pedidoActivo = Order::where('user_id', Auth::id())
+            ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado']) // ⭐ AGREGADO 'entregado'
+            ->whereBetween('created_at', [$inicioSemana, $finSemana]) // 🎯 SOLO ESTA SEMANA
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        if ($pedidoActivo) {
+            Log::info("✅ Pedido encontrado para modal: #{$pedidoActivo->id} - Estado: {$pedidoActivo->estado}");
+        } else {
+            Log::info("❌ No hay pedidos activos para la semana actual");
+            
+            // 🔍 DEBUGGING ADICIONAL: Verificar si hay pedidos en los estados correctos
+            $pedidosEstados = Order::where('user_id', Auth::id())
+                ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
+                ->get();
+            
+            Log::info("🔍 Pedidos en estados correctos (cualquier fecha): " . $pedidosEstados->count());
+            
+            $pedidosSemana = Order::where('user_id', Auth::id())
+                ->whereBetween('created_at', [$inicioSemana, $finSemana])
+                ->get();
+            
+            Log::info("🔍 Pedidos de esta semana (cualquier estado): " . $pedidosSemana->count());
+        }
+    } else {
+        Log::info("❌ Usuario NO autenticado");
+    }
+
+    return view('tienda', compact('productos', 'categorias', 'productores', 'pedidoActivo'));
 }
 
     //Buscar
     public function buscar(Request $request)
-{
-    // Obtener el término de búsqueda
-    $query = $request->input('query');
+    {
+        // Obtener el término de búsqueda
+        $query = $request->input('query');
 
-    // Buscar productos que coincidan con el nombre o la descripción
-    $productos = Product::where('nombre', 'LIKE', "%$query%")
-                        ->orWhere('descripcion', 'LIKE', "%$query%")
-                        ->get();
+        // Buscar productos que coincidan con el nombre o la descripción
+        $productos = Product::where('nombre', 'LIKE', "%$query%")
+                            ->orWhere('descripcion', 'LIKE', "%$query%")
+                            ->get();
 
-    // Obtener todas las categorías para mostrar en el sidebar
-    $categorias = Categoria::all();
+        // Obtener todas las categorías para mostrar en el sidebar
+        $categorias = Categoria::all();
 
-    // Retornar la vista de tienda con los productos encontrados
-    return view('tienda', compact('productos', 'categorias'));
-}
+        // Retornar la vista de tienda con los productos encontrados
+        return view('tienda', compact('productos', 'categorias'));
+    }
 
-public function filtrarPorPrecio(Request $request)
-{
-    // Obtener el rango de precios del formulario
-    $min_price = $request->input('min_price', 1);
-    $max_price = $request->input('max_price', 1500);
+    public function filtrarPorPrecio(Request $request)
+    {
+        // Obtener el rango de precios del formulario
+        $min_price = $request->input('min_price', 1);
+        $max_price = $request->input('max_price', 1500);
 
-    // Filtrar productos según el rango de precios
-    $productos = Product::whereBetween('precio', [$min_price, $max_price])->get();
+        // Filtrar productos según el rango de precios
+        $productos = Product::whereBetween('precio', [$min_price, $max_price])->get();
 
-    // Retornar la vista con los productos filtrados
-    return view('productos.index', compact('productos'));
-}
+        // Retornar la vista con los productos filtrados
+        return view('productos.index', compact('productos'));
+    }
 
-public function filtrarPorProductor($idProductor)
-{
-    // Obtener los productos del productor específico
-    $productos = Product::where('user_id', $idProductor)->get();
+    public function filtrarPorProductor($idProductor)
+    {
+        // Obtener los productos del productor específico
+        $productos = Product::where('user_id', $idProductor)->get();
 
-    // Obtener todas las categorías para el sidebar
-    $categorias = Categoria::all();
+        // Obtener todas las categorías para el sidebar
+        $categorias = Categoria::all();
 
-    // Obtener todos los productores con productos
-    $productores = User::whereHas('productos')->get();
+        // Obtener todos los productores con productos
+        $productores = User::whereHas('productos')->get();
 
-    // Retornar la vista con los productos filtrados, las categorías y los productores
-    return view('tienda', compact('productos', 'categorias', 'productores'));
-}
-public function listadoMercados()
-{
-    $mercados = Mercado::all();
-    return view('mercados.index', compact('mercados'));
-}
+        // Retornar la vista con los productos filtrados, las categorías y los productores
+        return view('tienda', compact('productos', 'categorias', 'productores'));
+    }
+
+    public function listadoMercados()
+    {
+        $mercados = Mercado::all();
+        return view('mercados.index', compact('mercados'));
+    }
 
 }

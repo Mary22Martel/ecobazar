@@ -113,10 +113,7 @@
                    class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
                     📦 Todos
                 </a>
-                <a href="{{ route('admin.pedidos.pagados', $currentParams) }}" 
-                   class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
-                    💳 Pagados
-                </a>
+               
                 <a href="{{ route('admin.pedidos.listos', $currentParams) }}" 
                    class="flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-800 border-2 border-green-200 transition-all font-semibold text-sm whitespace-nowrap">
                     ✅ Listos ({{ $pedidos->total() ?? $pedidos->count() }})
@@ -125,10 +122,7 @@
                    class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
                     📋 Armados
                 </a>
-                <a href="{{ route('admin.pedidos.expirados', $currentParams) }}" 
-                   class="flex items-center px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm whitespace-nowrap">
-                    ⏰ Expirados
-                </a>
+               
             </div>
         </div>
     </div>

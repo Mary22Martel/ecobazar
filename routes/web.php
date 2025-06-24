@@ -160,8 +160,9 @@ Route::middleware(['auth'])->group(function () {
     // Ruta para agricultores - ver sus pedidos expirados
     Route::get('/agricultor/pedidos/expirados', [App\Http\Controllers\OrderController::class, 'pedidosExpirados'])
         ->name('agricultor.pedidos.expirados');
-    
-    
+       
+    Route::get('/admin/pedidos/delivery', [App\Http\Controllers\Admin\AdminController::class, 'pedidosDelivery'])->name('admin.pedidos.delivery');
+    Route::get('/admin/pedidos/recojo-puesto', [App\Http\Controllers\Admin\AdminController::class, 'pedidosRecojoPuesto'])->name('admin.pedidos.recojo-puesto');
 });
 });
 
@@ -243,6 +244,61 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/admin/configuracion/medidas/{id}', [App\Http\Controllers\Admin\AdminController::class, 'eliminarMedida'])->name('admin.configuracion.medidas.eliminar');
     
     Route::get('/admin/configuracion/mercados', [App\Http\Controllers\Admin\AdminController::class, 'mercados'])->name('admin.configuracion.mercados');
+
+    // Ruta para migrar pedidos existentes al repartidor del sistema (solo para development/testing)
+    Route::get('/admin/migrar-pedidos-sistema', function() {
+        if (app()->environment('local')) {
+            $repartidorSistema = \App\Models\User::where('email', 'sistema.repartidor@puntoVerde.com')->first();
+            
+            if ($repartidorSistema) {
+                \App\Models\Order::whereNull('repartidor_id')
+                                ->orWhere('repartidor_id', 0)
+                                ->update(['repartidor_id' => $repartidorSistema->id]);
+                
+                return response()->json(['message' => 'Pedidos migrados al repartidor del sistema']);
+            }
+            
+            return response()->json(['error' => 'Repartidor del sistema no encontrado']);
+        }
+        
+        abort(404);
+    })->name('admin.migrar.pedidos');
+
+     // Gestión de repartidores (enlace desde admin dashboard)
+    Route::get('/admin/repartidores', [App\Http\Controllers\Admin\AdminController::class, 'repartidores'])
+        ->name('admin.repartidores');
+    
+    // Resumen de entregas del día
+    Route::get('/admin/entregas/resumen', [App\Http\Controllers\Admin\AdminController::class, 'resumenEntregas'])
+        ->name('admin.entregas.resumen');
+    
+    // Transferir pedido manualmente
+    Route::post('/admin/pedido/transferir', [App\Http\Controllers\Admin\AdminController::class, 'transferirPedido'])
+        ->name('admin.pedido.transferir');
+    
+    // Vista de pedidos agrupados por zona
+    Route::get('/admin/pedidos/por-zona', [App\Http\Controllers\Admin\AdminController::class, 'pedidosPorZona'])
+        ->name('admin.pedidos.por-zona');
+
+    // ==================== CREAR AdminRepartidorController ====================
+    Route::prefix('admin/repartidores')->name('admin.repartidores.')->group(function () {
+        
+        // Lista principal de repartidores
+        Route::get('/', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'index'])
+            ->name('index');
+        
+        // Asignar zonas a repartidor
+        Route::post('/asignar', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'asignarZonas'])
+            ->name('asignar');
+        
+        // Quitar asignación de zona
+        Route::post('/quitar', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'quitarAsignacion'])
+            ->name('quitar');
+        
+        // Ver detalle de repartidor específico
+        Route::get('/{repartidor}/detalle', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'detalle'])
+            ->name('detalle');
+    });
 });
 
 // En web.php - SOLO PARA TESTING
