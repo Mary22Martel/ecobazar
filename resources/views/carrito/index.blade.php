@@ -164,7 +164,7 @@
                     
                     <div class="space-y-4 mb-6 ">
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 text-sm mx-3 ">
-                            <span class="text-gray-600 text-sm">Productos ({{ $carrito->items->count() }}):</span>
+                            <span class="text-gray-600 text-sm">Productos:</span>
                             <span class="font-semibold text-base">{{ $carrito->items->count() }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 text-sm mx-3">

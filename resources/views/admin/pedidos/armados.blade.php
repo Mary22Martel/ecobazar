@@ -240,48 +240,48 @@
                         </td>
                         <td class="px-4 py-4">
                            @if($esDelivery)
-    @if($pedido->estado === 'armado')
-        <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
-            @csrf
-            <input type="hidden" name="estado" value="en_entrega">
-            <button type="submit" 
-                    onclick="return confirm('¿Marcar como EN ENTREGA el pedido #{{ $pedido->id }}?')"
-                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
-                🚚 DELIVERY
-            </button>
-        </form>
-    @elseif($pedido->estado === 'en_entrega')
-        <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
-            @csrf
-            <input type="hidden" name="estado" value="entregado">
-            <button type="submit" 
-                    onclick="return confirm('¿Confirmar entrega del pedido #{{ $pedido->id }}?')"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
-                ✅ ENTREGADO
-            </button>
-        </form>
-    @else
-        <span class="w-full bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm text-center font-semibold">
-            ✅ Ya Entregado
-        </span>
-    @endif
-@else
-    @if($pedido->estado === 'armado')
-        <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
-            @csrf
-            <input type="hidden" name="estado" value="entregado">
-            <button type="submit" 
-                    onclick="return confirm('¿Confirmar que el cliente recogió el pedido #{{ $pedido->id }}?')"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
-                ✅ PUESTO
-            </button>
-        </form>
-    @else
-        <span class="w-full bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm text-center font-semibold">
-            ✅ Ya Entregado
-        </span>
-    @endif
-@endif
+                            @if($pedido->estado === 'armado')
+                                <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
+                                    @csrf
+                                    <input type="hidden" name="estado" value="en_entrega">
+                                    <button type="submit" 
+                                            onclick="return confirm('¿Marcar como EN ENTREGA el pedido #{{ $pedido->id }}?')"
+                                            class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
+                                        🚚 DELIVERY
+                                    </button>
+                                </form>
+                            @elseif($pedido->estado === 'en_entrega')
+                                <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
+                                    @csrf
+                                    <input type="hidden" name="estado" value="entregado">
+                                    <button type="submit" 
+                                            onclick="return confirm('¿Confirmar entrega del pedido #{{ $pedido->id }}?')"
+                                            class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
+                                        ✅ ENTREGADO
+                                    </button>
+                                </form>
+                            @else
+                                <span class="w-full bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm text-center font-semibold">
+                                    ✅ Ya Entregado
+                                </span>
+                            @endif
+                    @else
+                        @if($pedido->estado === 'armado')
+                            <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
+                                @csrf
+                                <input type="hidden" name="estado" value="entregado">
+                                <button type="submit" 
+                                        onclick="return confirm('¿Confirmar que el cliente recogió el pedido #{{ $pedido->id }}?')"
+                                        class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
+                                    ✅ PUESTO
+                                </button>
+                            </form>
+                        @else
+                            <span class="w-full bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm text-center font-semibold">
+                                ✅ Ya Entregado
+                            </span>
+                        @endif
+                    @endif
                         </td>
                         <td class="px-4 py-4">
                             @if($esDelivery)
@@ -324,7 +324,7 @@
                         <td class="px-4 py-4">
                             <div class="flex flex-col space-y-2">
                                 <a href="{{ route('admin.pedido.detalle', $pedido->id) }}" 
-                                   class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm transition-colors text-center">
+                                class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm transition-colors text-center">
                                     👁️ Ver
                                 </a>
                                 
@@ -338,7 +338,7 @@
                                         🚚 EN ENTREGA
                                     </button>
                                 </form>
-                                @else
+                                {{-- @else
                                 <form method="POST" action="{{ route('admin.pedido.estado', $pedido->id) }}" class="inline-block">
                                     @csrf
                                     <input type="hidden" name="estado" value="entregado">
@@ -347,7 +347,7 @@
                                             class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors font-semibold">
                                         ✅ ENTREGADO
                                     </button>
-                                </form>
+                                </form> --}}
                                 @endif
                             </div>
                         </td>
@@ -541,13 +541,6 @@
                         <div class="text-sm text-green-600">S/ {{ number_format($puesto->sum('total'), 2) }}</div>
                     </div>
                 </div>
-                
-                <div class="border-t pt-3">
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-gray-800">Total General</span>
-                        <span class="text-xl font-bold text-purple-600">S/ {{ number_format($totalVentas, 2) }}</span>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -562,7 +555,7 @@
                     <span class="flex-shrink-0 w-6 h-6 bg-yellow-200 text-yellow-800 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">🚚</span>
                     <div>
                         <div class="font-semibold text-purple-800">Para Delivery:</div>
-                        <div class="text-purple-700">Coordinar con repartidor → Marcar "En Entrega" → Confirmar "Entregado"</div>
+                        <div class="text-purple-700">Selecciona Zonas para repartidores → Marcar "En Entrega" → Confirmar "Entregado"</div>
                     </div>
                 </div>
                 
@@ -570,7 +563,7 @@
                     <span class="flex-shrink-0 w-6 h-6 bg-green-200 text-green-800 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">🏪</span>
                     <div>
                         <div class="font-semibold text-purple-800">Para Puesto:</div>
-                        <div class="text-purple-700">Esperar al cliente en la feria → Entregar pedido → Marcar "Entregado"</div>
+                        <div class="text-purple-700">Esperar al cliente en la feria → Entregar pedido </div>
                     </div>
                 </div>
                 

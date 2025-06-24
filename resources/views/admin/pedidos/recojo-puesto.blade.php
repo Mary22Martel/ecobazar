@@ -217,7 +217,6 @@
                 <div class="text-sm text-blue-700 space-y-1">
                     <p>• Los pedidos de puesto permanecen en estado <strong>"Armado"</strong></p>
                     <p>• Los clientes los recogen directamente en la feria sabatina</p>
-                    <p>• No requieren cambio de estado adicional</p>
                     <p>• Se organizan por fecha de creación del pedido</p>
                 </div>
             </div>
