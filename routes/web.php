@@ -16,7 +16,9 @@ use App\Http\Controllers\Admin\MercadoController;
 use App\Http\Controllers\Admin\UsuarioController;
 
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/', function () {
+    return redirect()->route('tienda');
+});
 Route::get('/home', [HomeController::class, 'index'])->name('homepage');
 Route::get('/tienda', [ProductoController::class, 'tienda'])->name('tienda');
 Route::get('/buscar-productos', [ProductoController::class, 'buscarProductos'])->name('buscar.productos');
