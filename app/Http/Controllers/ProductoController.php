@@ -260,19 +260,32 @@ public function buscarProductosAjax(Request $request)
 
     // Método para mostrar los productos filtrados por categoría
     public function filtrarPorCategoria(Categoria $categoria)
-    {
-        // Obtener productos que pertenecen a la categoría seleccionada
-        $productos = Product::where('categoria_id', $categoria->id)->get();
-    
-        // Obtener todas las categorías para el sidebar
-        $categorias = Categoria::all();
-    
-        // Obtener todos los productores que tienen productos
-        $productores = User::whereHas('productos')->get();
-    
-        // Retornar la vista con los productos filtrados, las categorías y los productores
-        return view('tienda', compact('productos', 'categorias', 'productores', 'categoria'));
+{
+    // Obtener productos que pertenecen a la categoría seleccionada
+    $productos = Product::where('categoria_id', $categoria->id)->get();
+
+    // Obtener todas las categorías para el sidebar
+    $categorias = Categoria::all();
+
+    // Obtener todos los productores que tienen productos
+    $productores = User::whereHas('productos')->get();
+
+    // ⭐ AGREGAR LÓGICA DEL PEDIDO ACTIVO
+    $pedidoActivo = null;
+    if (Auth::check()) {
+        $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
+        $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
+        
+        $pedidoActivo = Order::where('user_id', Auth::id())
+            ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
+            ->whereBetween('created_at', [$inicioSemana, $finSemana])
+            ->orderBy('created_at', 'desc')
+            ->first();
     }
+
+    // ⭐ AGREGAR $pedidoActivo al compact()
+    return view('tienda', compact('productos', 'categorias', 'productores', 'categoria', 'pedidoActivo'));
+}
     
 
     // El método index para mostrar todos los productos y categorías
@@ -368,25 +381,54 @@ public function buscarProductosAjax(Request $request)
         return view('productos.index', compact('productos'));
     }
 
-    public function filtrarPorProductor($idProductor)
-    {
-        // Obtener los productos del productor específico
-        $productos = Product::where('user_id', $idProductor)->get();
+   public function filtrarPorProductor($idProductor)
+{
+    // Obtener los productos del productor específico
+    $productos = Product::where('user_id', $idProductor)->get();
 
-        // Obtener todas las categorías para el sidebar
-        $categorias = Categoria::all();
+    // Obtener todas las categorías para el sidebar
+    $categorias = Categoria::all();
 
-        // Obtener todos los productores con productos
-        $productores = User::whereHas('productos')->get();
+    // Obtener todos los productores con productos
+    $productores = User::whereHas('productos')->get();
 
-        // Retornar la vista con los productos filtrados, las categorías y los productores
-        return view('tienda', compact('productos', 'categorias', 'productores'));
+    // ⭐ AGREGAR LÓGICA DEL PEDIDO ACTIVO (IGUAL QUE EN TIENDA)
+    $pedidoActivo = null;
+    if (Auth::check()) {
+        Log::info("🔍 Usuario autenticado: " . Auth::id());
+        
+        // 🗓️ CALCULAR SEMANA ACTUAL (lunes a domingo, la feria es el sábado)
+        $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek(); // Lunes 00:00
+        $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek(); // Domingo 23:59
+        
+        Log::info("📅 Modal semana actual - Inicio: {$inicioSemana}, Fin: {$finSemana}");
+        
+        // 📦 BUSCAR PEDIDOS SOLO DE LA SEMANA ACTUAL (INCLUYENDO 'entregado')
+        $pedidoActivo = Order::where('user_id', Auth::id())
+            ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
+            ->whereBetween('created_at', [$inicioSemana, $finSemana])
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        if ($pedidoActivo) {
+            Log::info("✅ Pedido encontrado para modal: #{$pedidoActivo->id} - Estado: {$pedidoActivo->estado}");
+        } else {
+            Log::info("❌ No hay pedidos activos para la semana actual");
+        }
+    } else {
+        Log::info("❌ Usuario NO autenticado");
     }
+
+    // ⭐ IMPORTANTE: Agregar $pedidoActivo al compact()
+    return view('tienda', compact('productos', 'categorias', 'productores', 'pedidoActivo'));
+}
 
     public function listadoMercados()
     {
         $mercados = Mercado::all();
         return view('mercados.index', compact('mercados'));
     }
+
+   
 
 }
