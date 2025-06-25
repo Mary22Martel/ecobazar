@@ -1,0 +1,34 @@
+name: Desplegar a entorno UAT
+on:
+  push:
+    branches:
+      - test
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar script de despliegue
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.UAT_SSH_HOST }}
+          username: ${{ secrets.UAT_SSH_USER }}
+          key: ${{ secrets.UAT_SSH_KEY }}
+          script: |
+            php -v
+            cd htdocs/uat.feriapuntoverde.com
+            git reset --hard HEAD
+            git pull origin test
+            composer install
+            npm install
+            php artisan route:cache
+            php artisan config:cache
+            php artisan view:cache
+            php artisan cache:clear
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+            php artisan event:clear
+            php artisan optimize:clear
+            php artisan optimize
+            npm run build
+
