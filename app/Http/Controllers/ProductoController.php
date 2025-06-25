@@ -31,35 +31,64 @@ class ProductoController extends Controller
 public function buscarProductos(Request $request)
 {
     $query = $request->input('q');
-
-    // Verificar si está recibiendo la consulta
+    
     if (!$query) {
-        // Si no se envía ninguna consulta, devuelve todos los productos
-        $productos = Product::all();
+        // Si no hay búsqueda, mostrar página vacía
+        $productos = collect();
     } else {
         // Realiza la búsqueda
-        $productos = Product::where('nombre', 'like', '%' . $query . '%')
-            ->orWhere('descripcion', 'like', '%' . $query . '%')
+        $productos = Product::with(['medida', 'user', 'categoria'])
+            ->where('cantidad_disponible', '>', 0) // Solo productos disponibles
+            ->where(function($q) use ($query) {
+                $q->where('nombre', 'like', '%' . $query . '%')
+                  ->orWhere('descripcion', 'like', '%' . $query . '%');
+            })
+            ->orderBy('nombre', 'asc')
             ->get();
     }
 
-    // Obtener todas las categorías para el sidebar
+    // Obtener categorías y productores para posibles filtros adicionales
     $categorias = Categoria::all();
     $productores = User::whereHas('productos')->get();
 
-    // Retornar la vista de tienda con los productos encontrados
-    return view('tienda', compact('productos', 'categorias', 'productores'));
+    return view('buscar-productos', compact('productos', 'categorias', 'productores'));
 }
 
 public function buscarProductosAjax(Request $request)
 {
-    $query = $request->input('q');
+    try {
+        $query = $request->input('q');
+        
+        if (!$query || strlen($query) < 2) {
+            return response()->json([]);
+        }
 
-    $productos = Product::where('nombre', 'like', '%' . $query . '%')
-        ->orWhere('descripcion', 'like', '%' . $query . '%')
-        ->get();
+        $productos = Product::with(['medida', 'user']) // Cargar relaciones
+            ->where('cantidad_disponible', '>', 0) // Solo productos disponibles
+            ->where(function($q) use ($query) {
+                $q->where('nombre', 'like', '%' . $query . '%')
+                  ->orWhere('descripcion', 'like', '%' . $query . '%');
+            })
+            ->limit(10) // Limitar resultados para performance
+            ->get()
+            ->map(function($producto) {
+                return [
+                    'id' => $producto->id,
+                    'nombre' => $producto->nombre,
+                    'precio' => $producto->precio,
+                    'cantidad_disponible' => $producto->cantidad_disponible,
+                    'imagen' => $producto->imagen,
+                    'medida' => $producto->medida ? $producto->medida->nombre : null,
+                    'agricultor' => $producto->user ? $producto->user->name : null
+                ];
+            });
 
-    return response()->json($productos);
+        return response()->json($productos);
+        
+    } catch (\Exception $e) {
+        Log::error('Error en búsqueda AJAX: ' . $e->getMessage());
+        return response()->json([], 500);
+    }
 }
     
     public function show($id)

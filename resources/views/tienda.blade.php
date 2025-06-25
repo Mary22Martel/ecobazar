@@ -153,24 +153,26 @@
         </div>
         
         <!-- Barra de búsqueda ARREGLADA -->
-        <div class="search-container mx-auto">
-            <div class="relative">
-                <input type="text" 
-                       id="search"
-                       name="query"
-                       placeholder="Buscar productos..." 
-                       class="w-full px-3 py-2 pl-10 pr-16 text-sm text-gray-900 bg-white rounded-lg shadow focus:ring-2 focus:ring-green-300 focus:outline-none">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                <button type="button" class="absolute right-1 top-1/2 transform -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors">
-                    Buscar
-                </button>
-            </div>
-            
-            <!-- Resultados de búsqueda -->
-            <div id="search-results" class="absolute w-max bg-white shadow-xl z-50 mt-1 rounded-lg border border-gray-200 hidden max-h-60 overflow-y-auto">
-                <!-- Resultados dinámicos -->
-            </div>
-        </div>
+       <!-- Barra de búsqueda ARREGLADA -->
+<form method="GET" action="{{ route('buscar.productos') }}" class="search-container mx-auto">
+    <div class="relative">
+        <input type="text" 
+               id="search"
+               name="q"
+               value="{{ request('q') }}"
+               placeholder="Buscar productos..." 
+               class="w-full px-3 py-2 pl-10 pr-16 text-sm text-gray-900 bg-white rounded-lg shadow focus:ring-2 focus:ring-green-300 focus:outline-none">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+        <button type="submit" class="absolute right-1 top-1/2 transform -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors">
+            Buscar
+        </button>
+    </div>
+    
+    <!-- Resultados de búsqueda AJAX -->
+    <div id="search-results" class="absolute w-full bg-white shadow-xl z-50 mt-1 rounded-lg border border-gray-200 hidden max-h-60 overflow-y-auto">
+        <!-- Resultados dinámicos -->
+    </div>
+</form>
     </div>
 </div>
 
@@ -747,67 +749,73 @@ $(document).ready(function() {
     });
 
     // Función Búsqueda Optimizada
-    function handleSearch(searchInput, resultsContainer) {
-        let searchTimeout;
-        
-        $(searchInput).on('input', function() {
-            clearTimeout(searchTimeout);
-            let query = $(this).val();
+    // Función Búsqueda Optimizada
+function handleSearch(searchInput, resultsContainer) {
+    let searchTimeout;
+    
+    $(searchInput).on('input', function() {
+        clearTimeout(searchTimeout);
+        let query = $(this).val();
 
-            if (query.length > 2) {
-                searchTimeout = setTimeout(function() {
-                    $.ajax({
-                        url: "{{ route('buscar.productos.ajax') }}",
-                        method: 'GET',
-                        data: { q: query },
-                        success: function(response) {
-                            let searchResults = $(resultsContainer);
-                            searchResults.empty();
+        if (query.length > 2) {
+            searchTimeout = setTimeout(function() {
+                $.ajax({
+                    url: "{{ route('buscar.productos.ajax') }}",
+                    method: 'GET',
+                    data: { q: query },
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    success: function(response) {
+                        let searchResults = $(resultsContainer);
+                        searchResults.empty();
 
-                            if (response.length > 0) {
-                                searchResults.removeClass('hidden');
+                        if (response.length > 0) {
+                            searchResults.removeClass('hidden');
 
-                                response.forEach(function(product) {
-                                    let medidaText = product.medida ? ` / ${product.medida.nombre}` : '';
-                                    let productItem = `
-                                        <a href="/producto/${product.id}" class="flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
-                                            <div class="w-10 h-10 rounded-lg overflow-hidden mr-3 flex-shrink-0">
-                                                ${product.imagen ? 
-                                                    `<img src="/storage/${product.imagen}" alt="${product.nombre}" class="w-full h-full object-cover">` :
-                                                    `<div class="w-full h-full bg-gray-200 flex items-center justify-center">
-                                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                        </svg>
-                                                    </div>`
-                                                }
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <p class="font-semibold text-gray-800 text-sm truncate">${product.nombre}</p>
-                                                <p class="text-sm font-bold text-green-600">S/${product.precio}${medidaText}</p>
-                                                <p class="text-xs text-gray-500">Stock: ${product.cantidad_disponible}</p>
-                                            </div>
-                                        </a>
-                                    `;
-                                    searchResults.append(productItem);
-                                });
-                            } else {
-                                searchResults.removeClass('hidden');
-                                searchResults.append('<div class="p-4 text-center text-gray-500 text-sm">No se encontraron productos</div>');
-                            }
-                        },
-                        error: function(xhr) {
-                            console.error('Error en búsqueda:', xhr);
+                            response.forEach(function(product) {
+                                let medidaText = product.medida ? ` / ${product.medida}` : '';
+                                let agricultorText = product.agricultor ? `<p class="text-xs text-gray-500">Por: ${product.agricultor}</p>` : '';
+                                let productItem = `
+                                    <a href="/producto/${product.id}" class="flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
+                                        <div class="w-10 h-10 rounded-lg overflow-hidden mr-3 flex-shrink-0">
+                                            ${product.imagen ? 
+                                                `<img src="/storage/${product.imagen}" alt="${product.nombre}" class="w-full h-full object-cover">` :
+                                                `<div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                </div>`
+                                            }
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="font-semibold text-gray-800 text-sm truncate">${product.nombre}</p>
+                                            <p class="text-sm font-bold text-green-600">S/${product.precio}${medidaText}</p>
+                                            <p class="text-xs text-gray-500">Stock: ${product.cantidad_disponible}</p>
+                                            ${agricultorText}
+                                        </div>
+                                    </a>
+                                `;
+                                searchResults.append(productItem);
+                            });
+                        } else {
+                            searchResults.removeClass('hidden');
+                            searchResults.append('<div class="p-4 text-center text-gray-500 text-sm">No se encontraron productos</div>');
                         }
-                    });
-                }, 300);
-            } else {
-                $(resultsContainer).addClass('hidden');
-            }
-        });
-    }
-
-    // Inicializar Búsqueda
-    handleSearch('#search', '#search-results');
+                    },
+                    error: function(xhr) {
+                        console.error('Error en búsqueda:', xhr);
+                        if (xhr.status === 401) {
+                            console.log('Error de autenticación - pero la búsqueda debería funcionar sin login');
+                        }
+                    }
+                });
+            }, 300);
+        } else {
+            $(resultsContainer).addClass('hidden');
+        }
+    });
+}
 
     // Cerrar resultados al hacer clic fuera
     $(document).click(function(event) {
