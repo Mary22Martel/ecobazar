@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Resources\PedidoResource\Pages;
 
 use App\Filament\Resources\PedidoResource;
@@ -10,28 +11,23 @@ class ListPedidos extends ListRecords
 {
     protected static string $resource = PedidoResource::class;
 
-    public static function label(): string
-    {
-        return 'Pedido';
-    }
-
-    public static function pluralLabel(): string
-    {
-        return 'Pedidos';
-    }
-
     protected function getHeaderActions(): array
     {
         return [
+            // Botón de crear
             Actions\CreateAction::make(),
-            Action::make('verPendientes')
-                ->label('Ver Pendientes')
-                ->url(PedidoResource::getUrl('pendientes'))
-                ->color('primary'),
+
+            // Ver pagados
             Action::make('verPagados')
                 ->label('Ver Pagados')
                 ->url(PedidoResource::getUrl('pagados'))
                 ->color('success'),
+
+            // ← Nuevo: Ver pagos por agricultor
+            Action::make('verPagos')
+                ->label('Ver Pagos')
+                ->url(PedidoResource::getUrl('pagos'))
+                ->color('secondary'),
         ];
     }
 }

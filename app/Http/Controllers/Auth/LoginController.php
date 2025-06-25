@@ -28,9 +28,9 @@ class LoginController extends Controller
             case 'agricultor':
                 return '/agricultor'; // Redirige al dashboard del agricultor
             case 'cliente':
-                return '/home'; // Redirige a la página de inicio para clientes
+                return '/tienda'; // Redirige a la página de inicio para clientes
             default:
-                return '/home'; // Redirige a la página de inicio si el rol no coincide con ninguno
+                return '/tienda'; // Redirige a la página de inicio si el rol no coincide con ninguno
         }
     }
 

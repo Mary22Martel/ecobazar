@@ -1,183 +1,976 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex">
-    <!-- Sidebar -->
-    <div class="w-1/5 bg-white shadow-lg p-4">
-        <h2 class="text-xl font-bold mb-4">Categorías</h2>
-        <ul class="space-y-2">
-            <!-- Enlace para ver todos los productos -->
-            <li>
-                <a href="{{ route('tienda') }}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg">
-                    <span class="ml-3">Todo</span>
-                </a>
-            </li>
+<style>
+    .card-hover {
+        transition: all 0.3s ease;
+    }
+    
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
 
-            <!-- Mostrar categorías dinámicamente -->
-            @foreach($categorias as $cat)
-                <li>
-                    <a href="{{ route('productos.filtrarPorCategoria', $cat->id) }}" class="flex items-center px-4 py-2 {{ request()->is('productos/categoria/'.$cat->id) ? 'bg-green-500 text-white' : 'text-gray-700 hover:bg-gray-200' }} rounded-lg">
-                        <span class="ml-3">{{ $cat->nombre }}</span>
-                    </a>
-                </li>
-            @endforeach
-        </ul>
+    /* Mejorar visibilidad de resultados de búsqueda */
+    #search-results {
+        z-index: 100;
+    }
 
-         <!-- Filtro por Precio
-    <div class="mt-8">
-        <h2 class="text-xl font-bold mb-4">Filtrar por precio</h2>
-        <form action="{{ route('productos.filtrarPorPrecio') }}" method="GET">
-            <div class="flex justify-between">
-                <span>1</span>
-                <span>1500</span>
+    /* Mejorar sidebar en móvil */
+    @media (max-width: 1023px) {
+        #sidebar {
+            width: 85%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+    }
+
+    /* ARREGLO 1: Buscador más pequeño en desktop */
+    .search-container {
+        max-width: 100%;
+    }
+    
+    @media (min-width: 768px) {
+        .search-container {
+            max-width: 320px;
+        }
+    }
+
+    /* ARREGLO 2: Controles de cantidad visibles en móvil */
+    .quantity-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .quantity-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #d1d5db;
+        background: white;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .quantity-input {
+        width: 60px;
+        height: 36px;
+        text-align: center;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .quantity-input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 1px #10b981;
+    }
+
+    .quantity-btn:hover {
+        background-color: #f3f4f6;
+    }
+
+    .quantity-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    /* Tamaño normal por defecto (escritorio) */
+    .quantity-btn {
+        width: 30px;
+        height: 30px;
+        padding: 4px;
+    }
+
+    .quantity-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .quantity-input {
+        width: 50px;
+        height: 30px;
+        font-size: 12px;
+        text-align: center;
+    }
+
+    /* Tamaño reducido para pantallas pequeñas (móviles) */
+    @media (max-width: 640px) {
+        .quantity-btn {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+        }
+
+        .quantity-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .quantity-input {
+            width: 40px;
+            height: 24px;
+            font-size: 14px;
+        }
+        .swal2-toast .swal2-timer-progress-bar {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .swal2-toast {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    }
+
+    </style>
+
+<!-- Hero Section optimizada -->
+<div class="bg-gradient-to-r from-green-600 to-green-700 text-white py-3 sm:py-6">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-3 sm:mb-6">
+            <h1 class="text-lg sm:text-xl lg:text-2xl font-bold mb-1 sm:mb-2">
+                🌱 Productos Frescos del Campo
+            </h1>
+            <p class="text-green-100 text-xs sm:text-sm max-w-2xl mx-auto">
+                Directamente de nuestros agricultores a tu mesa
+            </p>
+        </div>
+        
+        <!-- Barra de búsqueda ARREGLADA -->
+       <!-- Barra de búsqueda ARREGLADA -->
+<form method="GET" action="{{ route('buscar.productos') }}" class="search-container mx-auto">
+    <div class="relative">
+        <input type="text" 
+               id="search"
+               name="q"
+               value="{{ request('q') }}"
+               placeholder="Buscar productos..." 
+               class="w-full px-3 py-2 pl-10 pr-16 text-sm text-gray-900 bg-white rounded-lg shadow focus:ring-2 focus:ring-green-300 focus:outline-none">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+        <button type="submit" class="absolute right-1 top-1/2 transform -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors">
+            Buscar
+        </button>
+    </div>
+    
+    <!-- Resultados de búsqueda AJAX -->
+    <div id="search-results" class="absolute w-full bg-white shadow-xl z-50 mt-1 rounded-lg border border-gray-200 hidden max-h-60 overflow-y-auto">
+        <!-- Resultados dinámicos -->
+    </div>
+</form>
+    </div>
+</div>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div class="container mx-auto px-4 py-4 lg:flex lg:gap-6">
+        
+        <!-- Sidebar Filtros -->
+        <aside class="lg:w-64 xl:w-72">
+            <!-- Botón para móvil optimizado -->
+            <div class="lg:hidden mb-4">
+                <button id="open-sidebar" 
+                        class="w-full flex items-center justify-between bg-white p-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <span class="font-medium text-gray-800 text-sm">
+                        <i class="fas fa-filter mr-2 text-green-600"></i>Filtros y Categorías
+                    </span>
+                    <i class="fas fa-chevron-down transition-transform text-gray-600" id="filter-icon"></i>
+                </button>
             </div>
-            <input type="range" name="min_price" min="1" max="1500" value="{{ request()->get('min_price', 1) }}" class="w-full">
-            <input type="range" name="max_price" min="50" max="1500" value="{{ request()->get('max_price', 1500) }}" class="w-full">
-            <button type="submit" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg w-full hover:bg-green-600">Filtrar</button>
-        </form>
-    </div> -->
 
-    <div class="mt-8">
-    <h2 class="text-xl font-bold mb-4">Productores</h2>
-    <ul class="space-y-2">
-        @foreach($productores as $productor)
-            <li>
-                <a href="{{ route('productos.filtrarPorProductor', $productor->id) }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200">
-                    <span class="ml-3">{{ $productor->name }}</span>
-                </a>
-            </li>
-        @endforeach
-    </ul>
-</div>
+            <!-- Overlay móvil -->
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
+            
+            <!-- Sidebar optimizado -->
+            <div id="sidebar" class="fixed lg:relative lg:translate-x-0 transform -translate-x-full transition-transform duration-300 ease-in-out w-full max-w-xs lg:w-full bg-white shadow-2xl z-50 h-full lg:h-auto lg:overflow-y-visible">
+                <!-- Header móvil -->
+                <div class="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+                    <h2 class="text-lg font-bold text-gray-800">Filtros</h2>
+                    <button id="close-sidebar" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
 
-    </div>
+                <!-- Contenido Filtros -->
+                <div class="p-4 lg:p-0 space-y-4">
+                    
+                    <!-- Categorías optimizadas -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-green-50 to-green-100 px-4 py-3 border-b border-green-200">
+                            <h3 class="font-semibold text-gray-800 text-sm flex items-center">
+                                <i class="fas fa-th-large mr-2 text-green-600"></i>
+                                Categorías
+                            </h3>
+                        </div>
+                        <div class="p-3">
+                            <ul class="space-y-1">
+                                <li>
+                                    <a href="{{ route('tienda') }}" 
+                                       class="category-link flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-all duration-200 group">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <span>Todos los productos</span>
+                                    </a>
+                                </li>
+                                @foreach($categorias as $categoria)
+                                    <li>
+                                        <a href="{{ route('productos.filtrarPorCategoria', $categoria->id) }}" 
+                                           class="category-link flex items-center px-3 py-2.5 text-sm {{ request()->is('productos/categoria/'.$categoria->id) ? 'bg-green-50 text-green-700' : 'text-gray-700 hover:bg-green-50 hover:text-green-700' }} rounded-lg transition-all duration-200 group">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full mr-3 {{ request()->is('productos/categoria/'.$categoria->id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100' }} transition-all"></div>
+                                            <span class="truncate">{{ $categoria->nombre }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
 
-   
+                    <!-- Productores optimizados -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 border-b border-blue-200">
+                            <h3 class="font-semibold text-gray-800 text-sm flex items-center">
+                                <i class="fas fa-users mr-2 text-blue-600"></i>
+                                Productores
+                            </h3>
+                        </div>
+                        <div class="p-3 max-h-64 overflow-y-auto">
+                            <ul class="space-y-1">
+                                @foreach($productores as $productor)
+                                    <li>
+                                        <a href="{{ route('productos.filtrarPorProductor', $productor->id) }}" 
+                                           class="producer-link flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-all duration-200 group">
+                                            <div class="w-2 h-2 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                            <span class="truncate">{{ $productor->name }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
 
-    <!-- Productos -->
-    <div class="w-3/4 p-4">
-        <!-- Formulario de búsqueda -->
-<!-- Formulario de búsqueda -->
-<div class="relative w-full">
-    <input type="text" id="search" name="query" placeholder="Buscar productos..." class="border rounded-lg p-2 w-1/2">
-    <div id="search-results" class="absolute w-1/2 bg-white shadow-lg z-50 mt-1 rounded-lg hidden">
-        <!-- Los resultados de búsqueda se agregarán dinámicamente aquí -->
-    </div>
-</div>
+                    <!-- Tarjeta informativa -->
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg p-4">
+                        <div class="text-center">
+                            <i class="fas fa-leaf text-xl mb-2 opacity-80"></i>
+                            <h4 class="font-semibold text-sm mb-1">¡100% Agroecológico!</h4>
+                            <p class="text-xs text-green-100 leading-relaxed">
+                                Productos cultivados sin químicos dañinos, directo del campo a tu mesa.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
 
+        <!-- Contenido Principal -->
+        <main class="flex-1 lg:w-0">
+            
+            <!-- Resumen Resultados -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 bg-white rounded-lg p-3 shadow-sm border border-gray-200 gap-3">
+                <div>
+                    <h2 class="font-semibold text-gray-800 text-sm">Todos los productos</h2>
+                    <p class="text-xs text-gray-600">{{ $productos->count() }} productos encontrados</p>
+                </div>
+                
+                <!-- Opciones Orden -->
+                <div class="flex items-center space-x-2">
+                    <label for="sort" class="text-xs text-gray-600 hidden sm:block">Ordenar:</label>
+                    <select id="sort" class="text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-0">
+                        <option value="name_asc">Nombre A-Z</option>
+                        <option value="name_desc">Nombre Z-A</option>
+                        <option value="price_asc">Precio menor</option>
+                        <option value="price_desc">Precio mayor</option>
+                        <option value="stock_desc">Más stock</option>
+                    </select>
+                </div>
+            </div>
 
-        <!-- Mostrar los productos dinámicamente -->
-<!-- Mostrar los productos dinámicamente -->
-<div class="grid grid-cols-4 gap-6 mt-4">
-    @if($productos->isEmpty())
-        <p>No hay productos disponibles en este momento.</p>
-    @else
-        @foreach ($productos as $producto)
-        <div class="block bg-white shadow-lg rounded-lg p-4 transition hover:shadow-xl">
-            <a href="{{ route('producto.show', $producto->id) }}">
-                @if($producto->imagen)
-                    <img src="{{ asset('storage/' . $producto->imagen) }}" alt="{{ $producto->nombre }}" class="mb-4 w-full h-48 object-cover rounded-lg">
+            <!-- Grid de Productos -->
+            <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                @if($productos->isEmpty())
+                    <div class="col-span-full text-center py-16">
+                        <div class="max-w-md mx-auto">
+                            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            </svg>
+                            <h3 class="text-xl font-semibold text-gray-600 mb-2">No hay productos disponibles</h3>
+                            <p class="text-gray-500">En este momento no tenemos productos para mostrar.</p>
+                        </div>
+                    </div>
                 @else
-                    <div class="mb-4 w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
-                        Sin imagen
+                    @foreach ($productos as $producto)
+                    <div class="group bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1 card-hover">
+                        <div class="relative overflow-hidden">
+                            <a href="{{ route('producto.show', $producto->id) }}">
+                                @if($producto->imagen)
+                                    <img src="{{ asset('storage/' . $producto->imagen) }}" alt="{{ $producto->nombre }}" class="w-full h-36 sm:h-40 lg:h-48 object-cover group-hover:scale-105 transition-transform duration-300">
+                                @else
+                                    <div class="w-full h-36 sm:h-40 lg:h-48 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                                        <svg class="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </div>
+                                @endif
+                            </a>
+                            
+                            <!-- Badge Estado -->
+                            @if($producto->cantidad_disponible > 0)
+                                <div class="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                    Disponible
+                                </div>
+                            @else
+                                <div class="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                    Agotado
+                                </div>
+                            @endif
+
+                            @if($producto->cantidad_disponible <= 5 && $producto->cantidad_disponible > 0)
+                                <div class="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                    ¡Últimas {{ $producto->cantidad_disponible }}!
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="p-3 lg:p-4">
+                            <a href="{{ route('producto.show', $producto->id) }}" class="block mb-2">
+                                <h3 class="font-bold text-sm lg:text-base text-gray-800 group-hover:text-green-600 transition-colors line-clamp-2 leading-tight">{{ $producto->nombre }}</h3>
+                            </a>
+                            
+                            <!-- Info Productor -->
+                            @if($producto->user)
+                                <div class="flex items-center text-xs text-gray-600 mb-2">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                    <span class="truncate">{{ $producto->user->name }}</span>
+                                </div>
+                            @endif
+                            
+                            <!-- Precio -->
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex flex-col">
+                                    <span class="text-sm lg:text-base font-bold text-green-600">S/{{ number_format($producto->precio, 2) }}</span>
+                                    @if($producto->medida)
+                                        <span class="text-xs text-gray-600 font-medium">por {{ $producto->medida->nombre }}</span>
+                                    @endif
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                        Stock: {{ $producto->cantidad_disponible }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Selector Cantidad ARREGLADO -->
+                            @if($producto->cantidad_disponible > 0)
+                                <form class="add-to-cart-form" action="{{ route('carrito.add', $producto->id) }}" method="POST">
+                                    @csrf
+                                    
+                                    <!-- Controles Cantidad ARREGLADOS -->
+                                    <div class="bg-gray-50 rounded-lg p-3 mb-1">
+                                        <div class="mb-3">
+                                            <label class="text-xs font-medium text-gray-700 block mb-2">Cantidad</label>
+                                            <!-- CONTROLES ARREGLADOS AQUÍ -->
+                                         <div class="quantity-wrapper">
+                                            <button type="button" class="quantity-btn minus-btn" data-action="decrease">
+                                                <svg class="text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                                </svg>
+                                            </button>
+                                            <input type="number" name="cantidad" class="quantity-input"
+                                                value="1" min="1" max="{{ $producto->cantidad_disponible }}">
+                                            <button type="button" class="quantity-btn plus-btn" data-action="increase">
+                                                <svg class="text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+
+
+                                        </div>
+
+                                        <!-- Precio Total -->
+                                        <div class="text-center p-2 bg-green-50 rounded">
+                                            <span class="text-xs text-gray-600">Total: </span>
+                                            <span class="total-price text-sm font-bold text-green-600" data-unit-price="{{ $producto->precio }}">
+                                                S/{{ number_format($producto->precio, 2) }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-xs lg:text-sm font-semibold py-2 lg:py-3 px-3 rounded-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 005 16h12M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"></path>
+                                        </svg>
+                                        <span>Agregar</span>
+                                    </button>
+                                </form>
+                            @else
+                                <!-- Producto Agotado -->
+                                <div class="text-center py-3">
+                                    <button disabled class="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white font-semibold py-2 lg:py-3 px-3 rounded-lg cursor-not-allowed flex items-center justify-center space-x-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                                        </svg>
+                                        <span class="text-xs lg:text-sm">Agotado</span>
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                @endif
+            </div>
+        </main>
+    </div>
+
+    <!-- Botón Carrito Flotante Optimizado -->
+    <div class="fixed bottom-4 right-4 z-40">
+    <a href="{{ route('carrito.index') }}" 
+       class="relative bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-3 lg:p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 flex items-center space-x-2 group">
+        <svg class="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 005 16h12M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"></path>
+        </svg>
+        <span class="hidden sm:inline font-semibold text-sm lg:text-base">Ir a carrito</span>
+        <span id="floating-cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 lg:h-6 lg:w-6 flex items-center justify-center font-bold">
+            @auth
+                @php
+                    $userCarrito = \App\Models\Carrito::where('user_id', auth()->id())->with('items')->first();
+                    echo $userCarrito ? $userCarrito->items->sum('cantidad') : 0;
+                @endphp
+            @else
+                0
+            @endauth
+        </span>
+        
+        <!-- Tooltip opcional -->
+        <div class="absolute bottom-full right-0 mb-2 px-3 py-2 bg-green-600 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none">
+                Yendo al carrito
+                <div class="absolute top-full right-3 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-green-600"></div>
+            </div>
+        </a>
+    </div>
+<!-- 🎯 MODAL DE ESTADO DE PEDIDOS - VERSIÓN COMPLETA CON 'ENTREGADO' -->
+<!-- REEMPLAZAR todo el modal en tu tienda.blade.php por este código -->
+
+@if($pedidoActivo)
+@php
+    $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
+    $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
+    $proximoSabado = \Carbon\Carbon::now('America/Lima')->next(\Carbon\Carbon::SATURDAY);
+    
+    // Si ya pasó el sábado de esta semana, el próximo sábado es de la siguiente semana
+    if (\Carbon\Carbon::now('America/Lima')->dayOfWeek === \Carbon\Carbon::SATURDAY && 
+        \Carbon\Carbon::now('America/Lima')->hour >= 14) { // Después de las 2 PM del sábado
+        $proximoSabado = \Carbon\Carbon::now('America/Lima')->next(\Carbon\Carbon::SATURDAY)->addWeek();
+    }
+@endphp
+
+<div id="pedido-status-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 mx-4 max-w-md w-full shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="modal-content">
+        
+        <!-- Header del Modal -->
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center
+                @if($pedidoActivo->estado === 'pagado') bg-blue-100
+                @elseif($pedidoActivo->estado === 'listo') bg-yellow-100
+                @elseif($pedidoActivo->estado === 'armado') bg-green-100
+                @elseif($pedidoActivo->estado === 'en_entrega') bg-purple-100
+                @elseif($pedidoActivo->estado === 'entregado') bg-green-100
+                @endif">
+                
+                @if($pedidoActivo->estado === 'pagado')
+                    <i class="fas fa-clock text-blue-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'listo')
+                    <i class="fas fa-check-circle text-yellow-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'armado')
+                    <i class="fas fa-box text-green-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'en_entrega')
+                    <i class="fas fa-truck text-purple-600 text-3xl"></i>
+                @elseif($pedidoActivo->estado === 'entregado')
+                    <i class="fas fa-check-double text-green-600 text-3xl"></i>
+                @endif
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-2">
+                @if($pedidoActivo->estado === 'pagado')
+                    ¡Pedido Confirmado! 🎉
+                @elseif($pedidoActivo->estado === 'listo')
+                    ¡Productos Listos! ✅
+                @elseif($pedidoActivo->estado === 'armado')
+                    ¡Pedido Armado! 📦
+                @elseif($pedidoActivo->estado === 'en_entrega')
+                    ¡En Camino! 🚚
+                @elseif($pedidoActivo->estado === 'entregado')
+                    ¡Entregado Exitosamente! 🎊
+                @endif
+            </h3>
+            
+            <!-- 🗓️ INFORMACIÓN DE LA SEMANA ACTUAL -->
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p class="text-sm font-semibold text-gray-800">
+                    📅 Semana del {{ $inicioSemana->format('d/m') }} al {{ $finSemana->format('d/m/Y') }}
+                </p>
+                <p class="text-xs text-gray-600 mt-1">
+                    @if($pedidoActivo->estado === 'entregado')
+                        🎪 Feria completada: {{ $pedidoActivo->updated_at->format('d/m/Y') }}
+                    @else
+                        🎪 Feria: {{ $proximoSabado->format('d/m/Y') }} ({{ $proximoSabado->diffForHumans() }})
+                    @endif
+                </p>
+            </div>
+            
+            <p class="text-sm text-gray-500 mb-4">
+                Pedido #{{ str_pad($pedidoActivo->id, 6, '0', STR_PAD_LEFT) }} • 
+                {{ $pedidoActivo->created_at->format('d/m/Y H:i') }}
+            </p>
+        </div>
+
+        <!-- Contenido según el estado -->
+        <div class="text-center mb-6">
+            @if($pedidoActivo->estado === 'pagado')
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        Tu pedido será entregado en la feria de 
+                        <strong class="text-blue-600">{{ $proximoSabado->format('d/m/Y') }}</strong> 
+                        ({{ $proximoSabado->diffForHumans() }}). 
+                        <br><br>
+                        Estado actual: <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">PAGADO</span>
+                        <br>Te avisaremos cuando los agricultores preparen tus productos.
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Los agricultores están preparando tus productos para el {{ $proximoSabado->format('d/m') }}
+                </div>
+
+            @elseif($pedidoActivo->estado === 'listo')
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        ¡Los agricultores ya prepararon tus productos para la feria del 
+                        <strong class="text-yellow-600">{{ $proximoSabado->format('d/m/Y') }}</strong>!
+                        <br><br>
+                        El administrador los armará en un solo pedido y estará listo para 
+                        @if($pedidoActivo->delivery === 'delivery')
+                            <strong class="text-yellow-600">entrega a domicilio</strong> ese día.
+                        @else
+                            <strong class="text-yellow-600">recoger en la feria</strong> ese día.
+                        @endif
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-clock mr-1"></i>
+                    El admin está armando tu pedido para el {{ $proximoSabado->format('d/m') }}
+                </div>
+
+            @elseif($pedidoActivo->estado === 'armado')
+                @if($pedidoActivo->delivery === 'delivery')
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p class="text-gray-700 text-sm leading-relaxed">
+                            ¡Tu pedido ya está armado para la feria del 
+                            <strong class="text-green-600">{{ $proximoSabado->format('d/m/Y') }}</strong>!
+                            <br><br>
+                            Será entregado a domicilio en <strong class="text-green-600">{{ $pedidoActivo->direccion }}</strong> 
+                            el día de la feria.
+                        </p>
+                    </div>
+                    
+                    <div class="text-xs text-gray-600">
+                        <i class="fas fa-shipping-fast mr-1"></i>
+                        Listo para entrega a domicilio el {{ $proximoSabado->format('d/m') }}
+                    </div>
+                @else
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p class="text-gray-700 text-sm leading-relaxed">
+                            ¡Tu pedido ya está armado! Puedes recogerlo en la feria del 
+                            <strong class="text-green-600">{{ $proximoSabado->format('d/m/Y') }}</strong>
+                            <strong class="text-green-600">hasta las 1:00 PM</strong>.
+                        </p>
+                    </div>
+                    
+                    <div class="text-xs text-gray-600">
+                        <i class="fas fa-store mr-1"></i>
+                        Listo para recoger el {{ $proximoSabado->format('d/m') }} hasta la 1:00 PM
                     </div>
                 @endif
-            </a>
 
-            <a href="{{ route('producto.show', $producto->id) }}">
-                <h3 class="font-bold text-lg">{{ $producto->nombre }}</h3>
-            </a>
-            <p class="text-gray-500">S/{{ number_format($producto->precio, 2) }}</p>
-            <p class="text-sm text-gray-400">Disponibles: {{ $producto->cantidad_disponible }}</p>
+            @elseif($pedidoActivo->estado === 'en_entrega')
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        ¡Tu pedido está siendo entregado el día de hoy 
+                        {{ \Carbon\Carbon::now('America/Lima')->format('d/m/Y') }}!
+                        <br><br>
+                        <strong class="text-purple-600">Por favor, mantente atento a la llamada del repartidor</strong> 
+                        y asegúrate de estar disponible para recibirlo.
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-phone mr-1"></i>
+                    Entrega en curso - Día de feria {{ \Carbon\Carbon::now('America/Lima')->format('d/m') }}
+                </div>
 
-            <!-- Formulario para agregar al carrito -->
-            <form class="add-to-cart-form mt-2" action="{{ route('carrito.add', $producto->id) }}" method="POST">
-                @csrf
-                <input type="hidden" name="cantidad" value="1">
-                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-lg w-full hover:bg-green-600">
-                    Agregar al carrito
-                </button>
-            </form>
+            @elseif($pedidoActivo->estado === 'entregado')
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        ¡Tu pedido fue entregado exitosamente el 
+                        <strong class="text-green-600">{{ $pedidoActivo->updated_at->format('d/m/Y') }}</strong>!
+                        <br><br>
+                        @if($pedidoActivo->delivery === 'delivery')
+                            Gracias por confiar en nosotros para llevarte productos frescos a tu domicilio.
+                        @else
+                            Gracias por visitarnos en la feria y recoger tu pedido.
+                        @endif
+                        <br><br>
+                        ¡Esperamos verte en la próxima feria! 🌱
+                    </p>
+                </div>
+                
+                <div class="text-xs text-gray-600">
+                    <i class="fas fa-check-circle mr-1 text-green-600"></i>
+                    Pedido completado exitosamente
+                </div>
+            @endif
         </div>
-        @endforeach
-    @endif
-</div>
 
+        <!-- Información adicional del pedido -->
+        <div class="bg-gray-50 rounded-lg p-3 mb-6">
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-600">Total del pedido:</span>
+                <span class="font-semibold text-gray-800">S/ {{ number_format($pedidoActivo->total, 2) }}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm mt-1">
+                <span class="text-gray-600">Tipo de entrega:</span>
+                <span class="font-semibold text-gray-800">
+                    @if($pedidoActivo->delivery === 'delivery')
+                        🚚 Delivery
+                    @else
+                        🏪 Recoger en feria
+                    @endif
+                </span>
+            </div>
+            <div class="flex justify-between items-center text-sm mt-1">
+                <span class="text-gray-600">
+                    @if($pedidoActivo->estado === 'entregado')
+                        Feria completada:
+                    @else
+                        Feria programada:
+                    @endif
+                </span>
+                <span class="font-semibold text-gray-800">
+                    @if($pedidoActivo->estado === 'entregado')
+                        {{ $pedidoActivo->updated_at->format('d/m/Y') }}
+                    @else
+                        {{ $proximoSabado->format('d/m/Y') }}
+                    @endif
+                </span>
+            </div>
+        </div>
 
+        <!-- Botones -->
+        <div class="flex gap-3">
+            @if($pedidoActivo->estado === 'entregado')
+                <!-- Botones para pedido entregado -->
+                <button onclick="closeModal()" 
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    ¡Perfecto!
+                </button>
+                <a href="{{ route('order.voucher', $pedidoActivo->id) }}" 
+                   class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-lg text-center transition-colors">
+                    Ver Voucher
+                </a>
+            @else
+                <!-- Botones para pedidos en proceso -->
+                <button onclick="closeModal()" 
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-colors">
+                    Entendido
+                </button>
+                <a href="{{ route('order.voucher', $pedidoActivo->id) }}" 
+                   class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition-colors">
+                    Ver Voucher
+                </a>
+            @endif
+        </div>
+
+        <!-- Nota sobre el ciclo semanal -->
+        <div class="mt-4 text-center">
+            <p class="text-xs text-gray-500">
+                <i class="fas fa-calendar-week mr-1"></i>
+                @if($pedidoActivo->estado === 'entregado')
+                    ¡Gracias por elegirnos! Una nueva semana de feria inicia cada lunes.
+                @else
+                    Este pedido es para la feria del {{ $proximoSabado->format('d/m/Y') }}. 
+                    ¡Una nueva semana inicia cada lunes!
+                @endif
+            </p>
+        </div>
     </div>
 </div>
-
-<!-- Botón de ver carrito (puede estar en la cabecera o en el sidebar) -->
-<div class="fixed bottom-4 right-4">
-    <a href="{{ route('carrito.index') }}" class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-600">
-        Ver carrito
-    </a>
+@endif
 </div>
 @endsection
 
 @section('scripts')
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    // Manejo del evento de búsqueda en tiempo real
-    $('#search').on('input', function() {
-        let query = $(this).val();
-
-        if (query.length > 2) { // Realizar la búsqueda si hay más de 2 caracteres
-            $.ajax({
-                url: "{{ route('buscar.productos.ajax') }}",
-                method: 'GET',
-                data: { q: query },
-                success: function(response) {
-                    let searchResults = $('#search-results');
-                    searchResults.empty(); // Limpiar resultados anteriores
-
-                    if (response.length > 0) {
-                        searchResults.removeClass('hidden');
-
-                        response.forEach(function(product) {
-                            let productItem = `
-                                <a href="/producto/${product.id}" class="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
-                                    <img src="/storage/${product.imagen}" alt="${product.nombre}" class="w-10 h-10 mr-2">
-                                    <div>
-                                        <p class="font-semibold">${product.nombre}</p>
-                                        <p class="text-sm text-gray-600">S/${product.precio}</p>
-                                    </div>
-                                </a>
-                            `;
-                            searchResults.append(productItem);
-                        });
-                    } else {
-                        searchResults.append('<p class="p-2 text-gray-500">No se encontraron productos</p>');
-                    }
-                }
-            });
-        } else {
-            $('#search-results').addClass('hidden');
-        }
+    // Control Sidebar Móvil
+    $('#open-sidebar').on('click', function() {
+        $('#sidebar').removeClass('-translate-x-full');
+        $('#sidebar-overlay').removeClass('hidden');
+        $('body').addClass('overflow-hidden');
+        $('#filter-icon').addClass('rotate-180');
     });
 
-    // Opción para cerrar el contenedor si el usuario hace clic fuera de él
+    $('#close-sidebar, #sidebar-overlay').on('click', function() {
+        $('#sidebar').addClass('-translate-x-full');
+        $('#sidebar-overlay').addClass('hidden');
+        $('body').removeClass('overflow-hidden');
+        $('#filter-icon').removeClass('rotate-180');
+    });
+
+    // Función Búsqueda Optimizada
+    // Función Búsqueda Optimizada
+function handleSearch(searchInput, resultsContainer) {
+    let searchTimeout;
+    
+    $(searchInput).on('input', function() {
+        clearTimeout(searchTimeout);
+        let query = $(this).val();
+
+        if (query.length > 2) {
+            searchTimeout = setTimeout(function() {
+                $.ajax({
+                    url: "{{ route('buscar.productos.ajax') }}",
+                    method: 'GET',
+                    data: { q: query },
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    success: function(response) {
+                        let searchResults = $(resultsContainer);
+                        searchResults.empty();
+
+                        if (response.length > 0) {
+                            searchResults.removeClass('hidden');
+
+                            response.forEach(function(product) {
+                                let medidaText = product.medida ? ` / ${product.medida}` : '';
+                                let agricultorText = product.agricultor ? `<p class="text-xs text-gray-500">Por: ${product.agricultor}</p>` : '';
+                                let productItem = `
+                                    <a href="/producto/${product.id}" class="flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
+                                        <div class="w-10 h-10 rounded-lg overflow-hidden mr-3 flex-shrink-0">
+                                            ${product.imagen ? 
+                                                `<img src="/storage/${product.imagen}" alt="${product.nombre}" class="w-full h-full object-cover">` :
+                                                `<div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                </div>`
+                                            }
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="font-semibold text-gray-800 text-sm truncate">${product.nombre}</p>
+                                            <p class="text-sm font-bold text-green-600">S/${product.precio}${medidaText}</p>
+                                            <p class="text-xs text-gray-500">Stock: ${product.cantidad_disponible}</p>
+                                            ${agricultorText}
+                                        </div>
+                                    </a>
+                                `;
+                                searchResults.append(productItem);
+                            });
+                        } else {
+                            searchResults.removeClass('hidden');
+                            searchResults.append('<div class="p-4 text-center text-gray-500 text-sm">No se encontraron productos</div>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error en búsqueda:', xhr);
+                        if (xhr.status === 401) {
+                            console.log('Error de autenticación - pero la búsqueda debería funcionar sin login');
+                        }
+                    }
+                });
+            }, 300);
+        } else {
+            $(resultsContainer).addClass('hidden');
+        }
+    });
+}
+
+    // Cerrar resultados al hacer clic fuera
     $(document).click(function(event) {
         if (!$(event.target).closest('#search, #search-results').length) {
             $('#search-results').addClass('hidden');
         }
     });
 
-    // Manejo del formulario "Agregar al carrito"
-    $('.add-to-cart-form').off('submit').on('submit', function(e) {
-        e.preventDefault();  // Prevenir la recarga de la página
+    // Control Cantidad Producto ARREGLADO
+    $('.quantity-btn').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        let form = $(this).closest('form');
+        let input = form.find('.quantity-input');
+        let totalPriceElement = form.find('.total-price');
+        let unitPrice = parseFloat(totalPriceElement.data('unit-price'));
+        let currentValue = parseInt(input.val());
+        let maxValue = parseInt(input.attr('max'));
+        let minValue = parseInt(input.attr('min'));
+        
+        if ($(this).hasClass('plus-btn') && currentValue < maxValue) {
+            input.val(currentValue + 1);
+        } else if ($(this).hasClass('minus-btn') && currentValue > minValue) {
+            input.val(currentValue - 1);
+        }
+        
+        // Actualizar precio total
+        let newQuantity = parseInt(input.val());
+        let totalPrice = unitPrice * newQuantity;
+        totalPriceElement.text('S/' + totalPrice.toFixed(2));
+        
+        // Actualizar estado botones
+        form.find('.minus-btn').prop('disabled', newQuantity <= minValue);
+        form.find('.plus-btn').prop('disabled', newQuantity >= maxValue);
+    });
 
-        let form = $(this);  // Formulario específico que se envió
+    // Manejo Input Cantidad
+    $('.quantity-input').on('input', function() {
+        let form = $(this).closest('form');
+        let totalPriceElement = form.find('.total-price');
+        let unitPrice = parseFloat(totalPriceElement.data('unit-price'));
+        let currentValue = parseInt($(this).val()) || 1;
+        let maxValue = parseInt($(this).attr('max'));
+        let minValue = parseInt($(this).attr('min'));
+        
+        // Validar límites
+        if (currentValue > maxValue) {
+            $(this).val(maxValue);
+            currentValue = maxValue;
+        } else if (currentValue < minValue) {
+            $(this).val(minValue);
+            currentValue = minValue;
+        }
+        
+        // Actualizar precio
+        let totalPrice = unitPrice * currentValue;
+        totalPriceElement.text('S/' + totalPrice.toFixed(2));
+        
+        // Actualizar botones
+        form.find('.minus-btn').prop('disabled', currentValue <= minValue);
+        form.find('.plus-btn').prop('disabled', currentValue >= maxValue);
+    });
 
-        // Verificar si el usuario está autenticado mediante AJAX
-        $.get("{{ route('auth.check') }}", function(response) {
-            if (!response.authenticated) {
+ 
+
+    // Agregar al Carrito - SOLUCIÓN IMPLEMENTADA
+   // Variables globales para el carrito
+let isAddingToCart = false;
+
+// MODIFICAR el evento de agregar al carrito para que actualice el badge flotante
+$('.add-to-cart-form').off('submit').on('submit', function(e) {
+    e.preventDefault();
+
+    if (isAddingToCart) return false;
+
+    let form = $(this);
+    let button = form.find('button[type="submit"]');
+    let originalText = button.html();
+
+    // Guardar la cantidad ANTES de resetear
+    let cantidadAgregada = parseInt(form.find('.quantity-input').val()) || 1;
+    let nombreProducto = form.closest('.group').find('h3').text();
+
+    // Estado de carga
+    isAddingToCart = true;
+    button.prop('disabled', true).html(`
+        <svg class="animate-spin w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    `);
+
+    // AJAX
+    $.ajax({
+        type: 'POST',
+        url: form.attr('action'),
+        data: form.serialize(),
+        timeout: 10000,
+        success: function(response) {
+            if (response.success) {
+                // Actualizar TODOS los badges del carrito
+                $('#cart-badge').text(response.totalItems || 0); // Navbar
+                $('#floating-cart-badge').text(response.totalItems || 0); // Flotante
+                $('#cart-badge-mobile').text(response.totalItems || 0); // Móvil (si existe)
+
+                // Resetear cantidad del formulario
+                form.find('.quantity-input').val(1);
+                form.find('.total-price').text('S/' + parseFloat(form.find('.total-price').data('unit-price')).toFixed(2));
+
+                // Animación en el botón flotante
+                $('#floating-cart-badge').addClass('cart-bounce');
+                setTimeout(() => {
+                    $('#floating-cart-badge').removeClass('cart-bounce');
+                }, 600);
+
+                // Mostrar notificación de éxito
+                Swal.fire({
+                    title: '¡Producto añadido!',
+                    text: `${cantidadAgregada} unidad${cantidadAgregada > 1 ? 'es' : ''} de ${nombreProducto} agregado al carrito`,
+                    icon: 'success',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    toast: true,
+                    position: 'top-end',
+                    timerProgressBar: true,
+                    background: '#10b981',
+                    color: '#ffffff',
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', xhr);
+            
+            let errorMessage = 'Error al agregar el producto';
+            
+            if (status === 'timeout') {
+                errorMessage = 'La solicitud tardó demasiado';
+            } else if (xhr.status === 0) {
+                errorMessage = 'Sin conexión a internet';
+            } else if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMessage = xhr.responseJSON.error;
+            } else if (xhr.status === 401) {
                 Swal.fire({
                     title: 'Inicia sesión',
-                    text: 'Debes iniciar sesión para agregar productos al carrito.',
+                    text: 'Debes iniciar sesión para agregar productos',
                     icon: 'warning',
-                    showConfirmButton: true,
+                    showCancelButton: true,
+                    confirmButtonColor: '#3B82F6',
+                    confirmButtonText: 'Ir a login',
+                    cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         window.location.href = "{{ route('login') }}";
@@ -185,80 +978,93 @@ $(document).ready(function() {
                 });
                 return;
             }
-
-            // Proceder con el envío si está autenticado
-            let actionUrl = form.attr('action');  // URL del formulario
-
-            $.ajax({
-                type: 'POST',
-                url: actionUrl,
-                data: form.serialize(),  // Enviar los datos del formulario
-                success: function(response) {
-                    if (response.totalItems !== undefined && response.totalPrice !== undefined) {
-                        // Actualizar el ícono del carrito con los nuevos valores
-                        $('#cart-total-items').text(response.totalItems);  // Número de productos en el carrito
-                        $('#cart-total-price').text(response.totalPrice.toFixed(2));  // Precio total
-
-                        // Limpiar el contenido anterior del modal del carrito
-                        $('#cart-items-list').empty();
-
-                        // Recorrer los productos agregados y mostrarlos en el modal
-                        response.items.forEach(function(item) {
-                            $('#cart-items-list').append(`
-                                <div class="flex justify-between items-center mb-2">
-                                    <span>${item.nombre}</span>
-                                    <span>${item.cantidad}</span>
-                                    <span>S/${item.subtotal.toFixed(2)}</span>
-                                </div>
-                            `);
-                        });
-
-                        // Actualizar el total en el modal del carrito
-                        $('#cart-popup-total-price').text(response.totalPrice.toFixed(2));
-
-                        // Mostrar el mensaje de éxito con SweetAlert
-                        Swal.fire({
-                            title: 'Producto añadido al carrito!',
-                            icon: 'success',
-                            showConfirmButton: false,
-                            timer: 1500
-                        });
-
-                        // Mostrar el modal del carrito
-                        $('#cart-summary').removeClass('hidden');
-                    } else {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'No se pudo agregar el producto. Intenta nuevamente.',
-                            icon: 'error',
-                            showConfirmButton: true,
-                        });
-                    }
-                },
-                error: function(xhr, status, error) {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Hubo un problema al agregar el producto.',
-                        icon: 'error',
-                        showConfirmButton: true,
-                    });
-                }
+            
+            Swal.fire({
+                title: 'Error',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonColor: '#3B82F6',
             });
-        });
-    });
-});
-function updateProductStock(productId) {
-    $.ajax({
-        url: '/producto/' + productId, // Ruta para obtener los datos del producto
-        method: 'GET',
-        success: function(response) {
-            // Actualizar la cantidad disponible en la vista
-            $('#producto-' + productId + ' .cantidad-disponible').text('Disponibles: ' + response.cantidad_disponible);
+        },
+        complete: function() {
+            // Restaurar el botón SIEMPRE
+            button.prop('disabled', false).html(originalText);
+            isAddingToCart = false;
         }
     });
+});
+
+// Agregar animación CSS adicional si no existe
+if (!document.querySelector('#cart-animation-styles')) {
+    const style = document.createElement('style');
+    style.id = 'cart-animation-styles';
+    style.textContent = `
+        .cart-bounce {
+            animation: cartBounce 0.6s ease;
+        }
+        
+        @keyframes cartBounce {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.2); }
+            50% { transform: scale(0.9); }
+            75% { transform: scale(1.1); }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('pedido-status-modal');
+    const modalContent = document.getElementById('modal-content');
+    
+    if (modal) {
+        // Animar entrada del modal
+        setTimeout(() => {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+        }, 100);
+    }
+});
+
+function closeModal() {
+    const modal = document.getElementById('pedido-status-modal');
+    const modalContent = document.getElementById('modal-content');
+    
+    if (modal && modalContent) {
+        // Animar salida
+        modalContent.classList.add('scale-95', 'opacity-0');
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
 }
 
+// Cerrar con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
 
+// Cerrar al hacer clic fuera del modal
+document.getElementById('pedido-status-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
 </script>
 @endsection
-
