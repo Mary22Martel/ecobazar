@@ -145,7 +145,7 @@
     <div class="container mx-auto px-4">
         <div class="text-center mb-3 sm:mb-6">
             <h1 class="text-lg sm:text-xl lg:text-2xl font-bold mb-1 sm:mb-2">
-                🌱 Productos Frescos del Campo
+                🌱 Productos Frescos del campo
             </h1>
             <p class="text-green-100 text-xs sm:text-sm max-w-2xl mx-auto">
                 Directamente de nuestros agricultores a tu mesa
