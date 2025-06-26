@@ -12,7 +12,7 @@
             <a href="{{ route('carrito.index') }}" class="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition">
                 Volver al carrito
             </a>
-            <a href="{{ route('home') }}" class="text-gray-600 hover:underline py-3">
+            <a href="{{ route('tienda') }}" class="text-gray-600 hover:underline py-3">
                 Volver al inicio
             </a>
         </div>
