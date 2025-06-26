@@ -349,9 +349,9 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
            $preferenceData = [
                 "items" => $items,
                 "back_urls" => [
-                    "success" => url("/orden-exito/{$orden->id}"),
+                    "success" => url("/orden-exito/{$orden->id}?mp=1"),
                     "failure" => url("/order/failed"),
-                    "pending" => url("/orden-exito/{$orden->id}")
+                    "pending" => url("/orden-exito/{$orden->id}?mp=1")
                 ],
                 "external_reference" => strval($orden->id),
                 "statement_descriptor" => "Punto Verde",
