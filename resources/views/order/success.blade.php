@@ -167,55 +167,101 @@
 @section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Contador de redirección automática - siempre activo
-    let countdown = 5;
-    const countdownElement = document.getElementById('countdown');
+    console.log('🔧 Iniciando detección de origen...');
+    
+    // Detectar si viene desde MercadoPago
+    const urlParams = new URLSearchParams(window.location.search);
+    const vieneDeMercadoPago = urlParams.get('mp') === '1' || 
+                               urlParams.get('collection_status') || 
+                               urlParams.get('payment_id') ||
+                               urlParams.get('status') === 'approved';
+    
+    // Elementos del DOM
     const mpMessage = document.getElementById('mp-message');
     const successContent = document.getElementById('success-content');
     const orderDetails = document.getElementById('order-details');
     const actionButtons = document.getElementById('action-buttons');
     const refreshSection = document.getElementById('refresh-section');
+    const countdownElement = document.getElementById('countdown');
     
-    // Siempre ejecutar el contador
-    const timer = setInterval(function() {
-        countdown--;
-        if (countdownElement) {
-            countdownElement.textContent = countdown;
+    if (vieneDeMercadoPago) {
+        console.log('🎉 Usuario viene desde MercadoPago - iniciando redirección automática');
+        
+        // Mostrar mensaje estilo MercadoPago inmediatamente
+        if (mpMessage) {
+            mpMessage.style.display = 'block';
         }
         
-        if (countdown <= 0) {
-            clearInterval(timer);
+        // Ocultar el resto hasta que termine el contador
+        if (successContent) successContent.style.display = 'none';
+        if (orderDetails) orderDetails.style.display = 'none';
+        if (actionButtons) actionButtons.style.display = 'none';
+        
+        // Iniciar contador de 5 segundos
+        let countdown = 5;
+        
+        const timer = setInterval(function() {
+            countdown--;
+            if (countdownElement) {
+                countdownElement.textContent = countdown;
+            }
             
-            // Ocultar mensaje de MercadoPago y mostrar contenido de la orden
-            if (mpMessage) mpMessage.style.display = 'none';
-            if (successContent) {
-                successContent.classList.remove('hidden');
-                successContent.style.display = 'block';
+            if (countdown <= 0) {
+                clearInterval(timer);
+                
+                // Ocultar mensaje de MercadoPago y mostrar contenido completo
+                if (mpMessage) mpMessage.style.display = 'none';
+                if (successContent) {
+                    successContent.classList.remove('hidden');
+                    successContent.style.display = 'block';
+                }
+                if (orderDetails) {
+                    orderDetails.classList.remove('hidden');
+                    orderDetails.style.display = 'block';
+                }
+                if (actionButtons) {
+                    actionButtons.classList.remove('hidden');
+                    actionButtons.style.display = 'flex';
+                }
+                if (refreshSection) {
+                    refreshSection.classList.remove('hidden');
+                    refreshSection.style.display = 'block';
+                }
+                
+                console.log('✅ Redirección completada - mostrando vista completa');
             }
-            if (orderDetails) {
-                orderDetails.classList.remove('hidden');
-                orderDetails.style.display = 'block';
-            }
-            if (actionButtons) {
-                actionButtons.classList.remove('hidden');
-                actionButtons.style.display = 'flex';
-            }
-            if (refreshSection) {
-                refreshSection.classList.remove('hidden');
-                refreshSection.style.display = 'block';
-            }
+        }, 1000);
+        
+    } else {
+        console.log('👤 Acceso directo - mostrando vista normal inmediatamente');
+        
+        // Si NO viene desde MercadoPago, mostrar todo inmediatamente
+        if (mpMessage) mpMessage.style.display = 'none';
+        if (successContent) {
+            successContent.classList.remove('hidden');
+            successContent.style.display = 'block';
         }
-    }, 1000);
+        if (orderDetails) {
+            orderDetails.classList.remove('hidden'); 
+            orderDetails.style.display = 'block';
+        }
+        if (actionButtons) {
+            actionButtons.classList.remove('hidden');
+            actionButtons.style.display = 'flex';
+        }
+        if (refreshSection) {
+            refreshSection.classList.remove('hidden');
+            refreshSection.style.display = 'block';
+        }
+    }
 
     // Actualizar carrito después de orden exitosa
     if (window.location.href.includes('/orden-exito/')) {
-        // Hacer una llamada AJAX para refrescar el carrito
         fetch('{{ route("carrito.getDetails") }}')
             .then(function(response) {
                 return response.json();
             })
             .then(function(data) {
-                // Actualizar elementos del carrito en la cabecera si existen
                 const cartTotalItems = document.getElementById('cart-total-items');
                 const cartTotalPrice = document.getElementById('cart-total-price');
                 const cartItemsList = document.getElementById('cart-items-list');
