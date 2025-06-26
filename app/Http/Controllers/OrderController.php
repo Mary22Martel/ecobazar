@@ -346,7 +346,7 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
             }
 
             // ⭐ CONFIGURACIÓN CON WEBHOOK
-            $preferenceData = [
+           $preferenceData = [
                 "items" => $items,
                 "back_urls" => [
                     "success" => url("/orden-exito/{$orden->id}"),
@@ -355,9 +355,17 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 ],
                 "external_reference" => strval($orden->id),
                 "statement_descriptor" => "Punto Verde",
-                // ⭐ AGREGAR WEBHOOK URL
-                "notification_url" => url("/mercadopago/webhook")
+                // ⭐ CONFIGURAR REDIRECCIÓN AUTOMÁTICA
+                "auto_return" => "approved"
             ];
+
+            // ⭐ SOLO AGREGAR WEBHOOK EN PRODUCCIÓN
+            if (config('app.env') === 'production') {
+                $preferenceData["notification_url"] = url("/mercadopago/webhook");
+                Log::info('Webhook configurado para producción: ' . url("/mercadopago/webhook"));
+            } else {
+                Log::info('Webhook omitido en desarrollo local');
+            }
 
             Log::info('Datos para MercadoPago:', $preferenceData);
 
