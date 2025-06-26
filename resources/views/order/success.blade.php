@@ -1,4 +1,4 @@
-@extends('layouts.app2')
+@extends('layouts.app')
 
 @section('content')
 <div class="flex flex-col items-center min-h-screen bg-gray-100 px-4 py-10">
