@@ -11,7 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+         // ⭐ EXCLUIR WEBHOOK DEL CSRF
+        $middleware->validateCsrfTokens(except: [
+            'mercadopago/webhook'
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

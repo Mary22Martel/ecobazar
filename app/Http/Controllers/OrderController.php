@@ -340,24 +340,32 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 "unit_price" => floatval($subtotal + $costoEnvio)
             ];
 
-            // AGREGAR BREAKDOWN PARA MOSTRAR EL DESGLOSE
+            // Agregar información del desglose en el título si hay envío
             if ($costoEnvio > 0) {
-                // Agregar información adicional en el título del item
                 $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
             }
 
-            // Configuración simplificada - removiendo elementos problemáticos
-            $preferenceData = [
+            // ⭐ CONFIGURACIÓN CON WEBHOOK
+           $preferenceData = [
                 "items" => $items,
                 "back_urls" => [
-                    "success" => url("/orden-exito/{$orden->id}"),
+                    "success" => url("/orden-exito/{$orden->id}?mp=1"),
                     "failure" => url("/order/failed"),
-                    "pending" => url("/orden-exito/{$orden->id}")
+                    "pending" => url("/orden-exito/{$orden->id}?mp=1")
                 ],
                 "external_reference" => strval($orden->id),
-                "statement_descriptor" => "Punto Verde"
-                // REMOVIDO: auto_return, payment_methods, shipments
+                "statement_descriptor" => "Punto Verde",
+                // ⭐ CONFIGURAR REDIRECCIÓN AUTOMÁTICA
+                "auto_return" => "approved"
             ];
+
+            // ⭐ SOLO AGREGAR WEBHOOK EN PRODUCCIÓN
+            if (config('app.env') === 'production') {
+                $preferenceData["notification_url"] = url("/mercadopago/webhook");
+                Log::info('Webhook configurado para producción: ' . url("/mercadopago/webhook"));
+            } else {
+                Log::info('Webhook omitido en desarrollo local');
+            }
 
             Log::info('Datos para MercadoPago:', $preferenceData);
 
@@ -365,6 +373,7 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
             
             Log::info('Preferencia creada exitosamente');
             Log::info('Init point: ' . $preference->init_point);
+            Log::info('Webhook configurado en: ' . url("/mercadopago/webhook"));
 
             return response()->json([
                 'success' => true,
@@ -373,34 +382,6 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
 
         } catch (MPApiException $e) {
             Log::error('Error MercadoPago API: ' . $e->getMessage());
-            
-            // Manejo seguro de la respuesta del error
-            try {
-                $apiResponse = $e->getApiResponse();
-                if ($apiResponse) {
-                    $content = $apiResponse->getContent();
-                    if (is_array($content)) {
-                        Log::error('MercadoPago Response (Array): ' . json_encode($content, JSON_PRETTY_PRINT));
-                    } elseif (is_string($content)) {
-                        Log::error('MercadoPago Response (String): ' . $content);
-                    } else {
-                        Log::error('MercadoPago Response (Other): ' . print_r($content, true));
-                    }
-                } else {
-                    Log::error('No se pudo obtener respuesta de MercadoPago API');
-                }
-            } catch (Exception $logException) {
-                Log::error('Error al obtener detalles del error de MercadoPago: ' . $logException->getMessage());
-            }
-            
-            try {
-                if (method_exists($e, 'getApiResponse') && $e->getApiResponse()) {
-                    $statusCode = $e->getApiResponse()->getStatusCode();
-                    Log::error('MercadoPago HTTP Status Code: ' . $statusCode);
-                }
-            } catch (Exception $statusException) {
-                Log::error('Error obteniendo status code: ' . $statusException->getMessage());
-            }
             
             return response()->json([
                 'success' => false,

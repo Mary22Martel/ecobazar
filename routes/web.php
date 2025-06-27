@@ -330,3 +330,15 @@ Route::get('/test-voucher/{orderId}', function($orderId) {
     // Mostrar la vista sin PDF para verificar que funciona
     return view('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'));
 })->middleware('auth');
+
+// Webhook de MercadoPago (debe estar FUERA del middleware auth)
+Route::post('/mercadopago/webhook', [App\Http\Controllers\WebhookController::class, 'mercadoPagoWebhook'])
+    ->name('mercadopago.webhook');
+
+// Ruta para testing (opcional)
+Route::get('/test-webhook', function() {
+    return response()->json([
+        'webhook_url' => url('/mercadopago/webhook'),
+        'status' => 'ready'
+    ]);
+});
