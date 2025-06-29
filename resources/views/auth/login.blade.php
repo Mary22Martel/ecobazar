@@ -9,8 +9,10 @@
             <!-- Header con branding -->
             <div class="bg-gradient-to-r from-green-500 to-emerald-600 px-6 sm:px-8 py-8 text-center">
                 <div class="mb-4">
-                    <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span class="text-3xl">🌱</span>
+                    <div class="w-24 h-24 flex items-center justify-center mx-auto mb-4 relative group rounded-full bg-white/20">
+                    <img src="{{ asset('images/logox.png') }}" alt="Punto Verde Logo" 
+                        class="h-16 lg:h-20 w-auto transition-transform duration-300 group-hover:scale-105">
+                    <div class="absolute -inset-1 bg-gradient-green rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">Punto Verde</h1>
                     <p class="text-green-100 text-sm sm:text-base">Conectando el campo con tu mesa</p>
