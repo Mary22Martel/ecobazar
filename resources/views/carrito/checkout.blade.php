@@ -314,8 +314,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calcularComisionMercadoPago(montoAPagar) {
     const comision = (montoAPagar * MERCADOPAGO_COMMISSION_RATE) + MERCADOPAGO_FIXED_FEE;
-    return Math.round(comision * 100) / 100; 
-    }
+    return Math.round(comision * 100) / 100;
+}
 
     // Elementos del DOM
     const deliveryFields = document.getElementById('delivery-fields');
