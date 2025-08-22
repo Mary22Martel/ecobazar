@@ -361,21 +361,15 @@ if (empty($token)) {
             $items = [];
             $items[] = [
                 "title" => "Pedido #" . $orden->id . " - Punto Verde",
+                "description" => "Productos organicos frescos", // Descripción simple
                 "quantity" => 1,
                 "currency_id" => "PEN",
                 "unit_price" => floatval($montoAPagar)
             ];
 
             // ✅ TÍTULO CORREGIDO - Una sola lógica, completa
-            $cargoOnline = $montoAPagar - ($subtotalProductos + $costoEnvio);
             
-            $descripcionCompleta = "Productos: S/" . number_format($subtotalProductos, 2);
-            if ($costoEnvio > 0) {
-                $descripcionCompleta .= " + Envío: S/" . number_format($costoEnvio, 2);
-            }
-            $descripcionCompleta .= " + Cargo pago online: S/" . number_format($cargoOnline, 2);
-            
-            $items[0]["title"] = "Pedido #" . $orden->id . " - " . $descripcionCompleta;
+            $items[0]["title"] = "Pedido #" . $orden->id . " - Punto Verde";
 
             // Configuración de preferencia
             $preferenceData = [
