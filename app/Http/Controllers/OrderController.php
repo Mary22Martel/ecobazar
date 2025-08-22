@@ -322,80 +322,99 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
     }
 
     private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
-    {
-        try {
-            Log::info('=== INICIANDO MERCADO PAGO ===');
-            
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-            $client = new PreferenceClient();
+{
+    try {
+        Log::info('=== INICIANDO MERCADO PAGO ===');
+        
+        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+        $client = new PreferenceClient();
 
-            // Preparar items para MercadoPago
-            $items = [];
-            
-            // Item principal con el total
-            $items[] = [
-                "title" => "Pedido #" . $orden->id . " - Punto Verde",
-                "quantity" => 1,
-                "currency_id" => "PEN",
-                "unit_price" => floatval($subtotal + $costoEnvio)
-            ];
+        // ⭐ APLICAR FÓRMULA DE COMISIÓN MERCADOPAGO
+        $montoNeto = $subtotal + $costoEnvio; // Monto que queremos recibir íntegro
+        $comisionPorcentaje = 0.047082; // 4.7082% comisión total con IGV
+        $tarifaFija = 1.18; // Tarifa fija con IGV
+        $comodin = 0.10; // Comodín adicional
+        
+        // Aplicar fórmula: T = (N + f) / (1 - p) + comodin
+        $montoAjustado = (($montoNeto + $tarifaFija) / (1 - $comisionPorcentaje)) + $comodin;
+        
+        // Redondear a 2 decimales
+        $montoAjustado = round($montoAjustado, 2);
+        
+        Log::info("Cálculo de comisión MercadoPago:");
+        Log::info("- Monto neto deseado: S/{$montoNeto}");
+        Log::info("- Monto ajustado para cobrar: S/{$montoAjustado}");
+        Log::info("- Diferencia (comisión + comodín): S/" . round($montoAjustado - $montoNeto, 2));
 
-            // Agregar información del desglose en el título si hay envío
-            if ($costoEnvio > 0) {
-                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
-            }
-
-            // ⭐ CONFIGURACIÓN CON WEBHOOK
-           $preferenceData = [
-                "items" => $items,
-                "back_urls" => [
-                    "success" => url("/orden-exito/{$orden->id}?mp=1"),
-                    "failure" => url("/order/failed"),
-                    "pending" => url("/orden-exito/{$orden->id}?mp=1")
-                ],
-                "external_reference" => strval($orden->id),
-                "statement_descriptor" => "Punto Verde",
-                // ⭐ CONFIGURAR REDIRECCIÓN AUTOMÁTICA
-                "auto_return" => "approved"
-            ];
-
-            // ⭐ SOLO AGREGAR WEBHOOK EN PRODUCCIÓN
-            if (config('app.env') === 'production') {
-                $preferenceData["notification_url"] = url("/mercadopago/webhook");
-                Log::info('Webhook configurado para producción: ' . url("/mercadopago/webhook"));
-            } else {
-                Log::info('Webhook omitido en desarrollo local');
-            }
-
-            Log::info('Datos para MercadoPago:', $preferenceData);
-
-            $preference = $client->create($preferenceData);
-            
-            Log::info('Preferencia creada exitosamente');
-            Log::info('Init point: ' . $preference->init_point);
-            Log::info('Webhook configurado en: ' . url("/mercadopago/webhook"));
-
-            return response()->json([
-                'success' => true,
-                'init_point' => $preference->init_point
-            ]);
-
-        } catch (MPApiException $e) {
-            Log::error('Error MercadoPago API: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
-            ], 500);
-        } catch (Exception $e) {
-            Log::error('Error general MercadoPago: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago'
-            ], 500);
+        // Preparar items para MercadoPago con el monto ajustado
+        $items = [];
+        
+        // Descripción detallada del cobro
+        $descripcion = "Pedido #" . $orden->id . " - Punto Verde";
+        if ($costoEnvio > 0) {
+            $descripcion = "Pedido #" . $orden->id . " (Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2) . " + Comisión pago seguro)";
+        } else {
+            $descripcion = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Comisión pago seguro";
         }
+        
+        $items[] = [
+            "title" => $descripcion,
+            "quantity" => 1,
+            "currency_id" => "PEN",
+            "unit_price" => floatval($montoAjustado) // Usar el monto ajustado
+        ];
+
+        // ⭐ CONFIGURACIÓN CON WEBHOOK
+       $preferenceData = [
+            "items" => $items,
+            "back_urls" => [
+                "success" => url("/orden-exito/{$orden->id}?mp=1"),
+                "failure" => url("/order/failed"),
+                "pending" => url("/orden-exito/{$orden->id}?mp=1")
+            ],
+            "external_reference" => strval($orden->id),
+            "statement_descriptor" => "Punto Verde",
+            // ⭐ CONFIGURAR REDIRECCIÓN AUTOMÁTICA
+            "auto_return" => "approved"
+        ];
+
+        // ⭐ SOLO AGREGAR WEBHOOK EN PRODUCCIÓN
+        if (config('app.env') === 'production') {
+            $preferenceData["notification_url"] = url("/mercadopago/webhook");
+            Log::info('Webhook configurado para producción: ' . url("/mercadopago/webhook"));
+        } else {
+            Log::info('Webhook omitido en desarrollo local');
+        }
+
+        Log::info('Datos para MercadoPago:', $preferenceData);
+
+        $preference = $client->create($preferenceData);
+        
+        Log::info('Preferencia creada exitosamente');
+        Log::info('Init point: ' . $preference->init_point);
+        Log::info('Monto final a cobrar: S/' . $montoAjustado);
+
+        return response()->json([
+            'success' => true,
+            'init_point' => $preference->init_point
+        ]);
+
+    } catch (MPApiException $e) {
+        Log::error('Error MercadoPago API: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
+        ], 500);
+    } catch (Exception $e) {
+        Log::error('Error general MercadoPago: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al procesar el pago'
+        ], 500);
     }
+}
 
    public function success($orderId)
     {
