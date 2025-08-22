@@ -276,22 +276,52 @@
                         @endforeach
                     </div>
                     
-                    <div class="border-t border-gray-200 pt-4 space-y-3 mx-3">
-                        <div class="flex justify-between text-gray-700">
-                            <span>Subtotal:</span>
-                            <span id="subtotal" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
-                        </div>
-                        
-                        <div class="flex justify-between text-gray-700">
-                            <span>Envío:</span>
-                            <span id="envio" class="font-semibold">S/0.00</span>
-                        </div>
-                        
-                        <div class="flex justify-between pt-3 border-t border-gray-300 font-bold text-xl">
-                            <span class="text-gray-800">Total:</span>
-                            <span id="total" class="text-green-600">S/{{ number_format($carrito->total(), 2) }}</span>
-                        </div>
-                    </div>
+                    <!-- Reemplaza la sección del resumen de totales en tu vista checkout -->
+<div class="border-t border-gray-200 pt-4 space-y-3 mx-3">
+    <div class="flex justify-between text-gray-700">
+        <span>Productos:</span>
+        <span id="subtotal-productos" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
+    </div>
+    
+    <div class="flex justify-between text-gray-700">
+        <span>Envío:</span>
+        <span id="envio" class="font-semibold">S/0.00</span>
+    </div>
+    
+    <div class="flex justify-between text-gray-700">
+        <span>Subtotal:</span>
+        <span id="subtotal" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
+    </div>
+    
+    <!-- NUEVA SECCIÓN: Comisión MercadoPago -->
+    <div class="flex justify-between text-gray-600 text-sm">
+        <span class="flex items-center">
+            <svg class="w-4 h-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            Comisión pago seguro:
+        </span>
+        <span id="comision-mp" class="font-semibold">S/0.00</span>
+    </div>
+    
+    <!-- Información adicional sobre la comisión -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+        <div class="flex items-start">
+            <svg class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+                <p class="font-medium mb-1">¿Por qué se cobra esta comisión?</p>
+                <p>Procesamos tu pago de forma 100% segura a través de MercadoPago. Esta comisión cubre los costos de procesamiento y garantiza que tu transacción sea segura y los agricultores reciban el precio justo por sus productos.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="flex justify-between pt-3 border-t border-gray-300 font-bold text-xl">
+        <span class="text-gray-800">Total a pagar:</span>
+        <span id="total" class="text-green-600">S/{{ number_format($carrito->total(), 2) }}</span>
+    </div>
+</div>
                 </div>
             </div>
         </div>
@@ -343,10 +373,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateTotal() {
-        const total = subtotalValue + currentDeliveryCost;
-        totalSpan.textContent = `S/${total.toFixed(2)}`;
-        envioSpan.textContent = `S/${currentDeliveryCost.toFixed(2)}`;
-    }
+    // Subtotal de productos
+    const subtotalProductos = subtotalValue;
+    
+    // Total sin comisión (productos + envío)
+    const subtotalSinComision = subtotalProductos + currentDeliveryCost;
+    
+    // ⭐ APLICAR FÓRMULA MERCADOPAGO
+    const comisionPorcentaje = 0.047082; // 4.7082%
+    const tarifaFija = 1.18;
+    const comodin = 0.10;
+    
+    // Fórmula: T = (N + f) / (1 - p) + comodin
+    const totalConComision = ((subtotalSinComision + tarifaFija) / (1 - comisionPorcentaje)) + comodin;
+    
+    // Calcular la comisión que se cobra
+    const comisionCobrada = totalConComision - subtotalSinComision;
+    
+    // Actualizar elementos del DOM
+    document.getElementById('subtotal-productos').textContent = `S/${subtotalProductos.toFixed(2)}`;
+    document.getElementById('envio').textContent = `S/${currentDeliveryCost.toFixed(2)}`;
+    document.getElementById('subtotal').textContent = `S/${subtotalSinComision.toFixed(2)}`;
+    document.getElementById('comision-mp').textContent = `S/${comisionCobrada.toFixed(2)}`;
+    document.getElementById('total').textContent = `S/${totalConComision.toFixed(2)}`;
+    
+    console.log('Cálculos actualizados:');
+    console.log('- Productos:', subtotalProductos);
+    console.log('- Envío:', currentDeliveryCost);
+    console.log('- Subtotal:', subtotalSinComision);
+    console.log('- Comisión:', comisionCobrada);
+    console.log('- Total final:', totalConComision);
+}
+
 
     function setLoading(loading) {
         if (loading) {
