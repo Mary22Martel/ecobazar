@@ -278,8 +278,8 @@
                     
                     <div class="border-t border-gray-200 pt-4 space-y-3 mx-3">
                         <div class="flex justify-between text-gray-700">
-                            <span>Subtotal:</span>
-                            <span id="subtotal" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
+                            <span>Productos:</span>
+                            <span id="subtotal-productos" class="font-semibold">S/{{ number_format($carrito->total(), 2) }}</span>
                         </div>
                         
                         <div class="flex justify-between text-gray-700">
@@ -288,7 +288,7 @@
                         </div>
                         
                         <div class="flex justify-between pt-3 border-t border-gray-300 font-bold text-xl">
-                            <span class="text-gray-800">Total:</span>
+                            <span class="text-gray-800">Total a pagar:</span>
                             <span id="total" class="text-green-600">S/{{ number_format($carrito->total(), 2) }}</span>
                         </div>
                     </div>
@@ -303,24 +303,20 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Constantes para MercadoPago
-    const MERCADOPAGO_COMMISSION_RATE = 0.047082; // 4.7082% comisión total con IGV
-    const MERCADOPAGO_FIXED_FEE = 1.18; // Tarifa fija con IGV
-    const SECURITY_MARGIN = 0.10; // Margen de seguridad
-    /**
-     * Calcular el monto que debe pagar el cliente para que llegue el monto neto deseado
-     */
+    const MERCADOPAGO_COMMISSION_RATE = 0.047082;
+    const MERCADOPAGO_FIXED_FEE = 1.18;
+    const SECURITY_MARGIN = 0.10;
+
     function calcularMontoConComision(montoNeto) {
-        // Fórmula: T = (N + f) / (1 - p) + margen
         const montoConComision = ((montoNeto + MERCADOPAGO_FIXED_FEE) / (1 - MERCADOPAGO_COMMISSION_RATE)) + SECURITY_MARGIN;
-        return Math.round(montoConComision * 100) / 100; // Redondear a 2 decimales
+        return Math.round(montoConComision * 100) / 100;
     }
 
-    /**
-     * Calcular cuánto se llevará MercadoPago
-     */
     function calcularComisionMercadoPago(montoAPagar) {
-        return montoAPagar * MERCADOPAGO_COMMISSION_RATE + MERCADOPAGO_FIXED_FEE;
+    const comision = (montoAPagar * MERCADOPAGO_COMMISSION_RATE) + MERCADOPAGO_FIXED_FEE;
+    return Math.round(comision * 100) / 100; 
     }
+
     // Elementos del DOM
     const deliveryFields = document.getElementById('delivery-fields');
     const deliveryOptions = document.querySelectorAll('input[name="delivery"]');
@@ -328,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const direccionInput = document.getElementById('direccion');
     const envioSpan = document.getElementById('envio');
     const totalSpan = document.getElementById('total');
-    const subtotalSpan = document.getElementById('subtotal');
+    const subtotalProductosSpan = document.getElementById('subtotal-productos');
     const checkoutForm = document.getElementById('checkout-form');
     const submitBtn = document.getElementById('submit-btn');
     const btnText = document.getElementById('btn-text');
@@ -342,55 +338,55 @@ document.addEventListener('DOMContentLoaded', function() {
     let subtotalValue = parseFloat('{{ $carrito->total() }}');
     let currentDeliveryCost = 0;
 
-    // Funciones de utilidad
     function showError(message) {
-        errorText.textContent = message;
-        errorMessage.classList.remove('hidden');
-        successMessage.classList.add('hidden');
-        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (errorText && errorMessage) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+            if (successMessage) {
+                successMessage.classList.add('hidden');
+            }
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
         console.error('Error mostrado:', message);
     }
 
     function hideError() {
-        errorMessage.classList.add('hidden');
+        if (errorMessage) {
+            errorMessage.classList.add('hidden');
+        }
     }
 
     function showSuccess(message) {
-        successText.textContent = message;
-        successMessage.classList.remove('hidden');
-        errorMessage.classList.add('hidden');
+        if (successText && successMessage && errorMessage) {
+            successText.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+        }
     }
 
     function updateTotal() {
-        // Calcular subtotal (productos + envío)
         const subtotalNeto = subtotalValue + currentDeliveryCost;
-        
-        // Calcular monto con comisión de MercadoPago
         const montoConComision = calcularMontoConComision(subtotalNeto);
         const comisionMP = calcularComisionMercadoPago(montoConComision);
         
-        // Actualizar los elementos del DOM
-        envioSpan.textContent = `S/${currentDeliveryCost.toFixed(2)}`;
-        
-        // Mostrar desglose completo
-        const subtotalSpanEl = document.getElementById('subtotal');
-        if (subtotalSpanEl) {
-            subtotalSpanEl.textContent = `S/${subtotalValue.toFixed(2)}`;
+        if (envioSpan) {
+            envioSpan.textContent = `S/${currentDeliveryCost.toFixed(2)}`;
         }
         
-        // Actualizar total (lo que paga el cliente)
-        totalSpan.textContent = `S/${montoConComision.toFixed(2)}`;
+        if (subtotalProductosSpan) {
+            subtotalProductosSpan.textContent = `S/${subtotalValue.toFixed(2)}`;
+        }
         
-        // Mostrar información de la comisión
+        if (totalSpan) {
+            totalSpan.textContent = `S/${montoConComision.toFixed(2)}`;
+        }
+        
         mostrarDesglosePago(subtotalValue, currentDeliveryCost, comisionMP, montoConComision);
     }
 
-    // NUEVA FUNCIÓN PARA MOSTRAR EL DESGLOSE
     function mostrarDesglosePago(subtotalProductos, envio, comisionMP, total) {
-        // Buscar o crear el contenedor del desglose
         let desglose = document.getElementById('desglose-pago');
         if (!desglose) {
-            // Crear el desglose si no existe
             const resumenContainer = document.querySelector('.border-t.border-gray-200.pt-4');
             if (resumenContainer) {
                 desglose = document.createElement('div');
@@ -429,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="mt-2 pt-2 border-t border-blue-200 text-xs text-blue-600">
-                    <p>* Este cargo corresponde a la comisión de Mercado Pago (incluye IGV) que se aplica por procesar tu pago de forma segura..</p>
+                    <p>* Este cargo corresponde a la comisión de MercadoPago (${(MERCADOPAGO_COMMISSION_RATE * 100).toFixed(2)}% + S/${MERCADOPAGO_FIXED_FEE}) necesaria para procesar tu pago de forma segura.</p>
                     <p class="mt-1"><strong>Los agricultores reciben el precio exacto de sus productos (S/${subtotalProductos.toFixed(2)}).</strong></p>
                 </div>
             `;
@@ -437,22 +433,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setLoading(loading) {
-        if (loading) {
-            submitBtn.disabled = true;
-            btnText.classList.add('hidden');
-            btnLoading.classList.remove('hidden');
-        } else {
-            submitBtn.disabled = false;
-            btnText.classList.remove('hidden');
-            btnLoading.classList.add('hidden');
+        if (submitBtn && btnText && btnLoading) {
+            if (loading) {
+                submitBtn.disabled = true;
+                btnText.classList.add('hidden');
+                btnLoading.classList.remove('hidden');
+            } else {
+                submitBtn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
         }
     }
 
     function validateForm() {
-        const nombre = document.getElementById('nombre').value.trim();
-        const apellido = document.getElementById('apellido').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const telefono = document.getElementById('telefono').value.trim();
+        const nombre = document.getElementById('nombre')?.value.trim();
+        const apellido = document.getElementById('apellido')?.value.trim();
+        const email = document.getElementById('email')?.value.trim();
+        const telefono = document.getElementById('telefono')?.value.trim();
         const delivery = document.querySelector('input[name="delivery"]:checked');
 
         if (!nombre || !apellido || !email || !telefono || !delivery) {
@@ -461,8 +459,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (delivery.value === 'delivery') {
-            const direccion = document.getElementById('direccion').value.trim();
-            const distrito = document.getElementById('distrito').value;
+            const direccion = document.getElementById('direccion')?.value.trim();
+            const distrito = document.getElementById('distrito')?.value;
 
             if (!direccion || !distrito) {
                 showError('Por favor, completa la dirección y selecciona una zona para el delivery');
@@ -488,139 +486,162 @@ document.addEventListener('DOMContentLoaded', function() {
         const delivery = document.querySelector('input[name="delivery"]:checked');
         
         const data = {
-            nombre: document.getElementById('nombre').value.trim(),
-            apellido: document.getElementById('apellido').value.trim(),
-            empresa: document.getElementById('empresa').value.trim() || null,
-            email: document.getElementById('email').value.trim(),
-            telefono: document.getElementById('telefono').value.trim(),
+            nombre: document.getElementById('nombre')?.value.trim() || '',
+            apellido: document.getElementById('apellido')?.value.trim() || '',
+            empresa: document.getElementById('empresa')?.value.trim() || null,
+            email: document.getElementById('email')?.value.trim() || '',
+            telefono: document.getElementById('telefono')?.value.trim() || '',
             delivery: delivery ? delivery.value : null,
-            pago: 'sistema', // Siempre sistema
+            pago: 'sistema',
             direccion: null,
             distrito: null
         };
 
         if (delivery && delivery.value === 'delivery') {
-            data.direccion = document.getElementById('direccion').value.trim();
-            data.distrito = document.getElementById('distrito').value;
+            data.direccion = document.getElementById('direccion')?.value.trim() || '';
+            data.distrito = document.getElementById('distrito')?.value || '';
         }
 
         return data;
     }
 
     // Event Listeners
-    deliveryOptions.forEach(option => {
-        option.addEventListener('change', function() {
+    if (deliveryOptions) {
+        deliveryOptions.forEach(option => {
+            option.addEventListener('change', function() {
+                hideError();
+                
+                if (this.value === 'delivery') {
+                    if (deliveryFields) {
+                        deliveryFields.classList.remove('hidden');
+                    }
+                    if (direccionInput) {
+                        direccionInput.required = true;
+                    }
+                    if (zoneSelect) {
+                        zoneSelect.required = true;
+                    }
+                } else {
+                    if (deliveryFields) {
+                        deliveryFields.classList.add('hidden');
+                    }
+                    if (direccionInput) {
+                        direccionInput.required = false;
+                    }
+                    if (zoneSelect) {
+                        zoneSelect.required = false;
+                        zoneSelect.value = '';
+                    }
+                    
+                    currentDeliveryCost = 0;
+                    updateTotal();
+                }
+            });
+        });
+    }
+
+    if (zoneSelect) {
+        zoneSelect.addEventListener('change', function() {
             hideError();
             
-            if (this.value === 'delivery') {
-                deliveryFields.classList.remove('hidden');
-                direccionInput.required = true;
-                zoneSelect.required = true;
+            if (this.value) {
+                const selectedOption = this.options[this.selectedIndex];
+                currentDeliveryCost = parseFloat(selectedOption.getAttribute('data-cost') || 0);
             } else {
-                deliveryFields.classList.add('hidden');
-                direccionInput.required = false;
-                zoneSelect.required = false;
-                zoneSelect.value = '';
-                
-                // Reset delivery cost
                 currentDeliveryCost = 0;
-                updateTotal();
             }
+            
+            updateTotal();
         });
-    });
-
-    zoneSelect.addEventListener('change', function() {
-        hideError();
-        
-        if (this.value) {
-            const selectedOption = this.options[this.selectedIndex];
-            currentDeliveryCost = parseFloat(selectedOption.getAttribute('data-cost') || 0);
-        } else {
-            currentDeliveryCost = 0;
-        }
-        
-        updateTotal();
-    });
+    }
 
     // Form submission
-    checkoutForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        
-        console.log('=== INICIO ENVÍO FORMULARIO ===');
-        
-        hideError();
-        
-        if (!validateForm()) {
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const formData = collectFormData();
-            console.log('Datos del formulario:', formData);
-
-            const response = await fetch('{{ route("order.store") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                },
-                body: JSON.stringify(formData)
-            });
-
-            console.log('Response status:', response.status);
-
-            let responseData;
-            const contentType = response.headers.get('content-type');
+    if (checkoutForm) {
+        checkoutForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
             
-            if (contentType && contentType.includes('application/json')) {
-                responseData = await response.json();
-            } else {
-                const textResponse = await response.text();
-                console.error('Response no JSON:', textResponse);
-                throw new Error('La respuesta del servidor no es válida');
+            console.log('=== INICIO ENVÍO FORMULARIO ===');
+            
+            hideError();
+            
+            if (!validateForm()) {
+                return;
             }
 
-            console.log('Response data:', responseData);
+            setLoading(true);
 
-            if (!response.ok) {
-                throw new Error(responseData.error || `Error ${response.status}: ${response.statusText}`);
+            try {
+                const formData = collectFormData();
+                console.log('Datos del formulario:', formData);
+
+                const csrfToken = document.querySelector('input[name="_token"]')?.value;
+                if (!csrfToken) {
+                    throw new Error('Token CSRF no encontrado');
+                }
+
+                const response = await fetch('{{ route("order.store") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                console.log('Response status:', response.status);
+
+                let responseData;
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await response.json();
+                } else {
+                    const textResponse = await response.text();
+                    console.error('Response no JSON:', textResponse);
+                    throw new Error('La respuesta del servidor no es válida');
+                }
+
+                console.log('Response data:', responseData);
+
+                if (!response.ok) {
+                    throw new Error(responseData.error || `Error ${response.status}: ${response.statusText}`);
+                }
+
+                if (responseData.success === false) {
+                    throw new Error(responseData.error || 'Error desconocido en el servidor');
+                }
+
+                if (responseData.init_point) {
+                    console.log('Redirigiendo a MercadoPago:', responseData.init_point);
+                    showSuccess('Redirigiendo a MercadoPago...');
+                    setTimeout(() => {
+                        window.location.href = responseData.init_point;
+                    }, 1000);
+                } else if (responseData.redirect_url) {
+                    console.log('Redirigiendo a página de éxito:', responseData.redirect_url);
+                    showSuccess('Pedido creado exitosamente. Redirigiendo...');
+                    setTimeout(() => {
+                        window.location.href = responseData.redirect_url;
+                    }, 1000);
+                } else {
+                    throw new Error('No se recibió una URL de redirección válida');
+                }
+
+            } catch (error) {
+                console.error('Error en la petición:', error);
+                showError(error.message || 'Hubo un problema al procesar tu pedido. Por favor, inténtalo de nuevo.');
+            } finally {
+                setLoading(false);
             }
-
-            if (responseData.success === false) {
-                throw new Error(responseData.error || 'Error desconocido en el servidor');
-            }
-
-            // Procesar respuesta exitosa
-            if (responseData.init_point) {
-                console.log('Redirigiendo a MercadoPago:', responseData.init_point);
-                showSuccess('Redirigiendo a MercadoPago...');
-                setTimeout(() => {
-                    window.location.href = responseData.init_point;
-                }, 1000);
-            } else if (responseData.redirect_url) {
-                console.log('Redirigiendo a página de éxito:', responseData.redirect_url);
-                showSuccess('Pedido creado exitosamente. Redirigiendo...');
-                setTimeout(() => {
-                    window.location.href = responseData.redirect_url;
-                }, 1000);
-            } else {
-                throw new Error('No se recibió una URL de redirección válida');
-            }
-
-        } catch (error) {
-            console.error('Error en la petición:', error);
-            showError(error.message || 'Hubo un problema al procesar tu pedido. Por favor, inténtalo de nuevo.');
-        } finally {
-            setLoading(false);
-        }
-    });
+        });
+    }
 
     // Inicialización
-    deliveryFields.classList.add('hidden');
-    updateTotal(); // Inicializar el total con comisiones
+    if (deliveryFields) {
+        deliveryFields.classList.add('hidden');
+    }
+    updateTotal();
     console.log('Checkout inicializado correctamente');
 });
 </script>

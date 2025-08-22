@@ -3,126 +3,62 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Order;
-use Illuminate\Support\Facades\Log;
 use MercadoPago\MercadoPagoConfig;
-use MercadoPago\Client\Payment\PaymentClient;
+use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\Exceptions\MPApiException;
 use Exception;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use App\Models\Order;
+use App\Models\Carrito;
 
-class WebhookController extends Controller
+class MercadoPagoController extends Controller
 {
     /**
-     * Manejar notificaciones de MercadoPago
+     * ELIMINAR TODO EL CONTENIDO ACTUAL Y REEMPLAZAR POR ESTO:
+     * 
+     * Este controlador ya no es necesario porque:
+     * 1. El procesamiento de pagos se hace en OrderController::procesarPagoMercadoPago()
+     * 2. Los webhooks se manejan en WebhookController::mercadoPagoWebhook()
+     * 3. Las páginas de éxito se manejan en OrderController::success()
      */
-    public function mercadoPagoWebhook(Request $request)
-    {
-        try {
-            Log::info('=== WEBHOOK MERCADOPAGO RECIBIDO ===');
-            Log::info('Datos recibidos:', $request->all());
-            
-            $data = $request->all();
-            
-            // Verificar que tiene la estructura correcta
-            if (!isset($data['type']) || !isset($data['data']['id'])) {
-                Log::warning('Webhook con estructura incorrecta');
-                return response()->json(['status' => 'ok'], 200);
-            }
-            
-            // Solo procesar pagos
-            if ($data['type'] !== 'payment') {
-                Log::info('Evento ignorado: ' . $data['type']);
-                return response()->json(['status' => 'ok'], 200);
-            }
-            
-            $paymentId = $data['data']['id'];
-            Log::info("Procesando pago ID: {$paymentId}");
-            
-            // Obtener información del pago desde MercadoPago
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-            $client = new PaymentClient();
-            $payment = $client->get($paymentId);
-            
-            Log::info('Info del pago:', [
-                'id' => $payment->id,
-                'status' => $payment->status,
-                'external_reference' => $payment->external_reference,
-                'amount' => $payment->transaction_amount
-            ]);
-            
-            // Buscar la orden por external_reference
-            if (!$payment->external_reference) {
-                Log::warning('Pago sin external_reference');
-                return response()->json(['status' => 'ok'], 200);
-            }
-            
-            $orden = Order::find($payment->external_reference);
-            if (!$orden) {
-                Log::warning("Orden no encontrada: {$payment->external_reference}");
-                return response()->json(['status' => 'ok'], 200);
-            }
-            
-            Log::info("Orden encontrada: {$orden->id}, estado actual: {$orden->estado}");
-            
-            // Procesar según el estado del pago
-            if ($payment->status === 'approved') {
-                $this->aprobarPago($orden, $payment);
-            } elseif (in_array($payment->status, ['rejected', 'cancelled'])) {
-                $this->rechazarPago($orden, $payment);
-            } else {
-                Log::info("Estado {$payment->status} - no se requiere acción");
-            }
-            
-            return response()->json(['status' => 'ok'], 200);
-            
-        } catch (Exception $e) {
-            Log::error('Error en webhook: ' . $e->getMessage());
-            // Siempre devolver 200 para evitar reenvíos
-            return response()->json(['status' => 'error'], 200);
-        }
-    }
-    
+
     /**
-     * Aprobar pago
+     * Método de respaldo para redirecciones de MercadoPago
+     * Solo mantener si tienes rutas que apunten aquí
      */
-    private function aprobarPago($orden, $payment)
+    public function success(Request $request)
     {
-        Log::info("=== APROBANDO PAGO - Orden {$orden->id} ===");
+        // Redirigir al método correcto en OrderController
+        $paymentId = $request->get('payment_id') ?? $request->get('collection_id');
+        $externalReference = $request->get('external_reference');
         
-        // Solo actualizar si no está ya pagado
-        if ($orden->estado !== 'pagado') {
-            $orden->update([
-                'estado' => 'pagado',
-                'mercadopago_payment_id' => $payment->id,
-                'paid_at' => Carbon::now()
-            ]);
-            
-            Log::info("✅ Orden {$orden->id} marcada como PAGADA automáticamente");
-        } else {
-            Log::info("Orden {$orden->id} ya estaba pagada");
+        if ($externalReference) {
+            return redirect()->route('order.success', $externalReference);
         }
+        
+        // Si no hay referencia, redirigir a la tienda
+        return redirect()->route('tienda')->with('error', 'No se pudo procesar el pago');
     }
-    
+
     /**
-     * Rechazar pago - liberar stock
+     * Método de respaldo para pagos fallidos
      */
-    private function rechazarPago($orden, $payment)
+    public function failed(Request $request)
     {
-        Log::info("=== RECHAZANDO PAGO - Orden {$orden->id} ===");
+        return redirect()->route('tienda')->with('error', 'El pago fue cancelado o rechazado');
+    }
+
+    /**
+     * Método de respaldo para pagos pendientes
+     */
+    public function pending(Request $request)
+    {
+        $externalReference = $request->get('external_reference');
         
-        // Liberar stock si estaba reservado
-        if ($orden->stock_reserved) {
-            foreach ($orden->items as $item) {
-                $item->product->increment('cantidad_disponible', $item->cantidad);
-            }
+        if ($externalReference) {
+            return redirect()->route('order.success', $externalReference);
         }
         
-        $orden->update([
-            'estado' => 'cancelado',
-            'mercadopago_payment_id' => $payment->id,
-            'stock_reserved' => false
-        ]);
-        
-        Log::info("❌ Orden {$orden->id} cancelada por pago rechazado");
+        return redirect()->route('tienda')->with('info', 'Tu pago está siendo procesado');
     }
 }
