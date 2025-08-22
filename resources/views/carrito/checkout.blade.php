@@ -506,8 +506,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event Listeners
-    if (deliveryOptions) {
-        deliveryOptions.forEach(option => {
+   // Event Listeners - con validación robusta
+if (deliveryOptions && deliveryOptions.length > 0) {
+    deliveryOptions.forEach(option => {
+        if (option && typeof option.addEventListener === 'function') {
             option.addEventListener('change', function() {
                 hideError();
                 
@@ -537,8 +539,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateTotal();
                 }
             });
-        });
-    }
+        }
+    });
+}
 
     if (zoneSelect) {
         zoneSelect.addEventListener('change', function() {
