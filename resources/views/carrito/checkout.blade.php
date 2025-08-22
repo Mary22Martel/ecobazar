@@ -302,6 +302,25 @@
 @section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Constantes para MercadoPago
+    const MERCADOPAGO_COMMISSION_RATE = 0.047082; // 4.7082% comisión total con IGV
+    const MERCADOPAGO_FIXED_FEE = 1.18; // Tarifa fija con IGV
+    const SECURITY_MARGIN = 0.10; // Margen de seguridad
+    /**
+     * Calcular el monto que debe pagar el cliente para que llegue el monto neto deseado
+     */
+    function calcularMontoConComision(montoNeto) {
+        // Fórmula: T = (N + f) / (1 - p) + margen
+        const montoConComision = ((montoNeto + MERCADOPAGO_FIXED_FEE) / (1 - MERCADOPAGO_COMMISSION_RATE)) + SECURITY_MARGIN;
+        return Math.round(montoConComision * 100) / 100; // Redondear a 2 decimales
+    }
+
+    /**
+     * Calcular cuánto se llevará MercadoPago
+     */
+    function calcularComisionMercadoPago(montoAPagar) {
+        return montoAPagar * MERCADOPAGO_COMMISSION_RATE + MERCADOPAGO_FIXED_FEE;
+    }
     // Elementos del DOM
     const deliveryFields = document.getElementById('delivery-fields');
     const deliveryOptions = document.querySelectorAll('input[name="delivery"]');
@@ -343,9 +362,78 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateTotal() {
-        const total = subtotalValue + currentDeliveryCost;
-        totalSpan.textContent = `S/${total.toFixed(2)}`;
+        // Calcular subtotal (productos + envío)
+        const subtotalNeto = subtotalValue + currentDeliveryCost;
+        
+        // Calcular monto con comisión de MercadoPago
+        const montoConComision = calcularMontoConComision(subtotalNeto);
+        const comisionMP = calcularComisionMercadoPago(montoConComision);
+        
+        // Actualizar los elementos del DOM
         envioSpan.textContent = `S/${currentDeliveryCost.toFixed(2)}`;
+        
+        // Mostrar desglose completo
+        const subtotalSpanEl = document.getElementById('subtotal');
+        if (subtotalSpanEl) {
+            subtotalSpanEl.textContent = `S/${subtotalValue.toFixed(2)}`;
+        }
+        
+        // Actualizar total (lo que paga el cliente)
+        totalSpan.textContent = `S/${montoConComision.toFixed(2)}`;
+        
+        // Mostrar información de la comisión
+        mostrarDesglosePago(subtotalValue, currentDeliveryCost, comisionMP, montoConComision);
+    }
+
+    // NUEVA FUNCIÓN PARA MOSTRAR EL DESGLOSE
+    function mostrarDesglosePago(subtotalProductos, envio, comisionMP, total) {
+        // Buscar o crear el contenedor del desglose
+        let desglose = document.getElementById('desglose-pago');
+        if (!desglose) {
+            // Crear el desglose si no existe
+            const resumenContainer = document.querySelector('.border-t.border-gray-200.pt-4');
+            if (resumenContainer) {
+                desglose = document.createElement('div');
+                desglose.id = 'desglose-pago';
+                desglose.className = 'mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs';
+                resumenContainer.appendChild(desglose);
+            }
+        }
+        
+        if (desglose) {
+            desglose.innerHTML = `
+                <div class="text-blue-800 font-semibold mb-2 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    Desglose del pago online
+                </div>
+                <div class="space-y-1 text-blue-700">
+                    <div class="flex justify-between">
+                        <span>Productos:</span>
+                        <span>S/${subtotalProductos.toFixed(2)}</span>
+                    </div>
+                    ${envio > 0 ? `
+                    <div class="flex justify-between">
+                        <span>Envío:</span>
+                        <span>S/${envio.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="flex justify-between border-t border-blue-200 pt-1">
+                        <span class="font-medium">Subtotal neto:</span>
+                        <span class="font-medium">S/${(subtotalProductos + envio).toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span>Cargo por pago online*:</span>
+                        <span>S/${(total - subtotalProductos - envio).toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-blue-200 text-xs text-blue-600">
+                    <p>* Este cargo corresponde a la comisión de Mercado Pago (incluye IGV) que se aplica por procesar tu pago de forma segura..</p>
+                    <p class="mt-1"><strong>Los agricultores reciben el precio exacto de sus productos (S/${subtotalProductos.toFixed(2)}).</strong></p>
+                </div>
+            `;
+        }
     }
 
     function setLoading(loading) {
@@ -532,6 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Inicialización
     deliveryFields.classList.add('hidden');
+    updateTotal(); // Inicializar el total con comisiones
     console.log('Checkout inicializado correctamente');
 });
 </script>
