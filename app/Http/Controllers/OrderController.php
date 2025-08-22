@@ -405,24 +405,24 @@ if (empty($token)) {
             ]);
 
         } catch (MPApiException $e) {
-            Log::error('Error MercadoPago API: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
-            ], 500);
-        } catch (MPApiException $e) {
     Log::error('Error MercadoPago API detallado:', [
         'message' => $e->getMessage(),
-        'status_code' => method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 'Unknown',
         'error_details' => $e->__toString()
     ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago'
-            ], 500);
-        }
+    
+    return response()->json([
+        'success' => false,
+        'error' => 'Error MercadoPago: ' . $e->getMessage()
+    ], 500);
+} catch (Exception $e) {
+    Log::error('Error general MercadoPago: ' . $e->getMessage());
+    Log::error('Stack trace: ' . $e->getTraceAsString());
+    
+    return response()->json([
+        'success' => false,
+        'error' => 'Error al procesar el pago: ' . $e->getMessage()
+    ], 500);
+}
     }
 
     public function success($orderId)
