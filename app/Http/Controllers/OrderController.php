@@ -335,6 +335,21 @@ class OrderController extends Controller
     {
         try {
             Log::info('=== INICIANDO MERCADO PAGO ===');
+            // Verificar configuración
+$token = config('services.mercadopago.token');
+Log::info('Verificando token MercadoPago:', [
+    'token_exists' => !empty($token),
+    'token_starts_with_test' => strpos($token, 'TEST-') === 0,
+    'token_length' => strlen($token)
+]);
+
+if (empty($token)) {
+    Log::error('Token de MercadoPago no configurado correctamente');
+    return response()->json([
+        'success' => false,
+        'error' => 'Configuración de MercadoPago incorrecta'
+    ], 500);
+}
             
             MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
             $client = new PreferenceClient();
@@ -402,8 +417,12 @@ class OrderController extends Controller
                 'success' => false,
                 'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
             ], 500);
-        } catch (Exception $e) {
-            Log::error('Error general MercadoPago: ' . $e->getMessage());
+        } catch (MPApiException $e) {
+    Log::error('Error MercadoPago API detallado:', [
+        'message' => $e->getMessage(),
+        'status_code' => method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 'Unknown',
+        'error_details' => $e->__toString()
+    ]);
             
             return response()->json([
                 'success' => false,
