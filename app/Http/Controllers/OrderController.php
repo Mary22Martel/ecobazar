@@ -21,8 +21,29 @@ use Carbon\Carbon;
 
 class OrderController extends Controller
 {
+      // Constantes para MercadoPago
+    const MERCADOPAGO_COMMISSION_RATE = 0.047082; // 4.7082%
+    const MERCADOPAGO_FIXED_FEE = 1.18; // S/1.18
+    const SECURITY_MARGIN = 0.10; // S/0.10
+     /**
+     * Calcular el monto que debe pagar el cliente
+     */
+    private function calcularMontoConComision($montoNeto)
+    {
+        $montoConComision = (($montoNeto + self::MERCADOPAGO_FIXED_FEE) / (1 - self::MERCADOPAGO_COMMISSION_RATE)) + self::SECURITY_MARGIN;
+        return round($montoConComision, 2);
+    }
+
+    /**
+     * Calcular la comisión que se llevará MercadoPago
+     */
+    private function calcularComisionMercadoPago($montoAPagar)
+    {
+        return ($montoAPagar * self::MERCADOPAGO_COMMISSION_RATE) + self::MERCADOPAGO_FIXED_FEE;
+    }
+
     public function store(Request $request)
-{
+    {
     try {
         Log::info('=== INICIO CREACIÓN DE ORDEN ===');
         Log::info('Usuario ID: ' . Auth::id());
@@ -84,10 +105,11 @@ class OrderController extends Controller
         */
 
         // Calcular totales
-        $subtotal = 0;
-        foreach ($carrito->items as $item) {
-            $subtotal += ($item->product->precio * $item->cantidad);
-        }
+        
+        $subtotalProductos = 0;
+            foreach ($carrito->items as $item) {
+                $subtotalProductos += ($item->product->precio * $item->cantidad);
+            }
 
         $costoEnvio = 0;
         $zonaInfo = null;
@@ -109,11 +131,11 @@ class OrderController extends Controller
             // ⭐ MEJORADO: Buscar repartidor asignado para esta zona HOY
             $repartidor = User::whereHas('zones', function($query) use ($zona) {
                 $query->where('zones.id', $zona->id)
-                      ->where('fecha_asignacion', now()->toDateString()) // Solo repartidores asignados HOY
-                      ->where('activa', true); // Solo asignaciones activas
+                        ->where('fecha_asignacion', now()->toDateString()) // Solo repartidores asignados HOY
+                        ->where('activa', true); // Solo asignaciones activas
             })->where('role', 'repartidor')
-              ->where('email', '!=', 'sistema.repartidor@puntoVerde.com') // Excluir repartidor del sistema
-              ->first();
+                ->where('email', '!=', 'sistema.repartidor@puntoVerde.com') // Excluir repartidor del sistema
+                ->first();
 
             if ($repartidor) {
                 $repartidorId = $repartidor->id;
@@ -135,10 +157,25 @@ class OrderController extends Controller
             Log::warning('No se pudo determinar repartidor, usando sistema como fallback (ID: ' . $repartidorId . ')');
         }
 
-        $total = $subtotal + $costoEnvio;
+        // MONTO NETO = productos + envío (lo que deben recibir íntegro)
+            $montoNeto = $subtotalProductos + $costoEnvio;
+            
+            // MONTO QUE PAGA EL CLIENTE (con comisión MercadoPago incluida)
+            $montoConComision = $this->calcularMontoConComision($montoNeto);
+            
+            // COMISIÓN QUE SE LLEVA MERCADOPAGO
+            $comisionMP = $this->calcularComisionMercadoPago($montoConComision);
+            
+            // GUARDAR EN LA ORDEN
+            $total = $montoConComision; // El cliente paga este monto
 
-        Log::info("Totales calculados - Subtotal: {$subtotal}, Envío: {$costoEnvio}, Total: {$total}");
-        Log::info("Repartidor final asignado: {$repartidorId}");
+            Log::info("=== CÁLCULO DE TOTALES ===");
+            Log::info("Subtotal productos: S/{$subtotalProductos}");
+            Log::info("Costo envío: S/{$costoEnvio}");
+            Log::info("Monto neto (debe llegar íntegro): S/{$montoNeto}");
+            Log::info("Comisión MercadoPago: S/{$comisionMP}");
+            Log::info("Total que paga cliente: S/{$montoConComision}");
+            Log::info("Repartidor final asignado: {$repartidorId}");
 
         // ⭐ INICIAR TRANSACCIÓN PARA ASEGURAR CONSISTENCIA
         DB::beginTransaction();
@@ -156,6 +193,10 @@ class OrderController extends Controller
             $orden->direccion = $validatedData['direccion'] ?? null;
             $orden->distrito = $zonaInfo;
             $orden->pago = 'sistema'; // Siempre sistema
+            $orden->subtotal_productos = $subtotalProductos;
+            $orden->costo_envio = $costoEnvio;
+            $orden->monto_neto = $montoNeto;
+            $orden->comision_mercadopago = $comisionMP;
             $orden->total = $total;
             $orden->estado = 'pendiente'; // Siempre pendiente hasta confirmar pago
             $orden->repartidor_id = $repartidorId; // ⭐ ASIGNAR REPARTIDOR
@@ -198,7 +239,7 @@ class OrderController extends Controller
             Log::info('Transacción confirmada - Orden y stock actualizados');
 
             // Siempre procesar pago con MercadoPago
-            return $this->procesarPagoMercadoPago($orden, $subtotal, $costoEnvio);
+              return $this->procesarPagoMercadoPago($orden, $subtotalProductos, $costoEnvio);
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -220,7 +261,7 @@ class OrderController extends Controller
             'error' => 'Error interno del servidor'
         ], 500);
     }
-}
+    }
 
 // ⭐ AGREGAR ESTOS MÉTODOS HELPER AL FINAL DE TU ORDERCONTROLLER
 
@@ -321,28 +362,40 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
         }
     }
 
-    private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
+    private function procesarPagoMercadoPago($orden, $subtotalProductos, $costoEnvio)
     {
         try {
             Log::info('=== INICIANDO MERCADO PAGO ===');
             
             MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
             $client = new PreferenceClient();
+            // USAR EL TOTAL QUE YA INCLUYE LA COMISIÓN
+            $montoAPagar = $orden->total;
 
             // Preparar items para MercadoPago
             $items = [];
             
             // Item principal con el total
-            $items[] = [
+              $items[] = [
                 "title" => "Pedido #" . $orden->id . " - Punto Verde",
                 "quantity" => 1,
                 "currency_id" => "PEN",
-                "unit_price" => floatval($subtotal + $costoEnvio)
+                "unit_price" => floatval($montoAPagar)
             ];
+
+            // Descripción detallada con desglose
+            $descripcion = "Productos: S/" . number_format($subtotalProductos, 2);
+            if ($costoEnvio > 0) {
+                $descripcion .= " + Envío: S/" . number_format($costoEnvio, 2);
+            }
+            $cargoOnline = $montoAPagar - ($subtotalProductos + $costoEnvio);
+            $descripcion .= " + Cargo pago online: S/" . number_format($cargoOnline, 2);
+            
+            $items[0]["title"] = "Pedido #" . $orden->id . " - " . $descripcion;
 
             // Agregar información del desglose en el título si hay envío
             if ($costoEnvio > 0) {
-                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
+                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotalProductos, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
             }
 
             // ⭐ CONFIGURACIÓN CON WEBHOOK
@@ -402,12 +455,10 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
         try {
             Log::info("=== ACCESO A PÁGINA DE ÉXITO ===");
             Log::info("Orden ID: {$orderId}");
-            Log::info("Parámetros de URL: " . json_encode(request()->all()));
-            Log::info("Referer: " . request()->header('referer', 'No referer'));
             
             $orden = Order::with(['items.product', 'user'])->findOrFail($orderId);
             
-            // Determinar si viene desde MercadoPago con múltiples criterios
+            // Determinar si viene desde MercadoPago
             $desdeMP = request()->has('payment_id') || 
                     request()->has('collection_id') || 
                     request()->has('collection_status') || 
@@ -417,13 +468,11 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
             
             Log::info("Detectado desde MercadoPago: " . ($desdeMP ? 'SI' : 'NO'));
             
-            // Verificar si la orden necesita actualización de estado
+            // Verificar y actualizar pago si es necesario
             if ($orden->estado === 'pendiente') {
                 Log::info("Orden pendiente, verificando pago con MercadoPago...");
                 $pagoVerificado = $this->verificarYActualizarPago($orden);
                 
-                // Si no se pudo verificar con MercadoPago, marcar como pagado automáticamente
-                // especialmente si viene desde MercadoPago
                 if (!$pagoVerificado && $orden->estado === 'pendiente') {
                     Log::info("Fallback: Marcando orden como pagada automáticamente");
                     $orden->estado = 'pagado';
@@ -433,21 +482,24 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            // Calcular subtotal y envío para la vista
-            $subtotal = $orden->items->sum(function($item) {
+            // ⭐ USAR LOS CAMPOS GUARDADOS EN LA ORDEN
+            $subtotalProductos = $orden->subtotal_productos ?? $orden->items->sum(function($item) {
                 return $item->precio * $item->cantidad;
             });
 
-            $costoEnvio = 0;
-            if ($orden->delivery === 'delivery' && $orden->distrito) {
-                $zona = Zone::where('name', $orden->distrito)->first();
-                if ($zona) {
-                    $costoEnvio = $zona->delivery_cost;
+            $costoEnvio = $orden->costo_envio ?? 0;
+            
+            // Si no tenemos los campos guardados (orden antigua), calcular manualmente
+            if (is_null($orden->subtotal_productos)) {
+                if ($orden->delivery === 'delivery' && $orden->distrito) {
+                    $zona = Zone::where('name', $orden->distrito)->first();
+                    if ($zona) {
+                        $costoEnvio = $zona->delivery_cost;
+                    }
                 }
             }
 
-            // Pasar la variable para mostrar el mensaje estilo MercadoPago
-            return view('order.success', compact('orden', 'subtotal', 'costoEnvio', 'desdeMP'));
+            return view('order.success', compact('orden', 'subtotalProductos', 'costoEnvio', 'desdeMP'));
             
         } catch (Exception $e) {
             Log::error('Error en success: ' . $e->getMessage());
