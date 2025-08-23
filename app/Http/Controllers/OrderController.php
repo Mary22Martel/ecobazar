@@ -416,7 +416,7 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
     }
 }
 
-   public function success($orderId)
+    public function success($orderId)
     {
         try {
             Log::info("=== ACCESO A PÁGINA DE ÉXITO ===");
@@ -452,11 +452,12 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            // Calcular subtotal y envío para la vista
+            // Calcular subtotal de productos
             $subtotal = $orden->items->sum(function($item) {
                 return $item->precio * $item->cantidad;
             });
 
+            // Calcular costo de envío
             $costoEnvio = 0;
             if ($orden->delivery === 'delivery' && $orden->distrito) {
                 $zona = Zone::where('name', $orden->distrito)->first();
@@ -465,8 +466,29 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            // Pasar la variable para mostrar el mensaje estilo MercadoPago
-            return view('order.success', compact('orden', 'subtotal', 'costoEnvio', 'desdeMP'));
+            // ⭐ CALCULAR LA COMISIÓN MERCADOPAGO (MISMO CÁLCULO QUE EN CHECKOUT)
+            $montoNeto = $subtotal + $costoEnvio;
+            $comisionPorcentaje = 0.047082; // 4.7082%
+            $tarifaFija = 1.18;
+            $comodin = 0.10;
+            
+            // Aplicar la misma fórmula
+            $totalConComision = (($montoNeto + $tarifaFija) / (1 - $comisionPorcentaje)) + $comodin;
+            $totalConComision = round($totalConComision, 2);
+            
+            // Calcular cuánto fue la comisión
+            $comisionCobrada = $totalConComision - $montoNeto;
+
+            // Pasar todas las variables a la vista
+            return view('order.success', compact(
+                'orden', 
+                'subtotal', 
+                'costoEnvio', 
+                'desdeMP',
+                'montoNeto',           // Nuevo
+                'comisionCobrada',     // Nuevo
+                'totalConComision'     // Nuevo
+            ));
             
         } catch (Exception $e) {
             Log::error('Error en success: ' . $e->getMessage());
@@ -554,10 +576,12 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 abort(403, 'No tienes permisos para ver este voucher');
             }
 
+            // Calcular subtotal de productos
             $subtotal = $orden->items->sum(function($item) {
                 return $item->precio * $item->cantidad;
             });
 
+            // Calcular costo de envío
             $costoEnvio = 0;
             if ($orden->delivery === 'delivery' && $orden->distrito) {
                 $zona = \App\Models\Zone::where('name', $orden->distrito)->first();
@@ -566,23 +590,41 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            $total = $subtotal + $costoEnvio;
+            // ⭐ CALCULAR LA COMISIÓN MERCADOPAGO (IGUAL QUE EN EL CHECKOUT)
+            $montoNeto = $subtotal + $costoEnvio;
+            $comisionPorcentaje = 0.047082; // 4.7082%
+            $tarifaFija = 1.18;
+            $comodin = 0.10;
+            
+            // Aplicar la misma fórmula
+            $totalConComision = (($montoNeto + $tarifaFija) / (1 - $comisionPorcentaje)) + $comodin;
+            $totalConComision = round($totalConComision, 2);
+            
+            // Calcular cuánto fue la comisión
+            $comisionCobrada = $totalConComision - $montoNeto;
 
-            // Configurar PDF con opciones específicas
-            $pdf = PDF::loadView('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'))
-                    ->setPaper('a4', 'portrait')
-                    ->setOptions([
-                        'dpi' => 150,
-                        'defaultFont' => 'sans-serif',
-                        'isRemoteEnabled' => true,
-                        'isHtml5ParserEnabled' => true,
-                        'debugCss' => false,
-                        'debugLayout' => false,
-                        'debugLayoutLines' => false,
-                        'debugLayoutBlocks' => false,
-                        'debugLayoutInline' => false,
-                        'debugLayoutPaddingBox' => false,
-                    ]);
+            // Configurar PDF con todas las variables necesarias
+            $pdf = PDF::loadView('order.voucher', compact(
+                'orden', 
+                'subtotal', 
+                'costoEnvio', 
+                'montoNeto',           // Nuevo
+                'comisionCobrada',     // Nuevo
+                'totalConComision'     // Nuevo (este es el total real que pagó)
+            ))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'dpi' => 150,
+                'defaultFont' => 'sans-serif',
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'debugCss' => false,
+                'debugLayout' => false,
+                'debugLayoutLines' => false,
+                'debugLayoutBlocks' => false,
+                'debugLayoutInline' => false,
+                'debugLayoutPaddingBox' => false,
+            ]);
             
             $filename = "voucher_orden_" . str_pad($orderId, 6, '0', STR_PAD_LEFT) . ".pdf";
             

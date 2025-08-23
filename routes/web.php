@@ -202,6 +202,18 @@ Route::middleware(['auth'])->group(function () {
     
     Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])
         ->name('repartidor.pedido.proceso');
+
+    // Reporte de pagos a repartidores
+    Route::get('/admin/pagos/repartidores', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'reportePagosRepartidores'])
+        ->name('admin.pagos.repartidores');
+
+    // Detalle de repartidor con filtro de semanas
+    Route::get('/admin/repartidores/{repartidor}/detalle', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'detalle'])
+        ->name('admin.repartidores.detalle');
+
+    // También puedes agregar un enlace en el dashboard de admin para acceder fácilmente
+    Route::get('/admin/pagos/exportar-repartidores', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'exportarPagosRepartidores'])
+        ->name('admin.pagos.exportar-repartidores');
 });
 
 //Rutas Admin - Agregar esto en web.php después de las rutas existentes
