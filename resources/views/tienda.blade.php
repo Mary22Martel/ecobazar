@@ -195,7 +195,9 @@
                     <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
                     
                     <!-- Sidebar optimizado -->
-                    <div id="sidebar" class="fixed lg:relative lg:translate-x-0 transform -translate-x-full transition-transform duration-300 ease-in-out w-full max-w-xs lg:w-full bg-white shadow-2xl z-50 h-full lg:h-auto lg:overflow-y-visible">
+                    <div id="sidebar"  class="fixed lg:relative lg:translate-x-0 transform -translate-x-full transition-transform duration-300 ease-in-out 
+            w-full max-w-xs lg:w-full bg-white shadow-2xl 
+            z-50 lg:z-20 h-full lg:h-auto lg:overflow-y-visible">
                         <!-- Header móvil -->
                         <div class="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
                             <h2 class="text-lg font-bold text-gray-800">Filtros</h2>

@@ -312,7 +312,8 @@
             </svg>
             <div>
                 <p class="font-medium mb-1">¿Por qué se cobra esta comisión?</p>
-                <p>Procesamos tu pago de forma 100% segura a través de MercadoPago. Esta comisión cubre los costos de procesamiento y garantiza que tu transacción sea segura y los agricultores reciban el precio justo por sus productos.</p>
+                <p>Tu compra se procesa de manera 100% segura a través de Mercado Pago. Esta comisión corresponde al servicio de la pasarela de pago y no va para los agricultores.
+De esta forma, ellos reciben el precio completo y justo de sus productos, y tú puedes pagar con la tranquilidad de que tu transacción está protegida. 🌱✨</p>
             </div>
         </div>
     </div>
