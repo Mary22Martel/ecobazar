@@ -92,6 +92,42 @@ class AdminController extends Controller
                     ->with('success', 'Usuario creado exitosamente');
     }
 
+  public function actualizarUsuario(Request $request, $id)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $usuario = User::findOrFail($id);
+        
+        $rules = [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'telefono' => 'nullable|string|max:20',
+        ];
+        
+        // Solo validar contraseña si se proporciona Y no está vacía
+        if ($request->filled('password') && !empty(trim($request->password))) {
+            $rules['password'] = 'required|string|min:8';
+        }
+        
+        $request->validate($rules);
+        
+        $datos = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'telefono' => $request->telefono,
+        ];
+        
+        // Solo actualizar contraseña si se proporciona y no está vacía
+        if ($request->filled('password') && !empty(trim($request->password))) {
+            $datos['password'] = Hash::make($request->password);
+        }
+        
+        $usuario->update($datos);
+        
+        return redirect()->route('admin.usuarios.index')
+                    ->with('success', 'Usuario actualizado exitosamente');
+    }
+
     // ==================== LÓGICA DE SEMANA DE FERIA ====================
     
     /**

@@ -223,7 +223,9 @@ Route::middleware(['auth'])->group(function () {
         ->name('admin.usuarios.crear');
     Route::post('/admin/usuarios', [App\Http\Controllers\Admin\AdminController::class, 'guardarUsuario'])
         ->name('admin.usuarios.guardar');
-        
+    
+    Route::put('/admin/usuarios/{usuario}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarUsuario'])
+    ->name('admin.usuarios.actualizar');
     // Admin Dashboard y gestión
     Route::get('/admin', [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('admin.dashboard');
     
