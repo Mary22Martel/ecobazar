@@ -58,7 +58,6 @@ Auth::routes();
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/repartidor', [RepartidorController::class, 'index'])->name('repartidor.dashboard');
-    Route::get('/agricultor', [AgricultorController::class, 'index'])->name('agricultor.dashboard');
     Route::get('/cliente', [ClienteController::class, 'index'])->name('cliente.dashboard');
 });
 
