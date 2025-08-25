@@ -42,9 +42,6 @@ Route::get('/auth-check', function () {
     return response()->json(['authenticated' => Auth::check()]);
 })->name('auth.check');
 
-//Login y Register para Agricultor
-Route::get('/agricultor/register', [AgricultorRegisterController::class, 'showRegistrationForm'])->name('agricultor.register');
-Route::post('/agricultor/register', [AgricultorRegisterController::class, 'register'])->name('agricultor.register.submit');
 
 
 // Listado público de ferias
@@ -219,6 +216,16 @@ Route::middleware(['auth'])->group(function () {
 //Rutas Admin - Agregar esto en web.php después de las rutas existentes
 
 Route::middleware(['auth'])->group(function () {
+    
+    Route::get('/admin/usuarios', [App\Http\Controllers\Admin\AdminController::class, 'usuarios'])
+        ->name('admin.usuarios.index');
+    Route::get('/admin/usuarios/crear', [App\Http\Controllers\Admin\AdminController::class, 'crearUsuario'])
+        ->name('admin.usuarios.crear');
+    Route::post('/admin/usuarios', [App\Http\Controllers\Admin\AdminController::class, 'guardarUsuario'])
+        ->name('admin.usuarios.guardar');
+    
+    Route::put('/admin/usuarios/{usuario}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarUsuario'])
+    ->name('admin.usuarios.actualizar');
     // Admin Dashboard y gestión
     Route::get('/admin', [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('admin.dashboard');
     

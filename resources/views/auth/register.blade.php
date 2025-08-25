@@ -15,7 +15,7 @@
                     <div class="absolute -inset-1 bg-gradient-green rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">Punto Verde</h1>
-                    <p class="text-green-100 text-sm sm:text-base">Únete a nuestra comunidad</p>
+                    <p class="text-green-100 text-sm sm:text-base">Únete como cliente</p>
                 </div>
             </div>
 
@@ -23,7 +23,7 @@
             <div class="px-6 sm:px-8 py-8">
                 <div class="text-center mb-8">
                     <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Crear Cuenta</h2>
-                    <p class="text-gray-600 text-sm sm:text-base">Completa tus datos para comenzar</p>
+                    <p class="text-gray-600 text-sm sm:text-base">Completa tus datos para comenzar a comprar</p>
                 </div>
 
                 <form method="POST" action="{{ route('register') }}" class="space-y-6">
@@ -139,63 +139,7 @@
                         </div>
                     </div>
 
-                    <!-- Selección de rol mejorada -->
-                    <div class="space-y-2">
-                        <label for="role" class="block text-sm font-semibold text-gray-700">
-                            ¿Cómo te unes a Punto Verde?
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                </svg>
-                            </div>
-                            <select id="role" 
-                                    class="w-full pl-10 pr-4 py-3 border {{ $errors->has('role') ? 'border-red-300 bg-red-50' : 'border-gray-300' }} rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 text-sm sm:text-base appearance-none bg-white" 
-                                    name="role" 
-                                    required>
-                                <option value="" disabled selected>Selecciona tu rol</option>
-                                <option value="cliente">🛒 Cliente </option>
-                                <option value="agricultor">🌱 Agricultor </option>
-                                <option value="repartidor">🚚 Repartidor </option>
-                            </select>
-                            <!-- Icono dropdown personalizado -->
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        @error('role')
-                            <div class="flex items-center space-x-2 text-red-600 text-sm">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                </svg>
-                                <span>{{ $message }}</span>
-                            </div>
-                        @enderror
-                    </div>
-
-                    <!-- Info sobre roles -->
-                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-green-800">
-                                    ¿No estás seguro qué rol elegir?
-                                </h3>
-                                <div class="mt-2 text-sm text-green-700">
-                                    <p>• <strong>Cliente:</strong> Compra productos frescos directamente de productores locales</p>
-                                    <p>• <strong>Agricultor:</strong> Vende tus productos sin intermediarios</p>
-                                    <p>• <strong>Repartidor:</strong> Gana dinero realizando entregas en tu zona</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                   
 
                     <!-- Botón de registro mejorado -->
                     <div>
@@ -205,7 +149,7 @@
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
                                 </svg>
-                                <span>Crear Mi Cuenta</span>
+                                <span>Crear Cuenta</span>
                             </span>
                         </button>
                     </div>
@@ -242,17 +186,18 @@
         <!-- Footer informativo -->
         <div class="text-center mt-8 px-4">
             <p class="text-sm text-gray-600 mb-2">
-                🌱 Al registrarte, formas parte de una comunidad que apoya el comercio local
+                Al registrarte como cliente, podrás acceder a productos frescos y apoyar el comercio local
             </p>
             <div class="flex justify-center space-x-4 text-xs text-gray-500">
                 <span>🔒 Datos seguros</span>
-                <span>🤝 Comunidad confiable</span>
-                <span>🌍 Impacto positivo</span>
+                <span>🛒 Compras fáciles</span>
+                <span>🌱 Productos frescos</span>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Mismos estilos CSS que ya tienes -->
 <style>
 /* Animaciones suaves */
 @keyframes fadeInUp {
@@ -306,11 +251,6 @@ button:hover {
 /* Loading state para el botón */
 button:active {
     transform: scale(0.98);
-}
-
-/* Select personalizado */
-select {
-    background-image: none;
 }
 </style>
 @endsection

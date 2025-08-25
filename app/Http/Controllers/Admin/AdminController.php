@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -47,6 +48,84 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Error verificando pedidos expirados desde Admin: ' . $e->getMessage());
         }
+    }
+
+    public function usuarios()
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $usuarios = User::whereIn('role', ['agricultor', 'repartidor'])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20);
+        
+        return view('admin.usuarios.index', compact('usuarios'));
+    }
+
+    public function crearUsuario()
+    {
+        $this->authorizeRoles(['admin']);
+        
+        return view('admin.usuarios.crear');
+    }
+
+    public function guardarUsuario(Request $request)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:agricultor,repartidor',
+            'telefono' => 'nullable|string|max:20',
+        ]);
+        
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'telefono' => $request->telefono,
+        ]);
+        
+        return redirect()->route('admin.usuarios.index')
+                    ->with('success', 'Usuario creado exitosamente');
+    }
+
+  public function actualizarUsuario(Request $request, $id)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $usuario = User::findOrFail($id);
+        
+        $rules = [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'telefono' => 'nullable|string|max:20',
+        ];
+        
+        // Solo validar contraseña si se proporciona Y no está vacía
+        if ($request->filled('password') && !empty(trim($request->password))) {
+            $rules['password'] = 'required|string|min:8';
+        }
+        
+        $request->validate($rules);
+        
+        $datos = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'telefono' => $request->telefono,
+        ];
+        
+        // Solo actualizar contraseña si se proporciona y no está vacía
+        if ($request->filled('password') && !empty(trim($request->password))) {
+            $datos['password'] = Hash::make($request->password);
+        }
+        
+        $usuario->update($datos);
+        
+        return redirect()->route('admin.usuarios.index')
+                    ->with('success', 'Usuario actualizado exitosamente');
     }
 
     // ==================== LÓGICA DE SEMANA DE FERIA ====================
