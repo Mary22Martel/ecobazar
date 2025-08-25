@@ -110,22 +110,36 @@
         </div>
 
         <!-- Totales -->
-        <div class="mt-6 space-y-2">
-            <div class="flex justify-between text-lg">
-                <span class="text-gray-600">Subtotal:</span>
-                <span class="font-semibold">S/{{ number_format($subtotal, 2) }}</span>
-            </div>
-            @if($costoEnvio > 0)
-            <div class="flex justify-between text-lg">
-                <span class="text-gray-600">Envío:</span>
-                <span class="font-semibold">S/{{ number_format($costoEnvio, 2) }}</span>
-            </div>
-            @endif
-            <div class="flex justify-between mt-4 pt-4 border-t border-gray-200 font-bold text-xl">
-                <span class="text-gray-800">Total:</span>
-                <span class="text-green-600">S/{{ number_format($orden->total, 2) }}</span>
-            </div>
-        </div>
+    <div class="mt-6 space-y-2">
+    <div class="flex justify-between text-lg">
+        <span class="text-gray-600">Subtotal de Productos:</span>
+        <span class="font-semibold">S/{{ number_format($subtotal, 2) }}</span>
+    </div>
+    @if($costoEnvio > 0)
+    <div class="flex justify-between text-lg">
+        <span class="text-gray-600">Costo de Envío:</span>
+        <span class="font-semibold">S/{{ number_format($costoEnvio, 2) }}</span>
+    </div>
+    @endif
+    
+    <!-- Subtotal antes de comisión -->
+    <div class="flex justify-between text-lg border-b border-gray-200 pb-2">
+        <span class="text-gray-600">Subtotal:</span>
+        <span class="font-semibold">S/{{ number_format($montoNeto, 2) }}</span>
+    </div>
+    
+    <!-- NUEVA LÍNEA: Comisión MercadoPago -->
+    <div class="flex justify-between text-lg">
+        <span class="text-gray-600">Comisión Pago Seguro:</span>
+        <span class="font-semibold">S/{{ number_format($comisionCobrada, 2) }}</span>
+    </div>
+    
+    <!-- Total final con comisión -->
+    <div class="flex justify-between mt-4 pt-4 border-t border-gray-200 font-bold text-xl">
+        <span class="text-gray-800">TOTAL PAGADO:</span>
+        <span class="text-green-600">S/{{ number_format($totalConComision, 2) }}</span>
+    </div>
+    </div>
     </div>
 
     <!-- Buttons (oculto inicialmente) -->
