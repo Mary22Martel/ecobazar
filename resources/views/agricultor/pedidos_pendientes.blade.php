@@ -204,13 +204,8 @@
                                     class="btn-confirmar-pedido w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-base sm:text-lg font-bold py-3 sm:py-4 rounded-lg hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all shadow-lg">
                                 ✅ YA ESTÁ LISTO
                             </button>
-                            @elseif($pedido->estado === 'pendiente')
-                            <div class="w-full bg-gradient-to-r from-yellow-100 to-amber-100 border-2 border-yellow-300 text-yellow-800 text-xs sm:text-lg font-bold py-3 sm:py-4 rounded-lg text-center">
-                                ⏳ ESPERANDO PAGO DEL CLIENTE
-                            </div>
-                            @endif
-
-                            <!-- Botón para ver más detalles -->
+                            
+                            <!-- Botón para ver más detalles - Solo visible cuando está pagado -->
                             <a href="{{ route('agricultor.pedido_detalle', $pedido->id) }}" 
                                class="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm sm:text-base font-semibold py-3 rounded-lg hover:from-gray-700 hover:to-gray-800 text-center transition-all flex items-center justify-center">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -219,6 +214,20 @@
                                 </svg>
                                 Ver todos los detalles
                             </a>
+                            
+                            @elseif($pedido->estado === 'pendiente')
+                            <div class="w-full bg-gradient-to-r from-yellow-100 to-amber-100 border-2 border-yellow-300 text-yellow-800 text-xs sm:text-lg font-bold py-3 sm:py-4 rounded-lg text-center">
+                                ⏳ ESPERANDO PAGO DEL CLIENTE
+                            </div>
+                            
+                            <!-- Mensaje informativo para pedidos pendientes -->
+                            <div class="w-full bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 text-orange-700 text-xs sm:text-sm font-medium py-2 px-3 rounded-lg text-center">
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Una vez que el cliente pague, podrás preparar este pedido
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>

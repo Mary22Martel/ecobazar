@@ -26,6 +26,16 @@ class OrderController extends Controller
     try {
         Log::info('=== INICIO CREACIÓN DE ORDEN ===');
         Log::info('Usuario ID: ' . Auth::id());
+        // VALIDACIÓN: No permitir crear órdenes los sábados
+        if (now('America/Lima')->dayOfWeek === Carbon::SATURDAY) {
+            return response()->json([
+                'success' => false,
+                'error' => '🌱 Hoy es día de feria en el Segundo Parque de Paucarbambilla (7am - 12pm). 
+                Las compras en línea estarán disponibles nuevamente desde el domingo. 
+                👉 Puedes visitarnos en la feria para comprar o recoger tus pedidos.'
+            ], 400);
+        }
+
         
         // Validar campos básicos
         $validatedData = $request->validate([
@@ -322,82 +332,101 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
     }
 
     private function procesarPagoMercadoPago($orden, $subtotal, $costoEnvio)
-    {
-        try {
-            Log::info('=== INICIANDO MERCADO PAGO ===');
-            
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
-            $client = new PreferenceClient();
+{
+    try {
+        Log::info('=== INICIANDO MERCADO PAGO ===');
+        
+        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token'));
+        $client = new PreferenceClient();
 
-            // Preparar items para MercadoPago
-            $items = [];
-            
-            // Item principal con el total
-            $items[] = [
-                "title" => "Pedido #" . $orden->id . " - Punto Verde",
-                "quantity" => 1,
-                "currency_id" => "PEN",
-                "unit_price" => floatval($subtotal + $costoEnvio)
-            ];
+        // ⭐ APLICAR FÓRMULA DE COMISIÓN MERCADOPAGO
+        $montoNeto = $subtotal + $costoEnvio; // Monto que queremos recibir íntegro
+        $comisionPorcentaje = 0.047082; // 4.7082% comisión total con IGV
+        $tarifaFija = 1.18; // Tarifa fija con IGV
+        $comodin = 0.10; // Comodín adicional
+        
+        // Aplicar fórmula: T = (N + f) / (1 - p) + comodin
+        $montoAjustado = (($montoNeto + $tarifaFija) / (1 - $comisionPorcentaje)) + $comodin;
+        
+        // Redondear a 2 decimales
+        $montoAjustado = round($montoAjustado, 2);
+        
+        Log::info("Cálculo de comisión MercadoPago:");
+        Log::info("- Monto neto deseado: S/{$montoNeto}");
+        Log::info("- Monto ajustado para cobrar: S/{$montoAjustado}");
+        Log::info("- Diferencia (comisión + comodín): S/" . round($montoAjustado - $montoNeto, 2));
 
-            // Agregar información del desglose en el título si hay envío
-            if ($costoEnvio > 0) {
-                $items[0]["title"] = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2);
-            }
-
-            // ⭐ CONFIGURACIÓN CON WEBHOOK
-           $preferenceData = [
-                "items" => $items,
-                "back_urls" => [
-                    "success" => url("/orden-exito/{$orden->id}?mp=1"),
-                    "failure" => url("/order/failed"),
-                    "pending" => url("/orden-exito/{$orden->id}?mp=1")
-                ],
-                "external_reference" => strval($orden->id),
-                "statement_descriptor" => "Punto Verde",
-                // ⭐ CONFIGURAR REDIRECCIÓN AUTOMÁTICA
-                "auto_return" => "approved"
-            ];
-
-            // ⭐ SOLO AGREGAR WEBHOOK EN PRODUCCIÓN
-            if (config('app.env') === 'production') {
-                $preferenceData["notification_url"] = url("/mercadopago/webhook");
-                Log::info('Webhook configurado para producción: ' . url("/mercadopago/webhook"));
-            } else {
-                Log::info('Webhook omitido en desarrollo local');
-            }
-
-            Log::info('Datos para MercadoPago:', $preferenceData);
-
-            $preference = $client->create($preferenceData);
-            
-            Log::info('Preferencia creada exitosamente');
-            Log::info('Init point: ' . $preference->init_point);
-            Log::info('Webhook configurado en: ' . url("/mercadopago/webhook"));
-
-            return response()->json([
-                'success' => true,
-                'init_point' => $preference->init_point
-            ]);
-
-        } catch (MPApiException $e) {
-            Log::error('Error MercadoPago API: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
-            ], 500);
-        } catch (Exception $e) {
-            Log::error('Error general MercadoPago: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Error al procesar el pago'
-            ], 500);
+        // Preparar items para MercadoPago con el monto ajustado
+        $items = [];
+        
+        // Descripción detallada del cobro
+        $descripcion = "Pedido #" . $orden->id . " - Punto Verde";
+        if ($costoEnvio > 0) {
+            $descripcion = "Pedido #" . $orden->id . " (Productos: S/" . number_format($subtotal, 2) . " + Envío: S/" . number_format($costoEnvio, 2) . " + Comisión pago seguro)";
+        } else {
+            $descripcion = "Pedido #" . $orden->id . " - Productos: S/" . number_format($subtotal, 2) . " + Comisión pago seguro";
         }
-    }
+        
+        $items[] = [
+            "title" => $descripcion,
+            "quantity" => 1,
+            "currency_id" => "PEN",
+            "unit_price" => floatval($montoAjustado) // Usar el monto ajustado
+        ];
 
-   public function success($orderId)
+        // ⭐ CONFIGURACIÓN CON WEBHOOK
+       $preferenceData = [
+            "items" => $items,
+            "back_urls" => [
+                "success" => url("/orden-exito/{$orden->id}?mp=1"),
+                "failure" => url("/order/failed"),
+                "pending" => url("/orden-exito/{$orden->id}?mp=1")
+            ],
+            "external_reference" => strval($orden->id),
+            "statement_descriptor" => "Punto Verde",
+            // ⭐ CONFIGURAR REDIRECCIÓN AUTOMÁTICA
+            "auto_return" => "approved"
+        ];
+
+        // ⭐ SOLO AGREGAR WEBHOOK EN PRODUCCIÓN
+        if (config('app.env') === 'production') {
+            $preferenceData["notification_url"] = url("/mercadopago/webhook");
+            Log::info('Webhook configurado para producción: ' . url("/mercadopago/webhook"));
+        } else {
+            Log::info('Webhook omitido en desarrollo local');
+        }
+
+        Log::info('Datos para MercadoPago:', $preferenceData);
+
+        $preference = $client->create($preferenceData);
+        
+        Log::info('Preferencia creada exitosamente');
+        Log::info('Init point: ' . $preference->init_point);
+        Log::info('Monto final a cobrar: S/' . $montoAjustado);
+
+        return response()->json([
+            'success' => true,
+            'init_point' => $preference->init_point
+        ]);
+
+    } catch (MPApiException $e) {
+        Log::error('Error MercadoPago API: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al procesar el pago con MercadoPago. Verifica tu configuración.'
+        ], 500);
+    } catch (Exception $e) {
+        Log::error('Error general MercadoPago: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Error al procesar el pago'
+        ], 500);
+    }
+}
+
+    public function success($orderId)
     {
         try {
             Log::info("=== ACCESO A PÁGINA DE ÉXITO ===");
@@ -433,11 +462,12 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            // Calcular subtotal y envío para la vista
+            // Calcular subtotal de productos
             $subtotal = $orden->items->sum(function($item) {
                 return $item->precio * $item->cantidad;
             });
 
+            // Calcular costo de envío
             $costoEnvio = 0;
             if ($orden->delivery === 'delivery' && $orden->distrito) {
                 $zona = Zone::where('name', $orden->distrito)->first();
@@ -446,8 +476,29 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            // Pasar la variable para mostrar el mensaje estilo MercadoPago
-            return view('order.success', compact('orden', 'subtotal', 'costoEnvio', 'desdeMP'));
+            // ⭐ CALCULAR LA COMISIÓN MERCADOPAGO (MISMO CÁLCULO QUE EN CHECKOUT)
+            $montoNeto = $subtotal + $costoEnvio;
+            $comisionPorcentaje = 0.047082; // 4.7082%
+            $tarifaFija = 1.18;
+            $comodin = 0.10;
+            
+            // Aplicar la misma fórmula
+            $totalConComision = (($montoNeto + $tarifaFija) / (1 - $comisionPorcentaje)) + $comodin;
+            $totalConComision = round($totalConComision, 2);
+            
+            // Calcular cuánto fue la comisión
+            $comisionCobrada = $totalConComision - $montoNeto;
+
+            // Pasar todas las variables a la vista
+            return view('order.success', compact(
+                'orden', 
+                'subtotal', 
+                'costoEnvio', 
+                'desdeMP',
+                'montoNeto',           // Nuevo
+                'comisionCobrada',     // Nuevo
+                'totalConComision'     // Nuevo
+            ));
             
         } catch (Exception $e) {
             Log::error('Error en success: ' . $e->getMessage());
@@ -535,10 +586,12 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 abort(403, 'No tienes permisos para ver este voucher');
             }
 
+            // Calcular subtotal de productos
             $subtotal = $orden->items->sum(function($item) {
                 return $item->precio * $item->cantidad;
             });
 
+            // Calcular costo de envío
             $costoEnvio = 0;
             if ($orden->delivery === 'delivery' && $orden->distrito) {
                 $zona = \App\Models\Zone::where('name', $orden->distrito)->first();
@@ -547,23 +600,41 @@ public function devolverPedidosAlSistema($zonaId, $repartidorId)
                 }
             }
 
-            $total = $subtotal + $costoEnvio;
+            // ⭐ CALCULAR LA COMISIÓN MERCADOPAGO (IGUAL QUE EN EL CHECKOUT)
+            $montoNeto = $subtotal + $costoEnvio;
+            $comisionPorcentaje = 0.047082; // 4.7082%
+            $tarifaFija = 1.18;
+            $comodin = 0.10;
+            
+            // Aplicar la misma fórmula
+            $totalConComision = (($montoNeto + $tarifaFija) / (1 - $comisionPorcentaje)) + $comodin;
+            $totalConComision = round($totalConComision, 2);
+            
+            // Calcular cuánto fue la comisión
+            $comisionCobrada = $totalConComision - $montoNeto;
 
-            // Configurar PDF con opciones específicas
-            $pdf = PDF::loadView('order.voucher', compact('orden', 'subtotal', 'costoEnvio', 'total'))
-                    ->setPaper('a4', 'portrait')
-                    ->setOptions([
-                        'dpi' => 150,
-                        'defaultFont' => 'sans-serif',
-                        'isRemoteEnabled' => true,
-                        'isHtml5ParserEnabled' => true,
-                        'debugCss' => false,
-                        'debugLayout' => false,
-                        'debugLayoutLines' => false,
-                        'debugLayoutBlocks' => false,
-                        'debugLayoutInline' => false,
-                        'debugLayoutPaddingBox' => false,
-                    ]);
+            // Configurar PDF con todas las variables necesarias
+            $pdf = PDF::loadView('order.voucher', compact(
+                'orden', 
+                'subtotal', 
+                'costoEnvio', 
+                'montoNeto',           // Nuevo
+                'comisionCobrada',     // Nuevo
+                'totalConComision'     // Nuevo (este es el total real que pagó)
+            ))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'dpi' => 150,
+                'defaultFont' => 'sans-serif',
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'debugCss' => false,
+                'debugLayout' => false,
+                'debugLayoutLines' => false,
+                'debugLayoutBlocks' => false,
+                'debugLayoutInline' => false,
+                'debugLayoutPaddingBox' => false,
+            ]);
             
             $filename = "voucher_orden_" . str_pad($orderId, 6, '0', STR_PAD_LEFT) . ".pdf";
             

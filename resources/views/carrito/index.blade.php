@@ -217,21 +217,29 @@
                         </div>
                     </div>
 
-                    <!-- Botones de acción mejorados -->
-                    <div class="space-y-3">
-                        <a href="{{ route('checkout') }}" 
-                           class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl font-bold text-base hover:from-green-600 hover:to-green-700 transition-all duration-300 text-center inline-block shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]">
-                            💳 Proceder a Pagar
-                        </a>
-                        
-                        <a href="{{ route('tienda') }}" 
-                           class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-semibold text-center inline-block hover:bg-gray-200 text-base transition-colors duration-200 flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                            </svg>
-                            Seguir comprando
-                        </a>
-                    </div>
+        
+                    <!-- En lugar del botón normal de checkout -->
+                        @if(now('America/Lima')->dayOfWeek === 6)
+                            <!-- Botón desactivado los sábados -->
+                            <button disabled class="w-full bg-gray-400 text-gray-600 font-bold py-3 px-6 rounded-lg cursor-not-allowed flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>Cerrado durante la feria</span>
+                            </button>
+                            <p class="text-center text-sm text-gray-600 mt-2">
+                                Los sábados están reservados para la feria. Podrás finalizar tu compra el domingo.
+                            </p>
+                        @else
+                            <!-- Botón normal de checkout -->
+                            <a href="{{ route('checkout') }}" 
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                </svg>
+                                <span>Proceder al pago</span>
+                            </a>
+                        @endif
 
                     <!-- Información adicional -->
                     <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
