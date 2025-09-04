@@ -10,6 +10,7 @@ use App\Models\Zone;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 
 class CarritoController extends Controller
@@ -30,106 +31,114 @@ class CarritoController extends Controller
      * Agregar un producto al carrito con optimizaciones
      */
     public function add(Request $request, $productId)
-{
-    try {
-        DB::beginTransaction();
+    {
+        try {
+            if (now('America/Lima')->dayOfWeek === Carbon::SATURDAY) {
+                return response()->json([
+                    'success' => false,
+                    'error' => '⏳ Las compras en línea están cerradas los sábados porque nos encuentras en la feria del Segundo Parque de Paucarbambilla (7am - 12pm). 
+                    Puedes acercarte a comprar directamente en la feria o volver a comprar en la tienda online desde el domingo. 🌱'
+                ], 400);
+            }
 
-        // Validar que el producto existe y tiene stock
-        $producto = Product::findOrFail($productId);
-        
-        $cantidadSolicitada = $request->input('cantidad', 1);
-        
-        // Verificar stock disponible
-        if ($producto->cantidad_disponible < $cantidadSolicitada) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'error' => 'No hay suficiente stock disponible. Stock actual: ' . $producto->cantidad_disponible
-            ], 400);
-        }
+            DB::beginTransaction();
 
-        // Obtener o crear carrito
-        $carrito = Carrito::firstOrCreate([
-            'user_id' => Auth::id()
-        ]);
-
-        // Buscar si el ítem ya existe
-        $item = $carrito->items()
-                        ->where('producto_id', $productId)
-                        ->first();
-
-        if ($item) {
-            // Verificar que no exceda el stock disponible
-            $nuevaCantidad = $item->cantidad + $cantidadSolicitada;
-            if ($nuevaCantidad > $producto->cantidad_disponible) {
+            // Validar que el producto existe y tiene stock
+            $producto = Product::findOrFail($productId);
+            
+            $cantidadSolicitada = $request->input('cantidad', 1);
+            
+            // Verificar stock disponible
+            if ($producto->cantidad_disponible < $cantidadSolicitada) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'error' => 'No puedes agregar más de este producto. Stock disponible: ' . $producto->cantidad_disponible
+                    'error' => 'No hay suficiente stock disponible. Stock actual: ' . $producto->cantidad_disponible
                 ], 400);
             }
-            
-            $item->cantidad = $nuevaCantidad;
-            $item->save();
-            
-            $mensaje = "Cantidad actualizada: {$nuevaCantidad} unidad(es) de {$producto->nombre}";
-        } else {
-            $item = $carrito->items()->create([
-                'producto_id' => $productId,
-                'cantidad' => $cantidadSolicitada,
+
+            // Obtener o crear carrito
+            $carrito = Carrito::firstOrCreate([
+                'user_id' => Auth::id()
             ]);
+
+            // Buscar si el ítem ya existe
+            $item = $carrito->items()
+                            ->where('producto_id', $productId)
+                            ->first();
+
+            if ($item) {
+                // Verificar que no exceda el stock disponible
+                $nuevaCantidad = $item->cantidad + $cantidadSolicitada;
+                if ($nuevaCantidad > $producto->cantidad_disponible) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No puedes agregar más de este producto. Stock disponible: ' . $producto->cantidad_disponible
+                    ], 400);
+                }
+                
+                $item->cantidad = $nuevaCantidad;
+                $item->save();
+                
+                $mensaje = "Cantidad actualizada: {$nuevaCantidad} unidad(es) de {$producto->nombre}";
+            } else {
+                $item = $carrito->items()->create([
+                    'producto_id' => $productId,
+                    'cantidad' => $cantidadSolicitada,
+                ]);
+                
+                $mensaje = "Producto agregado: {$cantidadSolicitada} unidad(es) de {$producto->nombre}";
+            }
+
+            // Recalcular el total del carrito
+            $carrito->load('items.product');
             
-            $mensaje = "Producto agregado: {$cantidadSolicitada} unidad(es) de {$producto->nombre}";
+            $totalItems = $carrito->items->sum('cantidad');
+            $totalPrice = $carrito->items->sum(function ($item) {
+                return $item->product->precio * $item->cantidad;
+            });
+
+            DB::commit();
+
+            // ✅ DEVOLVER JSON PARA QUE FUNCIONEN LAS ALERTAS
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'totalItems' => $totalItems,
+                'totalPrice' => $totalPrice,
+                'items' => $carrito->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'nombre' => $item->product->nombre,
+                        'cantidad' => $item->cantidad,
+                        'precio' => $item->product->precio,
+                        'subtotal' => $item->product->precio * $item->cantidad,
+                        'imagen_url' => $item->product->imagen 
+                            ? asset('storage/productos/' . $item->product->imagen) 
+                            : asset('images/default-product.png'),
+                    ];
+                }),
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            Log::error('Producto no encontrado: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'El producto solicitado no existe.'
+            ], 404);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al agregar producto al carrito: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al agregar el producto al carrito. Por favor, intenta nuevamente.'
+            ], 500);
         }
-
-        // Recalcular el total del carrito
-        $carrito->load('items.product');
-        
-        $totalItems = $carrito->items->sum('cantidad');
-        $totalPrice = $carrito->items->sum(function ($item) {
-            return $item->product->precio * $item->cantidad;
-        });
-
-        DB::commit();
-
-        // ✅ DEVOLVER JSON PARA QUE FUNCIONEN LAS ALERTAS
-        return response()->json([
-            'success' => true,
-            'message' => $mensaje,
-            'totalItems' => $totalItems,
-            'totalPrice' => $totalPrice,
-            'items' => $carrito->items->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'nombre' => $item->product->nombre,
-                    'cantidad' => $item->cantidad,
-                    'precio' => $item->product->precio,
-                    'subtotal' => $item->product->precio * $item->cantidad,
-                    'imagen_url' => $item->product->imagen 
-                        ? asset('storage/productos/' . $item->product->imagen) 
-                        : asset('images/default-product.png'),
-                ];
-            }),
-        ]);
-
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        DB::rollBack();
-        Log::error('Producto no encontrado: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'error' => 'El producto solicitado no existe.'
-        ], 404);
-        
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error al agregar producto al carrito: ' . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'error' => 'Error al agregar el producto al carrito. Por favor, intenta nuevamente.'
-        ], 500);
     }
-}
 
     /**
      * Carga datos rápidos del carrito
@@ -306,6 +315,11 @@ class CarritoController extends Controller
      */
     public function checkout()
     {
+        if (now('America/Lima')->dayOfWeek === Carbon::SATURDAY) {
+            return redirect()->route('carrito.index')
+                ->with('error', '🌱 Las compras en línea están cerradas los sábados porque nos encuentras en la feria del Segundo Parque de Paucarbambilla (7am - 12pm). 
+                👉 Puedes acercarte a comprar directamente en la feria o volver a realizar tu pedido online desde el domingo.');
+        }
         $carrito = Carrito::where('user_id', Auth::id())
                         ->with(['items.product.user', 'items.product.categoria'])
                         ->first();

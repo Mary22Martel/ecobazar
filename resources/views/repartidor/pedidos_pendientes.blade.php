@@ -113,13 +113,6 @@
            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-center transition">
             Ver Entregas Completadas
         </a>
-        
-        @if(Route::has('repartidor.rutas'))
-        <a href="{{ route('repartidor.rutas') }}" 
-           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-center transition">
-            Planificar Rutas
-        </a>
-        @endif
     </div>
 
     <!-- Info simple -->

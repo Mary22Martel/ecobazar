@@ -45,6 +45,10 @@
                    class="flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all font-semibold text-sm sm:text-base whitespace-nowrap transform hover:scale-105">
                     👥 <span class="ml-1 sm:ml-2">REPARTIDORES</span>
                 </a>
+                <a href="{{ route('admin.usuarios.index') }}" 
+                   class="flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all font-semibold text-sm sm:text-base whitespace-nowrap transform hover:scale-105">
+                    👥 <span class="ml-1 sm:ml-2">CREAR USUARIOS</span>
+                </a>
             </div>
         </div>
     </div>

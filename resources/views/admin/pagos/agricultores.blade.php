@@ -1,4 +1,3 @@
-{{-- resources/views/admin/pagos/agricultores.blade.php --}}
 @extends('layouts.app2')
 
 @section('content')

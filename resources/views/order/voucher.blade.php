@@ -371,6 +371,7 @@
         </table>
 
         <!-- Totals -->
+        <!-- Totals - Reemplaza esta sección en tu voucher -->
         <div class="totals">
             <div class="total-row subtotal">
                 <span class="label">Subtotal de Productos:</span>
@@ -383,11 +384,31 @@
                 <span class="amount">S/{{ number_format($costoEnvio, 2) }}</span>
             </div>
             @endif
+
+            <div class="total-row subtotal">
+                <span class="label">Subtotal:</span>
+                <span class="amount">S/{{ number_format($montoNeto, 2) }}</span>
+            </div>
+            
+            <!-- NUEVA SECCIÓN: Comisión MercadoPago -->
+            <div class="total-row shipping">
+                <span class="label">Comisión Pago Seguro:</span>
+                <span class="amount">S/{{ number_format($comisionCobrada, 2) }}</span>
+            </div>
             
             <div class="total-row final">
-                <span class="label">TOTAL A PAGAR:</span>
-                <span class="amount">S/{{ number_format($total, 2) }}</span>
+                <span class="label">TOTAL PAGADO:</span>
+                <span class="amount">S/{{ number_format($totalConComision, 2) }}</span>
             </div>
+        </div>
+
+        <!-- Agregar información adicional sobre la comisión -->
+        <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 13px; color: #1565c0;">
+                <strong>Información sobre la comisión:</strong> 
+                La comisión de pago seguro garantiza transacciones protegidas a través de MercadoPago 
+                y permite que los agricultores reciban el precio justo por sus productos.
+            </p>
         </div>
 
         <!-- Thank You Message -->
@@ -395,6 +416,9 @@
             <h3>¡Gracias por tu compra!</h3>
             <p>Esperamos que disfrutes de nuestros productos frescos y naturales.</p>
             <p>Tu pedido será procesado y preparado con el mayor cuidado.</p>
+            <p style="font-size: 13px; margin-top: 10px;">
+                Tu pago fue procesado de forma 100% segura a través de MercadoPago
+            </p>
         </div>
 
         <!-- Footer -->

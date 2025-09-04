@@ -67,8 +67,13 @@ class AdminRepartidorController extends Controller
     /**
      * Generar opciones de semanas de feria
      */
-    private function generarOpcionesSemanasFeria($cantidadSemanas = 5)
+    private function generarOpcionesSemanasFeria($cantidadSemanas = null)
     {
+        // CAMBIO CLAVE: Si no se especifica cantidad, calcular todas las semanas disponibles
+        if ($cantidadSemanas === null) {
+            $cantidadSemanas = $this->calcularSemanasDesdeInicio();
+        }
+        
         $opciones = [];
         
         for ($i = 0; $i < $cantidadSemanas; $i++) {
@@ -93,6 +98,36 @@ class AdminRepartidorController extends Controller
         }
         
         return $opciones;
+    }
+
+    private function calcularSemanasDesdeInicio()
+    {
+        try {
+            // Obtener la fecha del primer pedido del sistema
+            $primerPedido = Order::oldest('created_at')->first();
+            
+            if (!$primerPedido) {
+                // Si no hay pedidos, mostrar solo la semana actual
+                return 1;
+            }
+            
+            $fechaPrimerPedido = Carbon::parse($primerPedido->created_at);
+            $fechaActual = Carbon::now();
+            
+            // Calcular la diferencia en semanas
+            $semanasTranscurridas = $fechaPrimerPedido->diffInWeeks($fechaActual);
+            
+            // Agregar 1 para incluir la semana actual + un margen de seguridad
+            $totalSemanas = $semanasTranscurridas + 2;
+            
+            // Limitar a un máximo razonable para evitar problemas de rendimiento
+            return min($totalSemanas, 52); // Máximo 1 año de semanas
+            
+        } catch (\Exception $e) {
+            Log::error('Error calculando semanas desde inicio en AdminRepartidorController: ' . $e->getMessage());
+            // Fallback: devolver 10 semanas
+            return 10;
+        }
     }
 
     /**
@@ -268,39 +303,162 @@ class AdminRepartidorController extends Controller
     /**
      * Ver detalle de asignaciones y pedidos de un repartidor
      */
-    public function detalle($repartidorId)
+    public function detalle($repartidorId, Request $request)
     {
         $this->authorizeRoles(['admin']);
         
         $repartidor = User::where('role', 'repartidor')->findOrFail($repartidorId);
         
-        // Calcular el día de entrega
-        $semanaActual = $this->calcularSemanaFeria();
+        // Obtener semana seleccionada del request
+        $semanaSeleccionada = $request->get('semana', 0);
+        
+        // Calcular el día de entrega para la semana seleccionada
+        $semanaActual = $this->calcularSemanaFeria(null, $semanaSeleccionada);
         $diaEntrega = $semanaActual['dia_entrega'];
         
-        // Obtener zonas asignadas para esta fecha
+        // Obtener zonas asignadas para esta fecha específica
         $zonasAsignadas = $repartidor->zones()
-                                   ->wherePivot('fecha_asignacion', $diaEntrega->toDateString())
-                                   ->get();
+                                ->wherePivot('fecha_asignacion', $diaEntrega->toDateString())
+                                ->get();
         
-        // Obtener pedidos del repartidor para el día de entrega
+        // Obtener pedidos del repartidor para esta semana específica
         $pedidos = Order::where('repartidor_id', $repartidor->id)
-                       ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
-                       ->whereBetween('created_at', [
-                           $semanaActual['inicio_ventas']->startOfDay(),
-                           $semanaActual['fin_ventas']->endOfDay()
-                       ])
-                       ->with(['user', 'items.product'])
-                       ->get();
+                    ->whereBetween('created_at', [
+                        $semanaActual['inicio_ventas']->startOfDay(),
+                        $semanaActual['fin_ventas']->endOfDay()
+                    ])
+                    ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
+                    ->with(['user', 'items.product'])
+                    ->get();
         
-        // Agrupar pedidos por zona
+        // Agrupar pedidos por zona (distrito)
         $pedidosPorZona = $pedidos->groupBy('distrito');
+        
+        // Obtener información de zonas para calcular tarifas
+        $zonasInfo = Zone::whereIn('name', $pedidosPorZona->keys())->get()->keyBy('name');
+        
+        // Calcular estadísticas de entregas
+        $estadisticasEntregas = [
+            'total_entregas' => $pedidos->count(),
+            'entregas_completadas' => $pedidos->where('estado', 'entregado')->count(),
+            'entregas_pendientes' => $pedidos->whereIn('estado', ['armado', 'en_entrega'])->count(),
+        ];
+        
+        // Calcular total a pagar
+        $totalAPagar = 0;
+        
+        foreach ($pedidosPorZona as $zona => $pedidosZona) {
+            $zonaInfo = $zonasInfo->get($zona);
+            if ($zonaInfo) {
+                $pedidosEntregados = $pedidosZona->where('estado', 'entregado')->count();
+                $totalAPagar += $pedidosEntregados * $zonaInfo->delivery_cost;
+            }
+        }
+        
+        // Generar opciones de semanas (historial completo para admin)
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
         
         return view('admin.repartidores.detalle', compact(
             'repartidor',
             'zonasAsignadas',
             'pedidos',
             'pedidosPorZona',
+            'zonasInfo',
+            'diaEntrega',
+            'estadisticasEntregas',
+            'totalAPagar',
+            'opcionesSemanas',
+            'semanaSeleccionada'
+        ));
+    }
+
+    public function reportePagosRepartidores(Request $request)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        // Obtener semana seleccionada
+        $semanaSeleccionada = $request->get('semana', 0);
+        
+        // Calcular fechas de la semana de feria
+        $semanaFeria = $this->calcularSemanaFeria(null, $semanaSeleccionada);
+        $inicioSemana = $semanaFeria['inicio_ventas'];
+        $finSemana = $semanaFeria['fin_ventas'];
+        $diaEntrega = $semanaFeria['dia_entrega'];
+        
+        // Obtener repartidores que tuvieron entregas en esta semana
+        $repartidoresConEntregas = User::where('role', 'repartidor')
+            ->where('email', '!=', 'sistema.repartidor@puntoVerde.com')
+            ->whereHas('orders', function($query) use ($inicioSemana, $finSemana) {
+                $query->whereBetween('created_at', [
+                    $inicioSemana->startOfDay(),
+                    $finSemana->endOfDay()
+                ])
+                ->where('estado', 'entregado');
+            })
+            ->with(['orders' => function($query) use ($inicioSemana, $finSemana) {
+                $query->whereBetween('created_at', [
+                    $inicioSemana->startOfDay(),
+                    $finSemana->endOfDay()
+                ])
+                ->where('estado', 'entregado')
+                ->with(['zone' => function($zoneQuery) {
+                    $zoneQuery->select('name', 'delivery_cost');
+                }]);
+            }])
+            ->get();
+        
+        // Calcular pagos por repartidor
+        $pagosRepartidores = [];
+        $totalGeneralAPagar = 0;
+        
+        foreach ($repartidoresConEntregas as $repartidor) {
+            $entregasPorZona = [];
+            $totalRepartidor = 0;
+            
+            // Agrupar entregas por zona
+            foreach ($repartidor->orders as $pedido) {
+                $zona = $pedido->distrito;
+                $zonaInfo = Zone::where('name', $zona)->first();
+                $tarifa = $zonaInfo ? $zonaInfo->delivery_cost : 0;
+                
+                if (!isset($entregasPorZona[$zona])) {
+                    $entregasPorZona[$zona] = [
+                        'entregas' => 0,
+                        'tarifa' => $tarifa,
+                        'total' => 0
+                    ];
+                }
+                
+                $entregasPorZona[$zona]['entregas']++;
+                $entregasPorZona[$zona]['total'] += $tarifa;
+                $totalRepartidor += $tarifa;
+            }
+            
+            $pagosRepartidores[] = [
+                'repartidor' => $repartidor,
+                'entregas_por_zona' => $entregasPorZona,
+                'total_entregas' => $repartidor->orders->count(),
+                'total_pago' => $totalRepartidor
+            ];
+            
+            $totalGeneralAPagar += $totalRepartidor;
+        }
+        
+        // Ordenar por total a pagar (descendente)
+        usort($pagosRepartidores, function($a, $b) {
+            return $b['total_pago'] <=> $a['total_pago'];
+        });
+        
+        // Opciones de semanas
+        $opcionesSemanas = $this->generarOpcionesSemanasFeria();
+        
+        return view('admin.pagos.repartidores', compact(
+            'pagosRepartidores',
+            'totalGeneralAPagar',
+            'opcionesSemanas',
+            'semanaSeleccionada',
+            'inicioSemana',
+            'finSemana',
             'diaEntrega'
         ));
     }

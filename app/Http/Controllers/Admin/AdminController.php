@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -47,6 +48,84 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Error verificando pedidos expirados desde Admin: ' . $e->getMessage());
         }
+    }
+
+    public function usuarios()
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $usuarios = User::whereIn('role', ['agricultor', 'repartidor'])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20);
+        
+        return view('admin.usuarios.index', compact('usuarios'));
+    }
+
+    public function crearUsuario()
+    {
+        $this->authorizeRoles(['admin']);
+        
+        return view('admin.usuarios.crear');
+    }
+
+    public function guardarUsuario(Request $request)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:agricultor,repartidor',
+            'telefono' => 'nullable|string|max:20',
+        ]);
+        
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'telefono' => $request->telefono,
+        ]);
+        
+        return redirect()->route('admin.usuarios.index')
+                    ->with('success', 'Usuario creado exitosamente');
+    }
+
+  public function actualizarUsuario(Request $request, $id)
+    {
+        $this->authorizeRoles(['admin']);
+        
+        $usuario = User::findOrFail($id);
+        
+        $rules = [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'telefono' => 'nullable|string|max:20',
+        ];
+        
+        // Solo validar contraseña si se proporciona Y no está vacía
+        if ($request->filled('password') && !empty(trim($request->password))) {
+            $rules['password'] = 'required|string|min:8';
+        }
+        
+        $request->validate($rules);
+        
+        $datos = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'telefono' => $request->telefono,
+        ];
+        
+        // Solo actualizar contraseña si se proporciona y no está vacía
+        if ($request->filled('password') && !empty(trim($request->password))) {
+            $datos['password'] = Hash::make($request->password);
+        }
+        
+        $usuario->update($datos);
+        
+        return redirect()->route('admin.usuarios.index')
+                    ->with('success', 'Usuario actualizado exitosamente');
     }
 
     // ==================== LÓGICA DE SEMANA DE FERIA ====================
@@ -83,8 +162,13 @@ class AdminController extends Controller
     /**
      * Genera las opciones de semanas para los selectores
      */
-    private function generarOpcionesSemanasFeria($cantidadSemanas = 5)
+    private function generarOpcionesSemanasFeria($cantidadSemanas = null)
     {
+        // Si no se especifica cantidad, calcular todas las semanas desde el primer pedido (SOLO ADMIN)
+        if ($cantidadSemanas === null) {
+            $cantidadSemanas = $this->calcularSemanasDesdeInicio();
+        }
+        
         $opciones = [];
         
         for ($i = 0; $i < $cantidadSemanas; $i++) {
@@ -111,239 +195,269 @@ class AdminController extends Controller
         return $opciones;
     }
 
+    private function calcularSemanasDesdeInicio()
+    {
+        try {
+            // Obtener la fecha del primer pedido del sistema
+            $primerPedido = Order::oldest('created_at')->first();
+            
+            if (!$primerPedido) {
+                // Si no hay pedidos, mostrar solo la semana actual
+                return 1;
+            }
+            
+            $fechaPrimerPedido = Carbon::parse($primerPedido->created_at);
+            $fechaActual = Carbon::now();
+            
+            // Calcular la diferencia en semanas
+            $semanasTranscurridas = $fechaPrimerPedido->diffInWeeks($fechaActual);
+            
+            // Agregar 1 para incluir la semana actual + un margen de seguridad
+            $totalSemanas = $semanasTranscurridas + 2;
+            
+            // Limitar a un máximo razonable para evitar problemas de rendimiento
+            return min($totalSemanas, 52); // Máximo 1 año de semanas
+            
+        } catch (\Exception $e) {
+            Log::error('Error calculando semanas desde inicio: ' . $e->getMessage());
+            // Fallback: devolver 10 semanas
+            return 10;
+        }
+    }
+
   
-public function index()
-{
-    $this->authorizeRoles(['admin']);
-    
-    // ========== CÁLCULO DE SEMANA DE FERIA ACTUAL ==========
-    $semanaActual = $this->calcularSemanaFeria();
-    $inicioSemana = $semanaActual['inicio_ventas'];  // Domingo
-    $finSemana = $semanaActual['fin_ventas'];        // Viernes
-    $diaEntrega = $semanaActual['dia_entrega'];      // Sábado
-    
-    // ========== RESUMEN DE PEDIDOS PARA ESTA SEMANA ==========
-    
-    // Pedidos de esta semana (domingo a viernes)
-    $pedidosSemana = Order::whereBetween('created_at', [
-                        $inicioSemana->startOfDay(), 
-                        $finSemana->endOfDay()
-                    ])
-                    ->where('estado', '!=', 'expirado')
-                    ->count();
-    
-    // Pedidos pendientes/pagados (necesitan preparación)
-    $pedidosPendientesSemana = Order::whereBetween('created_at', [
+    public function index()
+    {
+        $this->authorizeRoles(['admin']);
+        
+        // ========== CÁLCULO DE SEMANA DE FERIA ACTUAL ==========
+        $semanaActual = $this->calcularSemanaFeria();
+        $inicioSemana = $semanaActual['inicio_ventas'];  // Domingo
+        $finSemana = $semanaActual['fin_ventas'];        // Viernes
+        $diaEntrega = $semanaActual['dia_entrega'];      // Sábado
+        
+        // ========== RESUMEN DE PEDIDOS PARA ESTA SEMANA ==========
+        
+        // Pedidos de esta semana (domingo a viernes)
+        $pedidosSemana = Order::whereBetween('created_at', [
+                            $inicioSemana->startOfDay(), 
+                            $finSemana->endOfDay()
+                        ])
+                        ->where('estado', '!=', 'expirado')
+                        ->count();
+        
+        // Pedidos pendientes/pagados (necesitan preparación)
+        $pedidosPendientesSemana = Order::whereBetween('created_at', [
+                                    $inicioSemana->startOfDay(), 
+                                    $finSemana->endOfDay()
+                                ])
+                                ->whereIn('estado', ['pendiente', 'pagado'])
+                                ->count();
+        
+        // Pedidos listos (necesitan ser armados por admin)
+        $pedidosListosSemana = Order::whereBetween('created_at', [
                                 $inicioSemana->startOfDay(), 
                                 $finSemana->endOfDay()
                             ])
-                            ->whereIn('estado', ['pendiente', 'pagado'])
+                            ->where('estado', 'listo')
                             ->count();
-    
-    // Pedidos listos (necesitan ser armados por admin)
-    $pedidosListosSemana = Order::whereBetween('created_at', [
-                            $inicioSemana->startOfDay(), 
-                            $finSemana->endOfDay()
-                        ])
-                        ->where('estado', 'listo')
-                        ->count();
-    
-    // Pedidos armados (listos para entrega en sábado)
-    $pedidosArmadosSemana = Order::whereBetween('created_at', [
-                            $inicioSemana->startOfDay(), 
-                            $finSemana->endOfDay()
-                        ])
-                        ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
-                        ->count();
-    
-    // Pedidos expirados de esta semana
-    $pedidosExpiradosSemana = Order::whereBetween('created_at', [
+        
+        // Pedidos armados (listos para entrega en sábado)
+        $pedidosArmadosSemana = Order::whereBetween('created_at', [
                                 $inicioSemana->startOfDay(), 
                                 $finSemana->endOfDay()
                             ])
-                            ->where('estado', 'expirado')
+                            ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
                             ->count();
-    
-    // ========== VENTAS Y ESTADÍSTICAS DE LA SEMANA ==========
-    
-    // Ventas totales de la semana (solo pedidos armados = completados)
-    $ventasSemanaActual = Order::whereBetween('created_at', [
-                            $inicioSemana->startOfDay(), 
-                            $finSemana->endOfDay()
-                        ])
-                        ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
-                        ->sum('total');
-    
-    // Ventas potenciales (todos los pedidos no cancelados ni expirados)
-    $ventasPotencialesSemana = Order::whereBetween('created_at', [
+        
+        // Pedidos expirados de esta semana
+        $pedidosExpiradosSemana = Order::whereBetween('created_at', [
+                                    $inicioSemana->startOfDay(), 
+                                    $finSemana->endOfDay()
+                                ])
+                                ->where('estado', 'expirado')
+                                ->count();
+        
+        // ========== VENTAS Y ESTADÍSTICAS DE LA SEMANA ==========
+        
+        // Ventas totales de la semana (solo pedidos armados = completados)
+        $ventasSemanaActual = Order::whereBetween('created_at', [
+                                $inicioSemana->startOfDay(), 
+                                $finSemana->endOfDay()
+                            ])
+                            ->whereIn('estado', ['armado', 'en_entrega', 'entregado'])
+                            ->sum('total');
+        
+        // Ventas potenciales (todos los pedidos no cancelados ni expirados)
+        $ventasPotencialesSemana = Order::whereBetween('created_at', [
+                                    $inicioSemana->startOfDay(), 
+                                    $finSemana->endOfDay()
+                                ])
+                                ->whereNotIn('estado', ['cancelado', 'expirado'])
+                                ->sum('total');
+        
+        // Agricultores activos esta semana (con ventas)
+        $agricultoresActivosSemana = User::where('role', 'agricultor')
+                                    ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
+                                        $query->whereBetween('created_at', [
+                                            $inicioSemana->startOfDay(), 
+                                            $finSemana->endOfDay()
+                                        ])
+                                        ->whereNotIn('estado', ['cancelado', 'expirado']);
+                                    })
+                                    ->count();
+        
+        // Productos vendidos esta semana (cantidad total)
+        $productosVendidosSemana = \App\Models\OrderItem::whereHas('order', function($query) use ($inicioSemana, $finSemana) {
+                                        $query->whereBetween('created_at', [
+                                            $inicioSemana->startOfDay(), 
+                                            $finSemana->endOfDay()
+                                        ])
+                                        ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
+                                    })
+                                    ->sum('cantidad');
+        
+        // Clientes únicos esta semana
+        $clientesUnicosSemana = Order::whereBetween('created_at', [
                                 $inicioSemana->startOfDay(), 
                                 $finSemana->endOfDay()
                             ])
                             ->whereNotIn('estado', ['cancelado', 'expirado'])
-                            ->sum('total');
-    
-    // Agricultores activos esta semana (con ventas)
-    $agricultoresActivosSemana = User::where('role', 'agricultor')
-                                   ->whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                                       $query->whereBetween('created_at', [
-                                           $inicioSemana->startOfDay(), 
-                                           $finSemana->endOfDay()
-                                       ])
-                                       ->whereNotIn('estado', ['cancelado', 'expirado']);
-                                   })
-                                   ->count();
-    
-    // Productos vendidos esta semana (cantidad total)
-    $productosVendidosSemana = \App\Models\OrderItem::whereHas('order', function($query) use ($inicioSemana, $finSemana) {
-                                    $query->whereBetween('created_at', [
-                                        $inicioSemana->startOfDay(), 
-                                        $finSemana->endOfDay()
-                                    ])
-                                    ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
-                                })
-                                ->sum('cantidad');
-    
-    // Clientes únicos esta semana
-    $clientesUnicosSemana = Order::whereBetween('created_at', [
-                            $inicioSemana->startOfDay(), 
-                            $finSemana->endOfDay()
-                        ])
-                        ->whereNotIn('estado', ['cancelado', 'expirado'])
-                        ->distinct('user_id')
-                        ->count('user_id');
-    
-    // ========== RESUMEN GLOBALES DEL SISTEMA ==========
-    
-    // Pedidos globales (todos los tiempos, excluyendo expirados)
-    $totalPedidosGlobal = Order::where('estado', '!=', 'expirado')->count();
-    
-    // Ventas globales (solo pedidos completados)
-    $totalVentasGlobal = Order::whereIn('estado', ['armado', 'en_entrega', 'entregado'])->sum('total');
-    
-    // Total de agricultores en el sistema
-    $totalAgricultores = User::where('role', 'agricultor')->count();
-    
-    // Total de productos en el catálogo
-    $totalProductos = Product::count();
-    
-    // Total de clientes registrados
-    $totalClientes = User::where('role', 'cliente')->count();
-    
-    // Promedio de venta por pedido (global)
-    $promedioVentaPorPedido = $totalPedidosGlobal > 0 ? $totalVentasGlobal / $totalPedidosGlobal : 0;
-    
-    // ========== ESTADÍSTICAS ADICIONALES ==========
-    
-    // Tasa de conversión de la semana (armados vs total)
-    $tasaConversionSemana = $pedidosSemana > 0 ? ($pedidosArmadosSemana / $pedidosSemana) * 100 : 0;
-    
-    // Valor promedio por pedido esta semana
-    $promedioVentaSemana = $pedidosArmadosSemana > 0 ? $ventasSemanaActual / $pedidosArmadosSemana : 0;
-    
-    // Top categoría de la semana
-    $topCategoriaSemana = \App\Models\Categoria::whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
-                            $query->whereBetween('created_at', [
-                                $inicioSemana->startOfDay(), 
-                                $finSemana->endOfDay()
-                            ])
-                            ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
-                        })
-                        ->withCount(['productos as items_vendidos' => function($query) use ($inicioSemana, $finSemana) {
-                            $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
-                                $subQuery->whereBetween('created_at', [
+                            ->distinct('user_id')
+                            ->count('user_id');
+        
+        // ========== RESUMEN GLOBALES DEL SISTEMA ==========
+        
+        // Pedidos globales (todos los tiempos, excluyendo expirados)
+        $totalPedidosGlobal = Order::where('estado', '!=', 'expirado')->count();
+        
+        // Ventas globales (solo pedidos completados)
+        $totalVentasGlobal = Order::whereIn('estado', ['armado', 'en_entrega', 'entregado'])->sum('total');
+        
+        // Total de agricultores en el sistema
+        $totalAgricultores = User::where('role', 'agricultor')->count();
+        
+        // Total de productos en el catálogo
+        $totalProductos = Product::count();
+        
+        // Total de clientes registrados
+        $totalClientes = User::where('role', 'cliente')->count();
+        
+        // Promedio de venta por pedido (global)
+        $promedioVentaPorPedido = $totalPedidosGlobal > 0 ? $totalVentasGlobal / $totalPedidosGlobal : 0;
+        
+        // ========== ESTADÍSTICAS ADICIONALES ==========
+        
+        // Tasa de conversión de la semana (armados vs total)
+        $tasaConversionSemana = $pedidosSemana > 0 ? ($pedidosArmadosSemana / $pedidosSemana) * 100 : 0;
+        
+        // Valor promedio por pedido esta semana
+        $promedioVentaSemana = $pedidosArmadosSemana > 0 ? $ventasSemanaActual / $pedidosArmadosSemana : 0;
+        
+        // Top categoría de la semana
+        $topCategoriaSemana = \App\Models\Categoria::whereHas('productos.orderItems.order', function($query) use ($inicioSemana, $finSemana) {
+                                $query->whereBetween('created_at', [
                                     $inicioSemana->startOfDay(), 
                                     $finSemana->endOfDay()
                                 ])
                                 ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
-                            });
-                        }])
-                        ->orderByDesc('items_vendidos')
-                        ->first();
-    
-    // ========== CONFIGURACIONES DEL SISTEMA ==========
-    $totalZonas = Zone::count();
-    $totalCategorias = Categoria::count();
-    $totalMedidas = Medida::count();
-    $totalMercados = Mercado::count();
-    
-    // ========== ALERTAS Y NOTIFICACIONES ==========
-    
-    // Pedidos que necesitan atención inmediata
-    $pedidosUrgentes = Order::where('estado', 'listo')
-                       ->whereBetween('created_at', [
-                           $inicioSemana->startOfDay(), 
-                           $finSemana->endOfDay()
-                       ])
-                       ->count();
-    
-    // Productos con stock bajo (menos de 5 unidades)
-    $productosStockBajo = Product::where('cantidad_disponible', '<', 5)
-                                ->where('cantidad_disponible', '>', 0)
-                                ->count();
-    
-    // Productos sin stock
-    $productosSinStock = Product::where('cantidad_disponible', 0)->count();
-    
-    // ========== VARIABLES DE COMPATIBILIDAD ==========
-    // ESTAS SON LAS QUE FALTABAN Y CAUSABAN EL ERROR
-    $pedidosHoy = $pedidosSemana;           // Cambiado a semana
-    $pedidosPendientes = $pedidosPendientesSemana;
-    $pedidosListos = $pedidosListosSemana;
-    $pedidosArmados = $pedidosArmadosSemana;
-    $ventasSemana = $ventasSemanaActual;
-    $agricultoresActivos = $agricultoresActivosSemana;
-    
-    return view('admin.dashboard', compact(
-        // Información de la semana de feria
-        'inicioSemana',
-        'finSemana',
-        'diaEntrega',
+                            })
+                            ->withCount(['productos as items_vendidos' => function($query) use ($inicioSemana, $finSemana) {
+                                $query->whereHas('orderItems.order', function($subQuery) use ($inicioSemana, $finSemana) {
+                                    $subQuery->whereBetween('created_at', [
+                                        $inicioSemana->startOfDay(), 
+                                        $finSemana->endOfDay()
+                                    ])
+                                    ->whereIn('estado', ['armado', 'en_entrega', 'entregado']);
+                                });
+                            }])
+                            ->orderByDesc('items_vendidos')
+                            ->first();
         
-        // Resumen de pedidos para esta semana
-        'pedidosSemana',
-        'pedidosPendientesSemana', 
-        'pedidosListosSemana',
-        'pedidosArmadosSemana',
-        'pedidosExpiradosSemana',
+        // ========== CONFIGURACIONES DEL SISTEMA ==========
+        $totalZonas = Zone::count();
+        $totalCategorias = Categoria::count();
+        $totalMedidas = Medida::count();
+        $totalMercados = Mercado::count();
         
-        // Ventas y estadísticas de la semana
-        'ventasSemanaActual',
-        'ventasPotencialesSemana',
-        'agricultoresActivosSemana',
-        'productosVendidosSemana',
-        'clientesUnicosSemana',
-        'tasaConversionSemana',
-        'promedioVentaSemana',
-        'topCategoriaSemana',
+        // ========== ALERTAS Y NOTIFICACIONES ==========
         
-        // Totales globales del sistema
-        'totalPedidosGlobal',
-        'totalVentasGlobal',
-        'totalAgricultores',
-        'totalProductos',
-        'totalClientes',
-        'promedioVentaPorPedido',
+        // Pedidos que necesitan atención inmediata
+        $pedidosUrgentes = Order::where('estado', 'listo')
+                        ->whereBetween('created_at', [
+                            $inicioSemana->startOfDay(), 
+                            $finSemana->endOfDay()
+                        ])
+                        ->count();
         
-        // Configuraciones del sistema
-        'totalZonas',
-        'totalCategorias',
-        'totalMedidas',
-        'totalMercados',
+        // Productos con stock bajo (menos de 5 unidades)
+        $productosStockBajo = Product::where('cantidad_disponible', '<', 5)
+                                    ->where('cantidad_disponible', '>', 0)
+                                    ->count();
         
-        // Alertas y notificaciones
-        'pedidosUrgentes',
-        'productosStockBajo',
-        'productosSinStock',
+        // Productos sin stock
+        $productosSinStock = Product::where('cantidad_disponible', 0)->count();
         
-        // Variables compatibles con vista actual
-        'pedidosHoy',
-        'pedidosPendientes',
-        'pedidosListos',
-        'pedidosArmados',
-        'ventasSemana',
-        'agricultoresActivos'
-    ));
-}
+        // ========== VARIABLES DE COMPATIBILIDAD ==========
+        // ESTAS SON LAS QUE FALTABAN Y CAUSABAN EL ERROR
+        $pedidosHoy = $pedidosSemana;           // Cambiado a semana
+        $pedidosPendientes = $pedidosPendientesSemana;
+        $pedidosListos = $pedidosListosSemana;
+        $pedidosArmados = $pedidosArmadosSemana;
+        $ventasSemana = $ventasSemanaActual;
+        $agricultoresActivos = $agricultoresActivosSemana;
+        
+        return view('admin.dashboard', compact(
+            // Información de la semana de feria
+            'inicioSemana',
+            'finSemana',
+            'diaEntrega',
+            
+            // Resumen de pedidos para esta semana
+            'pedidosSemana',
+            'pedidosPendientesSemana', 
+            'pedidosListosSemana',
+            'pedidosArmadosSemana',
+            'pedidosExpiradosSemana',
+            
+            // Ventas y estadísticas de la semana
+            'ventasSemanaActual',
+            'ventasPotencialesSemana',
+            'agricultoresActivosSemana',
+            'productosVendidosSemana',
+            'clientesUnicosSemana',
+            'tasaConversionSemana',
+            'promedioVentaSemana',
+            'topCategoriaSemana',
+            
+            // Totales globales del sistema
+            'totalPedidosGlobal',
+            'totalVentasGlobal',
+            'totalAgricultores',
+            'totalProductos',
+            'totalClientes',
+            'promedioVentaPorPedido',
+            
+            // Configuraciones del sistema
+            'totalZonas',
+            'totalCategorias',
+            'totalMedidas',
+            'totalMercados',
+            
+            // Alertas y notificaciones
+            'pedidosUrgentes',
+            'productosStockBajo',
+            'productosSinStock',
+            
+            // Variables compatibles con vista actual
+            'pedidosHoy',
+            'pedidosPendientes',
+            'pedidosListos',
+            'pedidosArmados',
+            'ventasSemana',
+            'agricultoresActivos'
+        ));
+    }
 
     // ==================== GESTIÓN DE PEDIDOS ====================
     

@@ -42,9 +42,6 @@ Route::get('/auth-check', function () {
     return response()->json(['authenticated' => Auth::check()]);
 })->name('auth.check');
 
-//Login y Register para Agricultor
-Route::get('/agricultor/register', [AgricultorRegisterController::class, 'showRegistrationForm'])->name('agricultor.register');
-Route::post('/agricultor/register', [AgricultorRegisterController::class, 'register'])->name('agricultor.register.submit');
 
 
 // Listado público de ferias
@@ -61,7 +58,6 @@ Auth::routes();
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/repartidor', [RepartidorController::class, 'index'])->name('repartidor.dashboard');
-    Route::get('/agricultor', [AgricultorController::class, 'index'])->name('agricultor.dashboard');
     Route::get('/cliente', [ClienteController::class, 'index'])->name('cliente.dashboard');
 });
 
@@ -202,11 +198,33 @@ Route::middleware(['auth'])->group(function () {
     
     Route::post('/repartidor/pedido/{id}/proceso', [RepartidorController::class, 'marcarEnProceso'])
         ->name('repartidor.pedido.proceso');
+
+    // Reporte de pagos a repartidores
+    Route::get('/admin/pagos/repartidores', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'reportePagosRepartidores'])
+        ->name('admin.pagos.repartidores');
+
+    // Detalle de repartidor con filtro de semanas
+    Route::get('/admin/repartidores/{repartidor}/detalle', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'detalle'])
+        ->name('admin.repartidores.detalle');
+
+    // También puedes agregar un enlace en el dashboard de admin para acceder fácilmente
+    Route::get('/admin/pagos/exportar-repartidores', [App\Http\Controllers\Admin\AdminRepartidorController::class, 'exportarPagosRepartidores'])
+        ->name('admin.pagos.exportar-repartidores');
 });
 
 //Rutas Admin - Agregar esto en web.php después de las rutas existentes
 
 Route::middleware(['auth'])->group(function () {
+    
+    Route::get('/admin/usuarios', [App\Http\Controllers\Admin\AdminController::class, 'usuarios'])
+        ->name('admin.usuarios.index');
+    Route::get('/admin/usuarios/crear', [App\Http\Controllers\Admin\AdminController::class, 'crearUsuario'])
+        ->name('admin.usuarios.crear');
+    Route::post('/admin/usuarios', [App\Http\Controllers\Admin\AdminController::class, 'guardarUsuario'])
+        ->name('admin.usuarios.guardar');
+    
+    Route::put('/admin/usuarios/{usuario}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarUsuario'])
+    ->name('admin.usuarios.actualizar');
     // Admin Dashboard y gestión
     Route::get('/admin', [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('admin.dashboard');
     
