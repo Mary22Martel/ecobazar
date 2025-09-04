@@ -26,7 +26,7 @@ class LoginController extends Controller
             case 'repartidor':
                 return '/repartidor'; // Redirige al dashboard del repartidor
             case 'agricultor':
-                return '/agricultor'; // Redirige al dashboard del agricultor
+                return '/agricultor/dashboard'; // Redirige al dashboard del agricultor
             case 'cliente':
                 return '/tienda'; // Redirige a la página de inicio para clientes
             default:
