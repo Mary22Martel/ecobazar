@@ -40,40 +40,6 @@
                     @enderror
                 </div>
 
-                <!-- Símbolo -->
-                <div>
-                    <label for="simbolo" class="block text-sm font-semibold text-gray-700 mb-2">
-                        🔤 Símbolo (opcional)
-                    </label>
-                    <input type="text" 
-                           id="simbolo" 
-                           name="simbolo" 
-                           value="{{ old('simbolo', $medida->simbolo) }}"
-                           placeholder="Ej: kg, und, L, m..."
-                           maxlength="10"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors @error('simbolo') border-red-500 @enderror">
-                    @error('simbolo')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                    <p class="text-sm text-gray-500 mt-1">Abreviación que aparecerá junto al precio (máximo 10 caracteres)</p>
-                </div>
-
-                <!-- Descripción -->
-                <div>
-                    <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
-                        📝 Descripción (opcional)
-                    </label>
-                    <textarea id="description" 
-                              name="description" 
-                              rows="3"
-                              placeholder="Describe el uso de esta medida..."
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors @error('description') border-red-500 @enderror">{{ old('description', $medida->description) }}</textarea>
-                    @error('description')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                    <p class="text-sm text-gray-500 mt-1">Información adicional sobre cuándo usar esta medida</p>
-                </div>
-
                 <!-- Estado activo -->
                 <div>
                     <label class="flex items-center space-x-3">
