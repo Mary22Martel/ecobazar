@@ -132,16 +132,22 @@
             </div>
         </div>
 
-        <!-- Descripción -->
+        <!-- Descripción mejorada con valor predeterminado -->
         <div>
             <label for="descripcion" class="block text-base sm:text-lg font-semibold text-gray-700 mb-2">
                 📝 Descripción
             </label>
             <textarea name="descripcion" id="descripcion" rows="4" 
-                      placeholder="Cuéntanos sobre tu producto: frescura, calidad, origen, etc..." 
+                      placeholder="Escribe una descripción personalizada o usa la descripción predeterminada..." 
                       class="block w-full p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-green-400 focus:border-green-400 text-base resize-none" 
-                      required>{{ old('descripcion') }}</textarea>
-            <p class="text-xs sm:text-sm text-gray-500 mt-1">Describe tu producto para atraer más clientes</p>
+                      required>{{ old('descripcion') ?: '🌱 Cultivado con dedicación para brindarte frescura y sabor excepcional' }}</textarea>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-2 space-y-2 sm:space-y-0">
+                <p class="text-xs sm:text-sm text-gray-500">Personaliza la descripción o deja el mensaje predeterminado</p>
+                <button type="button" onclick="resetDescription()" 
+                        class="text-xs text-green-600 hover:text-green-700 font-medium underline">
+                    🔄 Restaurar mensaje predeterminado
+                </button>
+            </div>
         </div>
 
         <!-- Imagen del Producto mejorada -->
@@ -215,28 +221,42 @@
         </div>
     </form>
 
-    <!-- Instrucciones adicionales -->
-    <div class="mt-6 sm:mt-8 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 sm:p-6">
-        <h3 class="text-base font-bold text-green-800 mb-3 flex items-center">
-            <span class="mr-2">💡</span> Consejos para una buena foto
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm sm:text-base text-green-700">
-            <div class="flex items-start space-x-2">
-                <span class="text-green-600">•</span>
-                <span>Usa buena iluminación natural</span>
+    <!-- Instrucciones adicionales mejoradas -->
+    <div class="mt-6 sm:mt-8 space-y-4">
+        <!-- Consejos para fotos -->
+        <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 sm:p-6">
+            <h3 class="text-base font-bold text-green-800 mb-3 flex items-center">
+                <span class="mr-2">💡</span> Consejos para una buena foto
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm sm:text-base text-green-700">
+                <div class="flex items-start space-x-2">
+                    <span class="text-green-600">•</span>
+                    <span>Usa buena iluminación natural</span>
+                </div>
+                <div class="flex items-start space-x-2">
+                    <span class="text-green-600">•</span>
+                    <span>Enfoca bien el producto</span>
+                </div>
+                <div class="flex items-start space-x-2">
+                    <span class="text-green-600">•</span>
+                    <span>Muestra el producto completo</span>
+                </div>
+                <div class="flex items-start space-x-2">
+                    <span class="text-green-600">•</span>
+                    <span>Fondo limpio y sin distracciones</span>
+                </div>
             </div>
-            <div class="flex items-start space-x-2">
-                <span class="text-green-600">•</span>
-                <span>Enfoca bien el producto</span>
-            </div>
-            <div class="flex items-start space-x-2">
-                <span class="text-green-600">•</span>
-                <span>Muestra el producto completo</span>
-            </div>
-            <div class="flex items-start space-x-2">
-                <span class="text-green-600">•</span>
-                <span>Fondo limpio y sin distracciones</span>
-            </div>
+        </div>
+
+        <!-- Tip sobre la descripción -->
+        <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 sm:p-6">
+            <h3 class="text-base font-bold text-blue-800 mb-2 flex items-center">
+                <span class="mr-2">✏️</span> Sobre la descripción
+            </h3>
+            <p class="text-sm sm:text-base text-blue-700">
+                Hemos incluido una descripción predeterminada que funciona para cualquier producto. 
+                Puedes personalizarla completamente o dejarla como está. ¡Una buena descripción ayuda a vender más!
+            </p>
         </div>
     </div>
 </div>
@@ -246,6 +266,15 @@
     let video = null;
     let canvas = null;
     let context = null;
+
+    // Descripción predeterminada
+    const defaultDescription = '🌱 Cultivado con dedicación para brindarte frescura y sabor excepcional';
+
+    function resetDescription() {
+        const descripcionField = document.getElementById('descripcion');
+        descripcionField.value = defaultDescription;
+        descripcionField.focus();
+    }
 
     function openCamera() {
         video = document.getElementById('video');
@@ -404,6 +433,14 @@
     // Limpiar recursos al salir de la página
     window.addEventListener('beforeunload', function() {
         closeCamera();
+    });
+
+    // Inicializar con descripción predeterminada si el campo está vacío al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        const descripcionField = document.getElementById('descripcion');
+        if (!descripcionField.value.trim() || descripcionField.value === descripcionField.placeholder) {
+            descripcionField.value = defaultDescription;
+        }
     });
 </script>
 

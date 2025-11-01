@@ -192,6 +192,6 @@ class Order extends Model
         $zona = Zone::find($zonaId);
         if (!$zona) return $query->whereRaw('1 = 0');
         
-        return $query->where('distrito', $zona->name); // 👈 Usar 'distrito', no zone_id
+        return $query->where('distrito', $zona->name); 
     }
 }
