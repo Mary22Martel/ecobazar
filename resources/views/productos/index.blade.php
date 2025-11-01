@@ -12,7 +12,8 @@
                         🥕 <span class="ml-2">TUS PRODUCTOS</span>
                     </h1>
                     <p class="text-green-100 text-sm sm:text-base lg:text-lg">
-                        {{ $productos->count() }} productos en tu catálogo
+                        {{ $productos->count() }} productos en tu catálogo 
+                        ({{ $productos->where('activo', true)->count() }} activos)
                     </p>
                 </div>
                 <!-- Botón agregar desktop -->
@@ -25,7 +26,7 @@
             </div>
         </div>
 
-        <!-- RECORDATORIO SEMANAL - NUEVO -->
+        <!-- RECORDATORIO SEMANAL -->
         <div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-lg p-4 shadow-sm">
             <div class="flex items-start space-x-3">
                 <div class="flex-shrink-0">
@@ -39,6 +40,7 @@
                     <h3 class="text-sm font-medium text-amber-800 mb-1">💡 Recordatorio Semanal</h3>
                     <p class="text-sm text-amber-700 leading-relaxed">
                         <strong>¡Recuerda actualizar tu stock!</strong> 
+                        Usa el botón de activar/desactivar para productos que no tengas disponibles esta semana.
                     </p>
                     <div class="mt-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-md inline-block">
                         📅 Se recomienda actualizar cada domingo o lunes
@@ -64,7 +66,7 @@
         </div>
 
         @if($productos->isEmpty())
-            <!-- Estado vacío optimizado -->
+            <!-- Estado vacío -->
             <div class="bg-white border-2 border-dashed border-green-200 rounded-2xl p-6 sm:p-12 text-center shadow-lg">
                 <div class="max-w-md mx-auto">
                     <div class="text-4xl sm:text-6xl mb-4 animate-bounce">🛒</div>
@@ -82,7 +84,7 @@
                 </div>
             </div>
         @else
-            <!-- Botón flotante para agregar en móvil (colores suavizados) -->
+            <!-- Botón flotante para agregar en móvil -->
             <div class="block sm:hidden mb-4">
                 <a href="{{ route('productos.create') }}" 
                    class="w-full bg-gradient-to-r from-green-400 to-green-500 text-white px-4 py-3 rounded-xl font-bold text-center block hover:from-green-500 hover:to-green-600 transition-all shadow-md hover:shadow-lg transform active:scale-95 text-lg">
@@ -93,18 +95,23 @@
             <!-- Vista móvil optimizada -->
             <div class="block lg:hidden space-y-4">
                 @foreach($productos as $producto)
-                <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow">
+                <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow {{ !$producto->activo ? 'opacity-60' : '' }}">
                     <div class="p-4">
                         <!-- Header del producto -->
                         <div class="flex items-start space-x-3 mb-3">
-                            <div class="flex-shrink-0">
+                            <div class="flex-shrink-0 relative">
                                 @if($producto->imagen)
                                     <img src="{{ asset('storage/' . $producto->imagen) }}" 
                                          alt="{{ $producto->nombre }}" 
-                                         class="w-16 h-16 object-cover rounded-xl shadow-md">
+                                         class="w-16 h-16 object-cover rounded-xl shadow-md {{ !$producto->activo ? 'grayscale' : '' }}">
                                 @else
                                     <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-inner">
                                         <span class="text-2xl">🥬</span>
+                                    </div>
+                                @endif
+                                @if(!$producto->activo)
+                                    <div class="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                        OFF
                                     </div>
                                 @endif
                             </div>
@@ -132,39 +139,64 @@
                             </div>
                         </div>
 
-                        <!-- Acciones con iconos minimalistas -->
-                        <div class="flex space-x-2">
-                            <a href="{{ route('productos.edit', $producto) }}" 
-                               class="flex-1 bg-orange-400 text-white px-3 py-2.5 rounded-xl hover:from-amber-500 hover:to-orange-500 transition-all text-center text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95 flex items-center justify-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                                Editar
-                            </a>
-                            <form action="{{ route('productos.destroy', $producto) }}" method="POST" class="flex-1">
+                        <!-- Botón Toggle + Acciones -->
+                        <div class="space-y-2">
+                            <!-- Toggle Activo/Inactivo -->
+                            <form action="{{ route('productos.toggleActivo', $producto) }}" method="POST">
                                 @csrf
-                                @method('DELETE')
+                                @method('PATCH')
                                 <button type="submit" 
-                                        class="w-full bg-red-500 text-white px-3 py-2.5 rounded-xl hover:from-red-500 hover:to-red-600 transition-all text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95 flex items-center justify-center" 
-                                        onclick="return confirm('¿Eliminar {{ $producto->nombre }}?');">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                    Eliminar
+                                        class="w-full {{ $producto->activo ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500' }} text-white px-3 py-2.5 rounded-xl transition-all text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95 flex items-center justify-center">
+                                    @if($producto->activo)
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        ✓ Visible en Tienda
+                                    @else
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                        </svg>
+                                        Oculto - Activar
+                                    @endif
                                 </button>
                             </form>
+
+                            <!-- Botones Editar/Eliminar -->
+                            <div class="flex space-x-2">
+                                <a href="{{ route('productos.edit', $producto) }}" 
+                                   class="flex-1 bg-orange-400 text-white px-3 py-2.5 rounded-xl hover:bg-orange-500 transition-all text-center text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95 flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                    Editar
+                                </a>
+                                <form action="{{ route('productos.destroy', $producto) }}" method="POST" class="flex-1">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="w-full bg-red-500 text-white px-3 py-2.5 rounded-xl hover:bg-red-600 transition-all text-sm font-bold shadow-md hover:shadow-lg transform active:scale-95 flex items-center justify-center" 
+                                            onclick="return confirm('¿Eliminar {{ $producto->nombre }}?');">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
                 @endforeach
             </div>
 
-            <!-- Tabla para desktop (colores suavizados) -->
+            <!-- Tabla para desktop -->
             <div class="hidden lg:block bg-white rounded-2xl shadow-lg overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full">
                         <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                             <tr class="text-gray-700">
+                                <th class="py-4 px-6 font-bold text-left border-b border-gray-200">Estado</th>
                                 <th class="py-4 px-6 font-bold text-left border-b border-gray-200">Imagen</th>
                                 <th class="py-4 px-6 font-bold text-left border-b border-gray-200">Producto</th>
                                 <th class="py-4 px-6 font-bold text-left border-b border-gray-200">Categoría</th>
@@ -175,12 +207,33 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @foreach($productos as $producto)
-                            <tr class="hover:bg-green-50 transition-colors">
+                            <tr class="hover:bg-green-50 transition-colors {{ !$producto->activo ? 'opacity-60' : '' }}">
+                                <td class="py-4 px-6">
+                                    <form action="{{ route('productos.toggleActivo', $producto) }}" method="POST">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" 
+                                                class="{{ $producto->activo ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500' }} text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm hover:shadow-md flex items-center">
+                                            @if($producto->activo)
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                Activo
+                                            @else
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                                </svg>
+                                                Inactivo
+                                            @endif
+                                        </button>
+                                    </form>
+                                </td>
                                 <td class="py-4 px-6">
                                     @if($producto->imagen)
                                         <img src="{{ asset('storage/' . $producto->imagen) }}" 
                                              alt="{{ $producto->nombre }}" 
-                                             class="w-16 h-16 object-cover rounded-xl shadow-md">
+                                             class="w-16 h-16 object-cover rounded-xl shadow-md {{ !$producto->activo ? 'grayscale' : '' }}">
                                     @else
                                         <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-inner">
                                             <span class="text-2xl">🥬</span>
@@ -213,7 +266,7 @@
                                 <td class="py-4 px-6">
                                     <div class="flex justify-center space-x-3">
                                         <a href="{{ route('productos.edit', $producto) }}" 
-                                           class="bg-orange-400 text-white px-4 py-2 rounded-xl hover:from-amber-500 hover:to-orange-500 transition-all text-sm font-bold shadow-md hover:shadow-lg transform hover:scale-105 flex items-center">
+                                           class="bg-orange-400 text-white px-4 py-2 rounded-xl hover:bg-orange-500 transition-all text-sm font-bold shadow-md hover:shadow-lg transform hover:scale-105 flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
@@ -223,7 +276,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" 
-                                                    class="bg-red-500 text-white px-4 py-2 rounded-xl hover:from-red-500 hover:to-red-600 transition-all text-sm font-bold shadow-md hover:shadow-lg transform hover:scale-105 flex items-center" 
+                                                    class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-all text-sm font-bold shadow-md hover:shadow-lg transform hover:scale-105 flex items-center" 
                                                     onclick="return confirm('¿Eliminar {{ $producto->nombre }}?');">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -240,22 +293,26 @@
                 </div>
             </div>
 
-            <!-- Resumen inferior con colores suavizados -->
+            <!-- Resumen inferior -->
             <div class="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 sm:p-6 shadow-md">
                 <h3 class="text-lg sm:text-xl font-bold text-green-700 mb-4 flex items-center">
                     <span class="mr-3 text-xl">📊</span> 
                     <span>Resumen de tu catálogo</span>
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div class="text-center bg-white rounded-xl p-4 shadow-md">
                         <div class="text-2xl sm:text-3xl font-bold text-green-500 mb-1">{{ $productos->count() }}</div>
                         <div class="text-sm text-green-600 font-medium">Productos totales</div>
                     </div>
                     <div class="text-center bg-white rounded-xl p-4 shadow-md">
+                        <div class="text-2xl sm:text-3xl font-bold text-emerald-500 mb-1">{{ $productos->where('activo', true)->count() }}</div>
+                        <div class="text-sm text-emerald-600 font-medium">Productos activos</div>
+                    </div>
+                    <div class="text-center bg-white rounded-xl p-4 shadow-md">
                         <div class="text-2xl sm:text-3xl font-bold text-blue-500 mb-1">{{ $productos->groupBy('categoria_id')->count() }}</div>
                         <div class="text-sm text-blue-600 font-medium">Categorías diferentes</div>
                     </div>
-                    <div class="text-center bg-white rounded-xl p-4 shadow-md sm:col-span-1">
+                    <div class="text-center bg-white rounded-xl p-4 shadow-md">
                         <div class="text-2xl sm:text-3xl font-bold text-purple-500 mb-1">{{ $productos->sum('cantidad_disponible') }}</div>
                         <div class="text-sm text-purple-600 font-medium">Total disponible</div>
                     </div>
