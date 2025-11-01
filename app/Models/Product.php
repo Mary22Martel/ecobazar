@@ -20,7 +20,8 @@ class Product extends Model
         'precio',
         'cantidad_disponible',
         'imagen',
-        'categoria_id'
+        'categoria_id',
+        'activo'
     ];
 
     protected $casts = [
@@ -44,12 +45,12 @@ class Product extends Model
         return $this->belongsTo(Medida::class, 'medida_id');
     }
 
-    public function canastas()
-    {
-        return $this->belongsToMany(Canasta::class, 'canasta_producto', 'producto_id', 'canasta_id')
-                    ->withPivot('cantidad')
-                    ->withTimestamps();
-    }
+    // public function canastas()
+    // {
+    //     return $this->belongsToMany(Canasta::class, 'canasta_producto', 'producto_id', 'canasta_id')
+    //                 ->withPivot('cantidad')
+    //                 ->withTimestamps();
+    // }
 
     public function user()
     {
