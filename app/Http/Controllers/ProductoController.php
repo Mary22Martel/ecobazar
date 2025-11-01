@@ -16,80 +16,87 @@ use Illuminate\Support\Facades\Log;
 class ProductoController extends Controller
 {
     public function __construct()
-{
-    $this->middleware('auth')->except([
-        'tienda',
-        'buscarProductos',
-        'show',
-        'filtrarPorCategoria',
-        'filtrarPorPrecio',
-        'buscar',
-        'filtrarPorProductor'
-    ]);
-}
-
-public function buscarProductos(Request $request)
-{
-    $query = $request->input('q');
-    
-    if (!$query) {
-        // Si no hay búsqueda, mostrar página vacía
-        $productos = collect();
-    } else {
-        // Realiza la búsqueda
-        $productos = Product::with(['medida', 'user', 'categoria'])
-            ->where('cantidad_disponible', '>', 0) // Solo productos disponibles
-            ->where(function($q) use ($query) {
-                $q->where('nombre', 'like', '%' . $query . '%')
-                  ->orWhere('descripcion', 'like', '%' . $query . '%');
-            })
-            ->orderBy('nombre', 'asc')
-            ->get();
+    {
+        $this->middleware('auth')->except([
+            'tienda',
+            'buscarProductos',
+            'show',
+            'filtrarPorCategoria',
+            'filtrarPorPrecio',
+            'buscar',
+            'filtrarPorProductor'
+        ]);
     }
 
-    // Obtener categorías y productores para posibles filtros adicionales
-    $categorias = Categoria::all();
-    $productores = User::whereHas('productos')->get();
-
-    return view('buscar-productos', compact('productos', 'categorias', 'productores'));
-}
-
-public function buscarProductosAjax(Request $request)
-{
-    try {
+    // ==================== BÚSQUEDA DE PRODUCTOS ====================
+    
+    public function buscarProductos(Request $request)
+    {
         $query = $request->input('q');
         
-        if (!$query || strlen($query) < 2) {
-            return response()->json([]);
+        if (!$query) {
+            // Si no hay búsqueda, mostrar página vacía
+            $productos = collect();
+        } else {
+            // ⭐ CAMBIO: Agregado ->where('activo', true)
+            $productos = Product::with(['medida', 'user', 'categoria'])
+                ->where('cantidad_disponible', '>', 0) // Solo productos disponibles
+                ->where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+                ->where(function($q) use ($query) {
+                    $q->where('nombre', 'like', '%' . $query . '%')
+                      ->orWhere('descripcion', 'like', '%' . $query . '%');
+                })
+                ->orderBy('nombre', 'asc')
+                ->get();
         }
 
-        $productos = Product::with(['medida', 'user']) // Cargar relaciones
-            ->where('cantidad_disponible', '>', 0) // Solo productos disponibles
-            ->where(function($q) use ($query) {
-                $q->where('nombre', 'like', '%' . $query . '%')
-                  ->orWhere('descripcion', 'like', '%' . $query . '%');
-            })
-            ->limit(10) // Limitar resultados para performance
-            ->get()
-            ->map(function($producto) {
-                return [
-                    'id' => $producto->id,
-                    'nombre' => $producto->nombre,
-                    'precio' => $producto->precio,
-                    'cantidad_disponible' => $producto->cantidad_disponible,
-                    'imagen' => $producto->imagen,
-                    'medida' => $producto->medida ? $producto->medida->nombre : null,
-                    'agricultor' => $producto->user ? $producto->user->name : null
-                ];
-            });
+        // Obtener categorías y productores para posibles filtros adicionales
+        $categorias = Categoria::all();
+        $productores = User::whereHas('productos')->get();
 
-        return response()->json($productos);
-        
-    } catch (\Exception $e) {
-        Log::error('Error en búsqueda AJAX: ' . $e->getMessage());
-        return response()->json([], 500);
+        return view('buscar-productos', compact('productos', 'categorias', 'productores'));
     }
-}
+
+    public function buscarProductosAjax(Request $request)
+    {
+        try {
+            $query = $request->input('q');
+            
+            if (!$query || strlen($query) < 2) {
+                return response()->json([]);
+            }
+
+            // ⭐ CAMBIO: Agregado ->where('activo', true)
+            $productos = Product::with(['medida', 'user'])
+                ->where('cantidad_disponible', '>', 0)
+                ->where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+                ->where(function($q) use ($query) {
+                    $q->where('nombre', 'like', '%' . $query . '%')
+                      ->orWhere('descripcion', 'like', '%' . $query . '%');
+                })
+                ->limit(10)
+                ->get()
+                ->map(function($producto) {
+                    return [
+                        'id' => $producto->id,
+                        'nombre' => $producto->nombre,
+                        'precio' => $producto->precio,
+                        'cantidad_disponible' => $producto->cantidad_disponible,
+                        'imagen' => $producto->imagen,
+                        'medida' => $producto->medida ? $producto->medida->nombre : null,
+                        'agricultor' => $producto->user ? $producto->user->name : null
+                    ];
+                });
+
+            return response()->json($productos);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en búsqueda AJAX: ' . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
+    
+    // ==================== MOSTRAR PRODUCTO INDIVIDUAL ====================
     
     public function show($id)
     {
@@ -97,15 +104,18 @@ public function buscarProductosAjax(Request $request)
         return view('productos.show', compact('producto'));
     }
     
+    // ==================== TIENDA POR MERCADO ====================
+    
     public function tiendaPorMercado(Mercado $mercado)
     {
         // 1) Guardamos en sesión el mercado que el usuario está visitando
         session(['mercado_actual' => $mercado->id]);
 
-        // 2) Traemos sólo los productos cuyos autores (users) pertenezcan a este mercado
-        $productos = Product::whereHas('user', function($q) use ($mercado) {
-            $q->where('mercado_id', $mercado->id);
-        })->paginate(12);
+        // ⭐ CAMBIO: Agregado ->where('activo', true)
+        $productos = Product::where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+            ->whereHas('user', function($q) use ($mercado) {
+                $q->where('mercado_id', $mercado->id);
+            })->paginate(12);
 
         // 3) Cargamos todas las categorías para el sidebar
         $categorias = Categoria::all();
@@ -122,6 +132,7 @@ public function buscarProductosAjax(Request $request)
         ));
     }
 
+    // ==================== GESTIÓN DE PRODUCTOS (AGRICULTOR) ====================
 
     // Función para autorizar roles
     private function authorizeRoles($roles)
@@ -131,13 +142,13 @@ public function buscarProductosAjax(Request $request)
         }
     }
 
-    // Mostrar los productos del agricultor
+    // Mostrar los productos del agricultor (NO FILTRAR, ver todos sus productos)
     public function index()
     {
         // Autorizar solo a agricultores
         $this->authorizeRoles(['agricultor']);
 
-        // Solo mostramos los productos del agricultor autenticado
+        // ⭐ NO FILTRAMOS AQUÍ - El agricultor debe ver TODOS sus productos (activos e inactivos)
         $productos = Product::where('user_id', Auth::id())->get();
 
         return view('productos.index', compact('productos'));
@@ -162,37 +173,38 @@ public function buscarProductosAjax(Request $request)
         // Autorizar solo a agricultores
         $this->authorizeRoles(['agricultor']); 
 
-    // Validación de los datos
-    $request->validate([
-        'nombre' => 'required|string|max:255',
-        'medida_id' => 'required|exists:medidas,id',
-        'descripcion' => 'nullable|string',
-        'precio' => 'required|numeric',
-        'cantidad_disponible' => 'required|integer',
-        'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        'categoria_id' => 'required|exists:categorias,id'
-    ]);
+        // Validación de los datos
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'medida_id' => 'required|exists:medidas,id',
+            'descripcion' => 'nullable|string',
+            'precio' => 'required|numeric',
+            'cantidad_disponible' => 'required|integer',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'categoria_id' => 'required|exists:categorias,id'
+        ]);
 
-    // Subir la imagen
-    $imagePath = null;
-    if ($request->hasFile('imagen')) {
-        $imagePath = $request->file('imagen')->store('productos', 'public');
+        // Subir la imagen
+        $imagePath = null;
+        if ($request->hasFile('imagen')) {
+            $imagePath = $request->file('imagen')->store('productos', 'public');
+        }
+
+        // Crear el producto (por defecto activo = true)
+        Product::create([
+            'user_id' => auth()->id(),
+            'nombre' => $request->nombre,
+            'medida_id' => $request->medida_id,
+            'descripcion' => $request->descripcion,
+            'precio' => $request->precio,
+            'cantidad_disponible' => $request->cantidad_disponible,
+            'imagen' => $imagePath,
+            'categoria_id' => $request->categoria_id,
+            'activo' => true // ⭐ Por defecto se crea activo
+        ]);
+
+        return redirect()->route('productos.index')->with('success', 'Producto creado con éxito.');
     }
-
-    // Crear el producto con todos los datos, incluyendo categoria_id y medida_id
-    Product::create([
-        'user_id' => auth()->id(),
-        'nombre' => $request->nombre,
-        'medida_id' => $request->medida_id,  // Asegúrate de incluir medida_id
-        'descripcion' => $request->descripcion,
-        'precio' => $request->precio,
-        'cantidad_disponible' => $request->cantidad_disponible,
-        'imagen' => $imagePath,
-        'categoria_id' => $request->categoria_id  // Asegúrate de incluir categoria_id
-    ]);
-
-    return redirect()->route('productos.index')->with('success', 'Producto creado con éxito.');
-}
 
     // Mostrar formulario de edición de producto
     public function edit(Product $producto)
@@ -239,7 +251,6 @@ public function buscarProductosAjax(Request $request)
     
         return redirect()->route('productos.index')->with('success', 'Producto actualizado exitosamente.');
     }
-    
 
     // Eliminar un producto
     public function destroy(Product $producto)
@@ -258,108 +269,134 @@ public function buscarProductosAjax(Request $request)
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
     }
 
-    // Método para mostrar los productos filtrados por categoría
-    public function filtrarPorCategoria(Categoria $categoria)
-{
-    // Obtener productos que pertenecen a la categoría seleccionada
-    $productos = Product::where('categoria_id', $categoria->id)->get();
+    // ⭐ NUEVO: Toggle Activo/Inactivo
+    public function toggleActivo(Product $producto)
+    {
+        // Autorizar solo a agricultores
+        $this->authorizeRoles(['agricultor']);
 
-    // Obtener todas las categorías para el sidebar
-    $categorias = Categoria::all();
+        // Verificar que el producto pertenezca al agricultor autenticado
+        if ($producto->user_id != Auth::id()) {
+            abort(403, 'No tienes permiso para modificar este producto.');
+        }
 
-    // Obtener todos los productores que tienen productos
-    $productores = User::whereHas('productos')->get();
+        // Cambiar el estado
+        $producto->activo = !$producto->activo;
+        $producto->save();
 
-    // ⭐ AGREGAR LÓGICA DEL PEDIDO ACTIVO
-    $pedidoActivo = null;
-    if (Auth::check()) {
-        $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
-        $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
-        
-        $pedidoActivo = Order::where('user_id', Auth::id())
-            ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
-            ->whereBetween('created_at', [$inicioSemana, $finSemana])
-            ->orderBy('created_at', 'desc')
-            ->first();
+        $mensaje = $producto->activo 
+            ? "✅ Producto '{$producto->nombre}' ACTIVADO - Visible en tienda" 
+            : "⏸️ Producto '{$producto->nombre}' DESACTIVADO - Oculto en tienda";
+
+        return redirect()->back()->with('success', $mensaje);
     }
 
-    // ⭐ AGREGAR $pedidoActivo al compact()
-    return view('tienda', compact('productos', 'categorias', 'productores', 'categoria', 'pedidoActivo'));
-}
-    
+    // ==================== TIENDA PÚBLICA ====================
+
+    // Método para mostrar los productos filtrados por categoría
+    public function filtrarPorCategoria(Categoria $categoria)
+    {
+        // ⭐ CAMBIO: Agregado ->where('activo', true)
+        $productos = Product::where('categoria_id', $categoria->id)
+            ->where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+            ->get();
+
+        // Obtener todas las categorías para el sidebar
+        $categorias = Categoria::all();
+
+        // Obtener todos los productores que tienen productos
+        $productores = User::whereHas('productos')->get();
+
+        // Lógica del pedido activo
+        $pedidoActivo = null;
+        if (Auth::check()) {
+            $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
+            $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
+            
+            $pedidoActivo = Order::where('user_id', Auth::id())
+                ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
+                ->whereBetween('created_at', [$inicioSemana, $finSemana])
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+
+        return view('tienda', compact('productos', 'categorias', 'productores', 'categoria', 'pedidoActivo'));
+    }
 
     // El método index para mostrar todos los productos y categorías
     public function tienda()
-{
-    // Obtener todos los productos disponibles con la URL de la imagen completa
-    $productos = Product::all()->map(function ($producto) {
-        $producto->imagen_url = $producto->imagen ? asset('storage/productos/' . $producto->imagen) : asset('images/default-product.png');
-        return $producto;
-    });
-    $categorias = Categoria::all();
-    $productores = User::whereHas('productos')->get();
+    {
+        // ⭐ CAMBIO IMPORTANTE: Agregado ->where('activo', true)
+        $productos = Product::where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+            ->get()
+            ->map(function ($producto) {
+                $producto->imagen_url = $producto->imagen ? asset('storage/productos/' . $producto->imagen) : asset('images/default-product.png');
+                return $producto;
+            });
+            
+        $categorias = Categoria::all();
+        $productores = User::whereHas('productos')->get();
 
-    // ⭐ NUEVA LÓGICA PARA EL MODAL - SOLO SEMANA ACTUAL
-    $pedidoActivo = null;
-    if (Auth::check()) {
-        Log::info("🔍 Usuario autenticado: " . Auth::id());
-        
-        // 🗓️ CALCULAR SEMANA ACTUAL (lunes a domingo, la feria es el sábado)
-        $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek(); // Lunes 00:00
-        $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek(); // Domingo 23:59
-        
-        Log::info("📅 Modal semana actual - Inicio: {$inicioSemana}, Fin: {$finSemana}");
-        
-        // 🔍 BUSCAR TODOS LOS PEDIDOS DEL USUARIO PARA DEBUGGING
-        $todosPedidos = Order::where('user_id', Auth::id())->get();
-        Log::info("📦 Total pedidos del usuario: " . $todosPedidos->count());
-        
-        foreach ($todosPedidos as $pedido) {
-            Log::info("   - Pedido #{$pedido->id}: Estado = {$pedido->estado}, Fecha = {$pedido->created_at}");
-        }
-        
-        // 📦 BUSCAR PEDIDOS SOLO DE LA SEMANA ACTUAL (INCLUYENDO 'entregado')
-        $pedidoActivo = Order::where('user_id', Auth::id())
-            ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado']) // ⭐ AGREGADO 'entregado'
-            ->whereBetween('created_at', [$inicioSemana, $finSemana]) // 🎯 SOLO ESTA SEMANA
-            ->orderBy('created_at', 'desc')
-            ->first();
+        // Lógica para el modal - solo semana actual
+        $pedidoActivo = null;
+        if (Auth::check()) {
+            Log::info("🔍 Usuario autenticado: " . Auth::id());
             
-        if ($pedidoActivo) {
-            Log::info("✅ Pedido encontrado para modal: #{$pedidoActivo->id} - Estado: {$pedidoActivo->estado}");
-        } else {
-            Log::info("❌ No hay pedidos activos para la semana actual");
+            $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
+            $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
             
-            // 🔍 DEBUGGING ADICIONAL: Verificar si hay pedidos en los estados correctos
-            $pedidosEstados = Order::where('user_id', Auth::id())
+            Log::info("📅 Modal semana actual - Inicio: {$inicioSemana}, Fin: {$finSemana}");
+            
+            $todosPedidos = Order::where('user_id', Auth::id())->get();
+            Log::info("📦 Total pedidos del usuario: " . $todosPedidos->count());
+            
+            foreach ($todosPedidos as $pedido) {
+                Log::info("   - Pedido #{$pedido->id}: Estado = {$pedido->estado}, Fecha = {$pedido->created_at}");
+            }
+            
+            $pedidoActivo = Order::where('user_id', Auth::id())
                 ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
-                ->get();
-            
-            Log::info("🔍 Pedidos en estados correctos (cualquier fecha): " . $pedidosEstados->count());
-            
-            $pedidosSemana = Order::where('user_id', Auth::id())
                 ->whereBetween('created_at', [$inicioSemana, $finSemana])
-                ->get();
-            
-            Log::info("🔍 Pedidos de esta semana (cualquier estado): " . $pedidosSemana->count());
+                ->orderBy('created_at', 'desc')
+                ->first();
+                
+            if ($pedidoActivo) {
+                Log::info("✅ Pedido encontrado para modal: #{$pedidoActivo->id} - Estado: {$pedidoActivo->estado}");
+            } else {
+                Log::info("❌ No hay pedidos activos para la semana actual");
+                
+                $pedidosEstados = Order::where('user_id', Auth::id())
+                    ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
+                    ->get();
+                
+                Log::info("🔍 Pedidos en estados correctos (cualquier fecha): " . $pedidosEstados->count());
+                
+                $pedidosSemana = Order::where('user_id', Auth::id())
+                    ->whereBetween('created_at', [$inicioSemana, $finSemana])
+                    ->get();
+                
+                Log::info("🔍 Pedidos de esta semana (cualquier estado): " . $pedidosSemana->count());
+            }
+        } else {
+            Log::info("❌ Usuario NO autenticado");
         }
-    } else {
-        Log::info("❌ Usuario NO autenticado");
+
+        return view('tienda', compact('productos', 'categorias', 'productores', 'pedidoActivo'));
     }
 
-    return view('tienda', compact('productos', 'categorias', 'productores', 'pedidoActivo'));
-}
-
-    //Buscar
+    // Buscar
     public function buscar(Request $request)
     {
         // Obtener el término de búsqueda
         $query = $request->input('query');
 
-        // Buscar productos que coincidan con el nombre o la descripción
-        $productos = Product::where('nombre', 'LIKE', "%$query%")
-                            ->orWhere('descripcion', 'LIKE', "%$query%")
-                            ->get();
+        // ⭐ CAMBIO: Agregado ->where('activo', true)
+        $productos = Product::where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+            ->where(function($q) use ($query) {
+                $q->where('nombre', 'LIKE', "%$query%")
+                  ->orWhere('descripcion', 'LIKE', "%$query%");
+            })
+            ->get();
 
         // Obtener todas las categorías para mostrar en el sidebar
         $categorias = Categoria::all();
@@ -374,61 +411,59 @@ public function buscarProductosAjax(Request $request)
         $min_price = $request->input('min_price', 1);
         $max_price = $request->input('max_price', 1500);
 
-        // Filtrar productos según el rango de precios
-        $productos = Product::whereBetween('precio', [$min_price, $max_price])->get();
+        // ⭐ CAMBIO: Agregado ->where('activo', true)
+        $productos = Product::where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+            ->whereBetween('precio', [$min_price, $max_price])
+            ->get();
 
         // Retornar la vista con los productos filtrados
         return view('productos.index', compact('productos'));
     }
 
-   public function filtrarPorProductor($idProductor)
-{
-    // Obtener los productos del productor específico
-    $productos = Product::where('user_id', $idProductor)->get();
+    public function filtrarPorProductor($idProductor)
+    {
+        // ⭐ CAMBIO: Agregado ->where('activo', true)
+        $productos = Product::where('user_id', $idProductor)
+            ->where('activo', true) // ⭐ SOLO PRODUCTOS ACTIVOS
+            ->get();
 
-    // Obtener todas las categorías para el sidebar
-    $categorias = Categoria::all();
+        // Obtener todas las categorías para el sidebar
+        $categorias = Categoria::all();
 
-    // Obtener todos los productores con productos
-    $productores = User::whereHas('productos')->get();
+        // Obtener todos los productores con productos
+        $productores = User::whereHas('productos')->get();
 
-    // ⭐ AGREGAR LÓGICA DEL PEDIDO ACTIVO (IGUAL QUE EN TIENDA)
-    $pedidoActivo = null;
-    if (Auth::check()) {
-        Log::info("🔍 Usuario autenticado: " . Auth::id());
-        
-        // 🗓️ CALCULAR SEMANA ACTUAL (lunes a domingo, la feria es el sábado)
-        $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek(); // Lunes 00:00
-        $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek(); // Domingo 23:59
-        
-        Log::info("📅 Modal semana actual - Inicio: {$inicioSemana}, Fin: {$finSemana}");
-        
-        // 📦 BUSCAR PEDIDOS SOLO DE LA SEMANA ACTUAL (INCLUYENDO 'entregado')
-        $pedidoActivo = Order::where('user_id', Auth::id())
-            ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
-            ->whereBetween('created_at', [$inicioSemana, $finSemana])
-            ->orderBy('created_at', 'desc')
-            ->first();
+        // Lógica del pedido activo (igual que en tienda)
+        $pedidoActivo = null;
+        if (Auth::check()) {
+            Log::info("🔍 Usuario autenticado: " . Auth::id());
             
-        if ($pedidoActivo) {
-            Log::info("✅ Pedido encontrado para modal: #{$pedidoActivo->id} - Estado: {$pedidoActivo->estado}");
+            $inicioSemana = \Carbon\Carbon::now('America/Lima')->startOfWeek();
+            $finSemana = \Carbon\Carbon::now('America/Lima')->endOfWeek();
+            
+            Log::info("📅 Modal semana actual - Inicio: {$inicioSemana}, Fin: {$finSemana}");
+            
+            $pedidoActivo = Order::where('user_id', Auth::id())
+                ->whereIn('estado', ['pagado', 'listo', 'armado', 'en_entrega', 'entregado'])
+                ->whereBetween('created_at', [$inicioSemana, $finSemana])
+                ->orderBy('created_at', 'desc')
+                ->first();
+                
+            if ($pedidoActivo) {
+                Log::info("✅ Pedido encontrado para modal: #{$pedidoActivo->id} - Estado: {$pedidoActivo->estado}");
+            } else {
+                Log::info("❌ No hay pedidos activos para la semana actual");
+            }
         } else {
-            Log::info("❌ No hay pedidos activos para la semana actual");
+            Log::info("❌ Usuario NO autenticado");
         }
-    } else {
-        Log::info("❌ Usuario NO autenticado");
-    }
 
-    // ⭐ IMPORTANTE: Agregar $pedidoActivo al compact()
-    return view('tienda', compact('productos', 'categorias', 'productores', 'pedidoActivo'));
-}
+        return view('tienda', compact('productos', 'categorias', 'productores', 'pedidoActivo'));
+    }
 
     public function listadoMercados()
     {
         $mercados = Mercado::all();
         return view('mercados.index', compact('mercados'));
     }
-
-   
-
 }
