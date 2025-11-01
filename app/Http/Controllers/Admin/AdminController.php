@@ -1452,15 +1452,11 @@ class AdminController extends Controller
         $this->authorizeRoles(['admin']);
         
         $request->validate([
-            'nombre' => 'required|string|max:255|unique:medidas,nombre',
-            'simbolo' => 'nullable|string|max:10',
-            'description' => 'nullable|string|max:500'
+            'nombre' => 'required|string|max:255|unique:medidas,nombre'
         ]);
         
         \App\Models\Medida::create([
             'nombre' => $request->nombre,
-            'simbolo' => $request->simbolo,
-            'description' => $request->description,
             'active' => $request->has('active') ? 1 : 0
         ]);
         
@@ -1483,15 +1479,11 @@ class AdminController extends Controller
         $medida = \App\Models\Medida::findOrFail($id);
         
         $request->validate([
-            'nombre' => 'required|string|max:255|unique:medidas,nombre,' . $id,
-            'simbolo' => 'nullable|string|max:10',
-            'description' => 'nullable|string|max:500'
+            'nombre' => 'required|string|max:255|unique:medidas,nombre,' . $id
         ]);
         
         $medida->update([
             'nombre' => $request->nombre,
-            'simbolo' => $request->simbolo,
-            'description' => $request->description,
             'active' => $request->has('active') ? 1 : 0
         ]);
         
