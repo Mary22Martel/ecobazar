@@ -183,6 +183,17 @@
                                             <span class="sm:hidden">Entregas</span>
                                         </a>
                                     @endif
+                                    
+                                    <button 
+                                        onclick="confirmarEliminacion('{{ $usuario->id }}', '{{ $usuario->name }}', '{{ $usuario->role }}')"
+                                        class="inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        <span class="hidden sm:inline">Eliminar</span>
+                                        <span class="sm:hidden">Borrar</span>
+                                    </button>
+
                                 </div>
                             </div>
                         </div>
@@ -265,6 +276,97 @@
     </div>
 </div>
 
+<!-- Modal de Edición -->
+<div id="modalEditar" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-4">
+    <div class="flex items-center justify-center min-h-full">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="p-4 md:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="modalTitleEditar" class="text-lg font-medium text-gray-900">Editar Usuario</h3>
+                    <button onclick="cerrarModalEditar()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form id="formEditar" method="POST">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                            <input type="text" id="editName" name="name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                            <input type="text" id="editTelefono" name="telefono" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Opcional">
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
+                        <button type="button" onclick="cerrarModalEditar()" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400">
+                            Cancelar
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Eliminación -->
+<div id="modalEliminar" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-4">
+    <div class="flex items-center justify-center min-h-full">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div class="p-4 md:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Confirmar Eliminación</h3>
+                    <button onclick="cerrarModalEliminar()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    
+                    <p id="textoEliminar" class="text-center text-gray-700 mb-2 font-medium"></p>
+                    <p id="advertenciaEliminar" class="text-center text-sm text-gray-600"></p>
+                </div>
+                
+                <form id="formEliminar" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    
+                    <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                        <button type="button" onclick="cerrarModalEliminar()" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400">
+                            Cancelar
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">
+                            Sí, Eliminar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Filtros
 document.addEventListener('DOMContentLoaded', function() {
@@ -314,10 +416,44 @@ function cerrarModalEditar() {
     document.body.style.overflow = '';
 }
 
+
+
+// Modal de eliminación
+function confirmarEliminacion(id, nombre, role) {
+    const roleTexto = {
+        'agricultor': 'agricultor',
+        'repartidor': 'repartidor',
+        'cliente': 'cliente'
+    };
+    
+    const advertencias = {
+        'agricultor': 'Se eliminarán todos sus productos y registros asociados.',
+        'repartidor': 'Se reasignarán sus entregas pendientes al sistema.',
+        'cliente': 'Se eliminarán sus pedidos completados del historial.'
+    };
+    
+    document.getElementById('textoEliminar').textContent = `¿Estás seguro de eliminar a ${nombre} (${roleTexto[role]})?`;
+    document.getElementById('advertenciaEliminar').textContent = advertencias[role] || 'Esta acción no se puede deshacer.';
+    document.getElementById('formEliminar').action = '{{ route("admin.usuarios.eliminar", ":id") }}'.replace(':id', id);
+    
+    document.getElementById('modalEliminar').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalEliminar() {
+    document.getElementById('modalEliminar').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
 // Cerrar modal al hacer clic fuera
 document.getElementById('modalEditar').addEventListener('click', function(e) {
     if (e.target === this) {
         cerrarModalEditar();
+    }
+});
+document.getElementById('modalEliminar').addEventListener('click', function(e) {
+    if (e.target === this) {
+        cerrarModalEliminar();
     }
 });
 </script>

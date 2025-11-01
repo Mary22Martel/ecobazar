@@ -225,6 +225,8 @@ Route::middleware(['auth'])->group(function () {
     
     Route::put('/admin/usuarios/{usuario}', [App\Http\Controllers\Admin\AdminController::class, 'actualizarUsuario'])
     ->name('admin.usuarios.actualizar');
+    Route::delete('/admin/usuarios/{usuario}', [App\Http\Controllers\Admin\AdminController::class, 'eliminarUsuario'])
+    ->name('admin.usuarios.eliminar');
     // Admin Dashboard y gestión
     Route::get('/admin', [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('admin.dashboard');
     

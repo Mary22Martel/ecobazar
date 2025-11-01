@@ -51,6 +51,18 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::deleting(function($user) {
+            // Esto se ejecutará automáticamente al eliminar
+            if ($user->role === 'agricultor') {
+                $user->productos()->delete();
+            }
+        });
+    }
     public function productos()
     {
         return $this->hasMany(Product::class, 'user_id');
