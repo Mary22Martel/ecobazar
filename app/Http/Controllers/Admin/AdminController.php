@@ -10,11 +10,14 @@ use App\Models\Categoria;
 use App\Models\Zone;
 use App\Models\Mercado;
 use App\Models\Medida;
+use App\Models\Carito;
+use App\Models\CarritoItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -1781,26 +1784,151 @@ public function pedidosRecojoPuesto(Request $request)
     ));
 }
 
-public function productosStockBajo()
+    public function productosStockBajo()
+    {
+        $this->authorizeRoles(['admin']);
+        
+        // Productos sin stock
+        $productosSinStock = Product::with(['user', 'categoria', 'medida'])
+                                ->where('cantidad_disponible', 0)
+                                ->orderBy('nombre')
+                                ->get();
+        
+        // Productos con stock bajo (menos de 5)
+        $productosStockBajo = Product::with(['user', 'categoria', 'medida'])
+                                    ->where('cantidad_disponible', '>', 0)
+                                    ->where('cantidad_disponible', '<', 5)
+                                    ->orderBy('cantidad_disponible')
+                                    ->get();
+        
+        return view('admin.productos.stock-bajo', compact(
+            'productosSinStock',
+            'productosStockBajo'
+        ));
+    }
+
+    public function eliminarUsuario($id)
 {
     $this->authorizeRoles(['admin']);
     
-    // Productos sin stock
-    $productosSinStock = Product::with(['user', 'categoria', 'medida'])
-                               ->where('cantidad_disponible', 0)
-                               ->orderBy('nombre')
-                               ->get();
-    
-    // Productos con stock bajo (menos de 5)
-    $productosStockBajo = Product::with(['user', 'categoria', 'medida'])
-                                ->where('cantidad_disponible', '>', 0)
-                                ->where('cantidad_disponible', '<', 5)
-                                ->orderBy('cantidad_disponible')
-                                ->get();
-    
-    return view('admin.productos.stock-bajo', compact(
-        'productosSinStock',
-        'productosStockBajo'
-    ));
+    try {
+        $usuario = User::findOrFail($id);
+        
+        // Verificar que no sea el admin actual
+        if ($usuario->id === Auth::id()) {
+            return back()->with('error', 'No puedes eliminar tu propia cuenta');
+        }
+        
+        // Verificar que no sea admin
+        if ($usuario->role === 'admin') {
+            return back()->with('error', 'No se puede eliminar usuarios administradores');
+        }
+        
+        DB::beginTransaction();
+        
+        try {
+            // Si es agricultor, eliminar sus productos y relaciones
+            if ($usuario->role === 'agricultor') {
+                
+                // Verificar si tiene pedidos activos (no expirados ni cancelados)
+                $pedidosActivos = \App\Models\OrderItem::whereHas('product', function($query) use ($usuario) {
+                    $query->where('user_id', $usuario->id);
+                })
+                ->whereHas('order', function($query) {
+                    $query->whereIn('estado', ['pendiente', 'pagado', 'listo', 'armado', 'en_entrega']);
+                })
+                ->exists();
+                
+                if ($pedidosActivos) {
+                    DB::rollBack();
+                    return back()->with('error', 'No se puede eliminar este agricultor porque tiene pedidos activos. Espera a que se completen o cancelen.');
+                }
+                
+                // Eliminar items de pedidos antiguos (expirados/cancelados)
+                \App\Models\OrderItem::whereHas('product', function($query) use ($usuario) {
+                    $query->where('user_id', $usuario->id);
+                })->delete();
+                
+                // Eliminar items del carrito
+                \App\Models\CarritoItem::whereHas('product', function($query) use ($usuario) {
+                    $query->where('user_id', $usuario->id);
+                })->delete();
+                
+                // Eliminar productos del agricultor
+                \App\Models\Product::where('user_id', $usuario->id)->delete();
+                
+                Log::info("Eliminados productos del agricultor: {$usuario->name} (ID: {$usuario->id})");
+            }
+            
+            // Si es repartidor, verificar entregas activas
+            if ($usuario->role === 'repartidor') {
+                $entregasActivas = \App\Models\Order::where('repartidor_id', $usuario->id)
+                    ->whereIn('estado', ['en_entrega'])
+                    ->exists();
+                
+                if ($entregasActivas) {
+                    DB::rollBack();
+                    return back()->with('error', 'No se puede eliminar este repartidor porque tiene entregas en proceso');
+                }
+                
+                // Reasignar pedidos antiguos al repartidor del sistema
+                $repartidorSistema = User::where('email', 'sistema.repartidor@puntoVerde.com')
+                                       ->where('role', 'repartidor')
+                                       ->first();
+                
+                if ($repartidorSistema) {
+                    \App\Models\Order::where('repartidor_id', $usuario->id)
+                        ->update(['repartidor_id' => $repartidorSistema->id]);
+                }
+                
+                // Eliminar asignaciones de zonas
+                DB::table('repartidor_zone')->where('repartidor_id', $usuario->id)->delete();
+                
+                Log::info("Reasignados pedidos del repartidor: {$usuario->name} (ID: {$usuario->id})");
+            }
+            
+            // Si es cliente, verificar pedidos activos
+            if ($usuario->role === 'cliente') {
+                $pedidosActivos = \App\Models\Order::where('user_id', $usuario->id)
+                    ->whereIn('estado', ['pendiente', 'pagado', 'listo', 'armado', 'en_entrega'])
+                    ->exists();
+                
+                if ($pedidosActivos) {
+                    DB::rollBack();
+                    return back()->with('error', 'No se puede eliminar este cliente porque tiene pedidos activos');
+                }
+                
+                // Eliminar carrito del cliente
+                \App\Models\CarritoItem::where('cart_id', function($query) use ($usuario) {
+                    $query->select('id')
+                          ->from('carts')
+                          ->where('user_id', $usuario->id);
+                })->delete();
+
+                \App\Models\Carrito::where('user_id', $usuario->id)->delete();
+            }
+            
+            // Eliminar el usuario
+            $nombre = $usuario->name;
+            $role = $usuario->role;
+            $usuario->delete();
+            
+            DB::commit();
+            
+            Log::info("Usuario eliminado exitosamente: {$nombre} (Rol: {$role})");
+            
+            return redirect()->route('admin.usuarios.index')
+                ->with('success', "Usuario '{$nombre}' y todos sus datos relacionados fueron eliminados exitosamente");
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error en transacción de eliminación: ' . $e->getMessage());
+            throw $e;
+        }
+        
+    } catch (\Exception $e) {
+        Log::error('Error eliminando usuario: ' . $e->getMessage());
+        return back()->with('error', 'Error al eliminar usuario: ' . $e->getMessage());
+    }
 }
 }
