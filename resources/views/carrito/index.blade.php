@@ -1,4 +1,9 @@
 @extends('layouts.app')
+@php
+    use App\Helpers\HorarioHelper;
+    $tiendaAbierta = HorarioHelper::tiendaAbierta();
+    $mensajeCierre = HorarioHelper::mensajeCierre();
+@endphp
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
@@ -219,26 +224,26 @@
 
         
                     <!-- En lugar del botón normal de checkout -->
-                        @if(now('America/Lima')->dayOfWeek === 6)
-                            <!-- Botón desactivado los sábados -->
-                            <button disabled class="w-full bg-gray-400 text-gray-600 font-bold py-3 px-6 rounded-lg cursor-not-allowed flex items-center justify-center space-x-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <span>Cerrado durante la feria</span>
-                            </button>
-                            <p class="text-center text-sm text-gray-600 mt-2">
-                                Los sábados están reservados para la feria. Podrás finalizar tu compra el domingo.
-                            </p>
-                        @else
-                            <!-- Botón normal de checkout -->
-                            <a href="{{ route('checkout') }}" 
-                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                                </svg>
-                                <span>Proceder al pago</span>
-                            </a>
+                        @if($tiendaAbierta)
+                        <!-- Botón normal de checkout -->
+                        <a href="{{ route('checkout') }}" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                            </svg>
+                            <span>Proceder al pago</span>
+                        </a>
+                    @else
+                        <!-- Botón desactivado fuera de horario -->
+                        <button disabled class="w-full bg-gray-400 text-gray-600 font-bold py-3 px-6 rounded-lg cursor-not-allowed flex items-center justify-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Cerrado temporalmente</span>
+                        </button>
+                        <p class="text-center text-xs text-gray-600 mt-2">
+                            {{ strip_tags($mensajeCierre) }}
+                        </p>
                         @endif
 
                     <!-- Información adicional -->
