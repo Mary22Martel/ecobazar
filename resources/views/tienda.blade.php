@@ -180,33 +180,150 @@
             </div>
         </div>
 
-        
-        <!-- Aviso de cierre los sábados -->
-        @if(now('America/Lima')->dayOfWeek === 6)
-        <div class="container mx-auto px-4 mb-6">
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                        </svg>
+       @php
+            use App\Helpers\HorarioHelper;
+            $tiendaAbierta = HorarioHelper::tiendaAbierta();
+            $mensajeCierre = HorarioHelper::mensajeCierre();
+            $infoEntrega = HorarioHelper::infoEntrega();
+            $horarioCierre = HorarioHelper::horarioCierre();
+            $esUltimoDia = HorarioHelper::esUltimoDia();
+        @endphp
+
+        <!-- Modal Container -->
+        <div id="statusModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="modalContent">
+                
+                @if(!$tiendaAbierta)
+                    <!-- TIENDA CERRADA -->
+                    <div class="p-8">
+                        <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold text-gray-900 text-center mb-3">
+                            Tienda cerrada temporalmente
+                        </h2>
+                        
+                        <div class="text-center text-gray-600 mb-6 leading-relaxed">
+                            {!! $mensajeCierre !!}
+                        </div>
+                        
+                        <button onclick="closeModal()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors">
+                            Entendido
+                        </button>
                     </div>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium text-yellow-800">
-                            🎪 ¡Hoy es día de feria en Paucarbambilla!
-                        </h3>
-                        <p class="mt-1 text-sm text-yellow-700">
-                            Las compras en línea están <strong>cerradas los sábados</strong> porque nos encuentras en la 
-                            <strong>feria del Segundo Parque de Paucarbambilla (7am - 12pm)</strong>.  
-                            👉 Puedes venir a comprar directamente o recoger tus pedidos.  
-                            <br>
-                            <strong>Las compras online estarán disponibles nuevamente el domingo.</strong>
+                    
+                @elseif($esUltimoDia)
+                    <!-- ÚLTIMO DÍA (URGENTE) -->
+                    <div class="p-8">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        
+                        <div class="inline-block bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full mb-3 mx-auto block w-fit">
+                            ÚLTIMO DÍA
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold text-gray-900 text-center mb-3">
+                            ¡Última oportunidad para comprar!
+                        </h2>
+                        
+                        <div class="bg-gray-50 rounded-xl p-4 mb-6 space-y-3">
+                            <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-red-600 text-xs font-bold">!</span>
+                                </div>
+                                <p class="text-sm text-gray-700">
+                                    La tienda cierra <strong>{!! $horarioCierre !!}</strong>
+                                </p>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-blue-600 text-xs">📦</span>
+                                </div>
+                                <p class="text-sm text-gray-700">
+                                    Entrega: <strong>{{ $infoEntrega['texto'] }}</strong>
+                                </p>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-purple-600 text-xs">ℹ</span>
+                                </div>
+                                <p class="text-sm text-gray-700">
+                                    Después cerramos hasta el <strong>domingo</strong>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <button onclick="closeModal()" class="w-full bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 transition-colors">
+                            Comprar ahora
+                        </button>
+                    </div>
+                    
+                @else
+                    <!-- TIENDA ABIERTA -->
+                    <div class="p-8">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold text-gray-900 text-center mb-3">
+                            ¡Tienda abierta!
+                        </h2>
+                        
+                        <p class="text-center text-gray-600 mb-6">
+                            {{ $horarioCierre }}
                         </p>
+                        
+                        <div class="bg-gray-50 rounded-xl p-4 mb-6 space-y-3">
+                            <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-blue-600 text-xs">📦</span>
+                                </div>
+                                <div class="text-sm text-gray-700">
+                                    <p class="font-medium">Entrega</p>
+                                    <p>{{ $infoEntrega['texto'] }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-purple-600 text-xs">📍</span>
+                                </div>
+                                <div class="text-sm text-gray-700">
+                                    <p class="font-medium">Punto de entrega</p>
+                                    <p>Feria del Segundo Parque de Paucarbambilla</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-amber-600 text-xs">⏰</span>
+                                </div>
+                                <div class="text-sm text-gray-700">
+                                    <p class="font-medium">Horario de compras</p>
+                                    <p>Domingo a Jueves hasta las 4:00 PM</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="closeModal()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors">
+                            Comenzar a comprar
+                        </button>
                     </div>
-                </div>
+                @endif
+                
             </div>
         </div>
-        @endif
+
 
 
         <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -1101,5 +1218,44 @@ document.getElementById('pedido-status-modal')?.addEventListener('click', functi
         closeModal();
     }
 });
+
+// Mostrar modal al cargar la página
+       window.addEventListener('DOMContentLoaded', (event) => {
+        setTimeout(() => {
+            const modal = document.getElementById('statusModal');
+            const content = document.getElementById('modalContent');
+            
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 500);
+    });
+    
+    function closeModal() {
+        const modal = document.getElementById('statusModal');
+        const content = document.getElementById('modalContent');
+        
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        modal.classList.add('opacity-0');
+        
+        setTimeout(() => {
+            modal.classList.add('pointer-events-none');
+        }, 300);
+    }
+    
+    // Cerrar con tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
+    
+    // Cerrar al hacer click fuera del modal
+    document.getElementById('statusModal').addEventListener('click', (e) => {
+        if (e.target.id === 'statusModal') {
+            closeModal();
+        }
+    });
 </script>
 @endsection

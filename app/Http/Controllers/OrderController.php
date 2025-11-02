@@ -18,6 +18,7 @@ use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\Exceptions\MPApiException;
 use Exception;
 use Carbon\Carbon; 
+use App\Helpers\HorarioHelper;
 
 class OrderController extends Controller
 {
@@ -26,13 +27,11 @@ class OrderController extends Controller
     try {
         Log::info('=== INICIO CREACIÓN DE ORDEN ===');
         Log::info('Usuario ID: ' . Auth::id());
-        // VALIDACIÓN: No permitir crear órdenes los sábados
-        if (now('America/Lima')->dayOfWeek === Carbon::SATURDAY) {
+        // ⭐ VALIDACIÓN DE HORARIO
+        if (!HorarioHelper::tiendaAbierta()) {
             return response()->json([
                 'success' => false,
-                'error' => '🌱 Hoy es día de feria en el Segundo Parque de Paucarbambilla (7am - 12pm). 
-                Las compras en línea estarán disponibles nuevamente desde el domingo. 
-                👉 Puedes visitarnos en la feria para comprar o recoger tus pedidos.'
+                'error' => HorarioHelper::mensajeCierre()
             ], 400);
         }
 
