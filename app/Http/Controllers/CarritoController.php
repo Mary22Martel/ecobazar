@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Helpers\HorarioHelper;
 
 
 class CarritoController extends Controller
@@ -30,14 +31,14 @@ class CarritoController extends Controller
     /**
      * Agregar un producto al carrito con optimizaciones
      */
-    public function add(Request $request, $productId)
+   public function add(Request $request, $productId)
     {
         try {
-            if (now('America/Lima')->dayOfWeek === Carbon::SATURDAY) {
+            // ⭐ VALIDACIÓN DE HORARIO
+            if (!HorarioHelper::tiendaAbierta()) {
                 return response()->json([
                     'success' => false,
-                    'error' => '⏳ Las compras en línea están cerradas los sábados porque nos encuentras en la feria del Segundo Parque de Paucarbambilla (7am - 12pm). 
-                    Puedes acercarte a comprar directamente en la feria o volver a comprar en la tienda online desde el domingo. 🌱'
+                    'error' => HorarioHelper::mensajeCierre()
                 ], 400);
             }
 
@@ -101,7 +102,6 @@ class CarritoController extends Controller
 
             DB::commit();
 
-            // ✅ DEVOLVER JSON PARA QUE FUNCIONEN LAS ALERTAS
             return response()->json([
                 'success' => true,
                 'message' => $mensaje,
@@ -121,14 +121,6 @@ class CarritoController extends Controller
                 }),
             ]);
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            Log::error('Producto no encontrado: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'El producto solicitado no existe.'
-            ], 404);
-            
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al agregar producto al carrito: ' . $e->getMessage());
@@ -315,11 +307,12 @@ class CarritoController extends Controller
      */
     public function checkout()
     {
-        if (now('America/Lima')->dayOfWeek === Carbon::SATURDAY) {
+        // ⭐ VALIDACIÓN DE HORARIO
+        if (!HorarioHelper::tiendaAbierta()) {
             return redirect()->route('carrito.index')
-                ->with('error', '🌱 Las compras en línea están cerradas los sábados porque nos encuentras en la feria del Segundo Parque de Paucarbambilla (7am - 12pm). 
-                👉 Puedes acercarte a comprar directamente en la feria o volver a realizar tu pedido online desde el domingo.');
+                ->with('error', HorarioHelper::mensajeCierre());
         }
+
         $carrito = Carrito::where('user_id', Auth::id())
                         ->with(['items.product.user', 'items.product.categoria'])
                         ->first();
@@ -329,7 +322,7 @@ class CarritoController extends Controller
                         ->with('error', 'El carrito está vacío.');
         }
 
-        // Verificar stock de todos los productos y recopilar información detallada
+        // Verificar stock de todos los productos
         $productosConProblemas = [];
         $stockDisponible = [];
         
@@ -344,7 +337,6 @@ class CarritoController extends Controller
                 ];
             }
             
-            // Guardar stock disponible para mostrar en la vista
             $stockDisponible[$item->product->id] = $item->product->cantidad_disponible;
         }
 
