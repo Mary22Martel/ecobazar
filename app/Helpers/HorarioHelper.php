@@ -6,32 +6,41 @@ use Carbon\Carbon;
 
 class HorarioHelper
 {
+    // 🚨 MODO PRUEBA ACTIVADO - TIENDA ABIERTA TODOS LOS DÍAS 🚨
+    private static $MODE_PRUEBA = true; // ⚠️ Cambiar a false después de las pruebas
+    
     /**
      * Verifica si la tienda está abierta para realizar compras
      * 
-     * HORARIO CORRECTO:
+     * HORARIO NORMAL:
      * - ABIERTO: Domingo 00:00 hasta Jueves 15:59
      * - CERRADO: Jueves 16:00 hasta Sábado 23:59
+     * 
+     * MODO PRUEBA:
+     * - ABIERTO: Todos los días, todas las horas
      * 
      * @return bool
      */
     public static function tiendaAbierta(): bool
     {
+        // 🚨 SI ESTÁ EN MODO PRUEBA, SIEMPRE RETORNA TRUE
+        if (self::$MODE_PRUEBA) {
+            return true;
+        }
+        
+        // LÓGICA NORMAL (cuando MODE_PRUEBA = false)
         $ahora = Carbon::now('America/Lima');
-        $dia = $ahora->dayOfWeek; // 0=Domingo, 1=Lunes, ..., 4=Jueves, 5=Viernes, 6=Sábado
+        $dia = $ahora->dayOfWeek;
         $hora = $ahora->hour;
         
-        // CERRADO: Viernes (5) y Sábado (6) TODO EL DÍA
         if ($dia === Carbon::FRIDAY || $dia === Carbon::SATURDAY) {
             return false;
         }
         
-        // CERRADO: Jueves (4) desde las 4 PM (16:00) en adelante
         if ($dia === Carbon::THURSDAY && $hora >= 16) {
             return false;
         }
         
-        // ABIERTO: Domingo (0), Lunes (1), Martes (2), Miércoles (3), Jueves antes de las 4 PM
         return true;
     }
     
@@ -42,30 +51,33 @@ class HorarioHelper
      */
     public static function mensajeCierre(): string
     {
+        // En modo prueba, no hay mensaje de cierre
+        if (self::$MODE_PRUEBA) {
+            return '🧪 MODO PRUEBA ACTIVADO - La tienda está disponible para pruebas.';
+        }
+        
+        // LÓGICA NORMAL
         $ahora = Carbon::now('America/Lima');
         $dia = $ahora->dayOfWeek;
         $hora = $ahora->hour;
         
-        // Si es Jueves después de las 4 PM
         if ($dia === Carbon::THURSDAY && $hora >= 16) {
             return '⏰ Las compras se cerraron hoy jueves a las 4:00 PM para que los agricultores preparen y cosechen los pedidos frescos para la feria del sábado. 
                     👉 Podrás volver a comprar el <strong>domingo a partir de las 12:00 AM</strong>. 🌱';
         }
         
-        // Si es Viernes
         if ($dia === Carbon::FRIDAY) {
             return '📦 Los viernes la tienda está cerrada porque los agricultores están preparando todos los pedidos para la feria del sábado. 
                     👉 Podrás volver a comprar el <strong>domingo</strong>. 🌱';
         }
         
-        // Si es Sábado
         if ($dia === Carbon::SATURDAY) {
             return '🎪 ¡Hoy es día de feria en Paucarbambilla! 
                     La tienda está cerrada porque estamos en la <strong>feria del Segundo Parque de Paucarbambilla (7am - 12pm)</strong>. 
                     👉 Puedes acercarte a comprar directamente o volver a comprar online el <strong>domingo</strong>. 🌱';
         }
         
-        return ''; // No debería llegar aquí si tiendaAbierta() funciona correctamente
+        return '';
     }
     
     /**
@@ -76,20 +88,24 @@ class HorarioHelper
     public static function proximaApertura(): Carbon
     {
         $ahora = Carbon::now('America/Lima');
+        
+        // En modo prueba, ya está abierto
+        if (self::$MODE_PRUEBA) {
+            return $ahora;
+        }
+        
+        // LÓGICA NORMAL
         $dia = $ahora->dayOfWeek;
         $hora = $ahora->hour;
         
-        // Si estamos en horario cerrado (Jueves 4PM en adelante, Viernes o Sábado)
         if (($dia === Carbon::THURSDAY && $hora >= 16) || 
             $dia === Carbon::FRIDAY || 
             $dia === Carbon::SATURDAY) {
             
-            // La próxima apertura es el domingo a las 00:00
             $proximaApertura = $ahora->copy()->next(Carbon::SUNDAY)->startOfDay();
             return $proximaApertura;
         }
         
-        // Si estamos en horario abierto, ya está abierto
         return $ahora;
     }
     
@@ -107,23 +123,18 @@ class HorarioHelper
         // Determinar el próximo sábado de entrega
         $proximoSabado = $ahora->copy()->next(Carbon::SATURDAY);
         
-        // Si ya pasó el jueves 4 PM, la entrega es del SIGUIENTE sábado
         if ($dia === Carbon::THURSDAY && $hora >= 16) {
             $proximoSabado = $ahora->copy()->next(Carbon::SATURDAY);
         }
         
-        // Si es viernes, la entrega es del sábado de mañana
         if ($dia === Carbon::FRIDAY) {
             $proximoSabado = $ahora->copy()->next(Carbon::SATURDAY);
         }
         
-        // Si es sábado, la entrega es ESTE sábado (hoy)
         if ($dia === Carbon::SATURDAY) {
             $proximoSabado = $ahora->copy();
         }
         
-        // Si es domingo/lunes/martes/miércoles o jueves antes de 4 PM, 
-        // la entrega es del próximo sábado
         if ($dia >= Carbon::SUNDAY && $dia <= Carbon::WEDNESDAY) {
             $proximoSabado = $ahora->copy()->next(Carbon::SATURDAY);
         }
@@ -135,7 +146,7 @@ class HorarioHelper
         return [
             'fecha' => $proximoSabado,
             'texto' => $proximoSabado->locale('es')->isoFormat('dddd D [de] MMMM'),
-            'dias_faltantes' => (int) $ahora->diffInDays($proximoSabado, false) // Convertido a entero
+            'dias_faltantes' => (int) $ahora->diffInDays($proximoSabado, false)
         ];
     }
     
@@ -146,13 +157,18 @@ class HorarioHelper
      */
     public static function horarioCierre(): string
     {
+        // En modo prueba, mostrar mensaje especial
+        if (self::$MODE_PRUEBA) {
+            return "🧪 MODO PRUEBA - Sin restricciones de horario";
+        }
+        
+        // LÓGICA NORMAL
         $ahora = Carbon::now('America/Lima');
         $dia = $ahora->dayOfWeek;
         
-        // Si es domingo a miércoles, mostrar cuánto falta para el jueves 4 PM
         if ($dia >= Carbon::SUNDAY && $dia <= Carbon::WEDNESDAY) {
             $proximoJueves = $ahora->copy()->next(Carbon::THURSDAY)->setTime(16, 0, 0);
-            $diasFaltantes = (int) $ahora->diffInDays($proximoJueves, false); // CONVERTIDO A ENTERO
+            $diasFaltantes = (int) $ahora->diffInDays($proximoJueves, false);
             
             if ($diasFaltantes > 1) {
                 return "Cierre de pedidos: Jueves a las 4:00 PM (en {$diasFaltantes} días)";
@@ -164,7 +180,6 @@ class HorarioHelper
             }
         }
         
-        // Si es jueves antes de las 4 PM
         if ($dia === Carbon::THURSDAY && $ahora->hour < 16) {
             $cierreHoy = $ahora->copy()->setTime(16, 0, 0);
             $horasFaltantes = (int) $ahora->diffInHours($cierreHoy);
@@ -187,7 +202,23 @@ class HorarioHelper
      */
     public static function esUltimoDia(): bool
     {
+        // En modo prueba, nunca es último día
+        if (self::$MODE_PRUEBA) {
+            return false;
+        }
+        
+        // LÓGICA NORMAL
         $ahora = Carbon::now('America/Lima');
         return $ahora->dayOfWeek === Carbon::THURSDAY && $ahora->hour < 16;
+    }
+    
+    /**
+     * Verifica si el modo prueba está activo
+     * 
+     * @return bool
+     */
+    public static function isModoPrueba(): bool
+    {
+        return self::$MODE_PRUEBA;
     }
 }
