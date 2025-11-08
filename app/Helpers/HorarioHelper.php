@@ -7,7 +7,7 @@ use Carbon\Carbon;
 class HorarioHelper
 {
     // 🚨 MODO PRUEBA ACTIVADO - TIENDA ABIERTA TODOS LOS DÍAS 🚨
-    private static $MODE_PRUEBA = true; // ⚠️ Cambiar a false después de las pruebas
+    private static $MODE_PRUEBA = false; // ⚠️ Cambiar a false después de las pruebas
     
     /**
      * Verifica si la tienda está abierta para realizar compras
