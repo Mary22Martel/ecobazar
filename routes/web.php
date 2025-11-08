@@ -71,6 +71,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/productos/{producto}', [ProductoController::class, 'destroy'])->name('productos.destroy');
     Route::patch('/productos/{producto}/toggle-activo', [ProductoController::class, 'toggleActivo'])
     ->name('productos.toggleActivo');
+    Route::get('/agricultor/perfil', [AgricultorController::class, 'editarPerfil'])->name('agricultor.perfil');
+    Route::put('/agricultor/perfil', [AgricultorController::class, 'actualizarPerfil'])->name('agricultor.perfil.update');
 
 });
 
