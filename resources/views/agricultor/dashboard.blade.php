@@ -30,6 +30,14 @@
         </a>
     </div>
 
+    <!-- Botón para editar perfil -->
+    <div class="mb-6">
+        <a href="{{ route('agricultor.perfil') }}" 
+        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center text-base">
+            <span>👤 Editar mi Perfil</span>
+        </a>
+    </div>
+
     <!-- RECORDATORIO SEMANAL -->
     <div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-lg p-4 shadow-sm animate-fade-in-up">
         <div class="flex items-start space-x-3">
@@ -41,15 +49,9 @@
                 </div>
             </div>
             <div class="flex-1">
-                <h3 class="text-sm font-medium text-amber-800 mb-1 flex items-center">
-                    💡 <span class="ml-1">Recordatorio Semanal</span>
-                </h3>
                 <p class="text-sm text-amber-700 leading-relaxed mb-2">
-                    <strong>¡No olvides actualizar tu stock!</strong> Revisa las cantidades de tus productos cada semana según lo que tendrás disponible para vender. Esto ayuda a los clientes a saber qué pueden comprar.
-                </p>
-                <div class="mt-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-md inline-block">
-                    📅 Se recomienda actualizar cada domingo o lunes
-                </div>
+                    <strong>Revisa las cantidades de tus productos cada semana según lo que tendrás disponible para vender. Esto ayuda a los clientes a saber qué pueden comprar.
+                </p></strong> 
             </div>
             <button onclick="this.parentElement.parentElement.style.display='none'" class="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,19 +66,12 @@
 
         <!-- PASO 1: Actualizar productos -->
         <a href="{{ route('productos.index') }}"
-           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-orange-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-right relative">
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-green-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-right relative">
             <!-- Número de secuencia -->
-            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
                 1
             </div>
             <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center shadow-inner">
-                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </div>
-                </div>
                 <div class="ml-4 flex-1">
                     <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">ACTUALIZA TUS PRODUCTOS</h2>
                     <p class="text-xs sm:text-sm text-gray-500">Revisa la cantidad de stock de cada producto para esta semana</p>
@@ -90,24 +85,17 @@
         
         <!-- PASO 2: Pedidos por armar -->
         <a href="{{ route('agricultor.pedidos_pendientes', ['semana' => 0]) }}" 
-           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left relative {{ $pendientes > 0 ? 'border-red-400 ring-2 ring-red-100 animate-pulse-border' : 'border-gray-300' }}">
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left relative {{ $pendientes > 0 ? 'border-green-400 ring-2 ring-red-100 animate-pulse-border' : 'border-green-300' }}">
             <!-- Número de secuencia -->
-            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 {{ $pendientes > 0 ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' : 'bg-gradient-to-br from-gray-500 to-gray-600' }} text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 {{ $pendientes > 0 ? 'bg-gradient-to-br from-green-500 to-green-600 animate-pulse' : 'bg-gradient-to-br from-green-500 to-green-600' }} text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
                 2
             </div>
             <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center shadow-inner {{ $pendientes > 0 ? 'animate-bounce-slow' : '' }}">
-                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                    </div>
-                </div>
                 <div class="ml-4 flex-1">
                     <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">PEDIDOS POR ARMAR</h2>
                     @if($pendientes > 0)
                         <div class="flex items-center space-x-2">
-                            <div class="bg-red-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center animate-pulse shadow-lg">
+                            <div class="bg-green-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center animate-pulse shadow-lg">
                                 <span class="text-sm sm:text-base font-bold">{{ $pendientes }}</span>
                             </div>
                             <p class="text-sm sm:text-base text-red-600 font-semibold">{{ $pendientes == 1 ? 'pedido esperando' : 'pedidos esperando' }}</p>
@@ -141,13 +129,6 @@
                 3
             </div>
             <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center shadow-inner">
-                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                </div>
                 <div class="ml-4 flex-1">
                     <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">PEDIDOS LISTOS</h2>
                     <p class="text-sm sm:text-base text-green-600 font-semibold">{{ $listos }} {{ $listos == 1 ? 'pedido preparado' : 'pedidos preparados' }}</p>
@@ -161,19 +142,12 @@
 
         <!-- PASO 4: Ver pagos -->
         <a href="{{ route('agricultor.pagos', ['semana' => 0]) }}" 
-           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-blue-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left relative">
+           class="block bg-white rounded-xl shadow-lg border-l-4 sm:border-l-8 border-green-400 p-4 sm:p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-slide-in-left relative">
             <!-- Número de secuencia -->
-            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
+            <div class="absolute -top-3 -left-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg border-2 border-white z-10">
                 4
             </div>
             <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-inner">
-                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                        </svg>
-                    </div>
-                </div>
                 <div class="ml-4 flex-1">
                     <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">REVISA TUS PAGOS</h2>
                     <p class="text-xs sm:text-sm text-gray-500">Ver dinero ganado por semanas</p>
@@ -232,19 +206,6 @@
                     <p class="text-xs sm:text-sm text-green-600">Cada semana se te pagará por todos los pedidos entregados exitosamente.</p>
                 </div>
             </div>
-        </div>
-        
-        <!-- Información importante sobre la semana actual -->
-        <div class="mt-4 bg-white border-l-4 border-green-400 rounded-lg p-3">
-            <h4 class="font-semibold text-green-800 mb-1">🎯 Esta Semana</h4>
-            <p class="text-sm text-green-700">
-                Estás trabajando en la semana del <strong>{{ $inicioSemana->format('d/m') }}</strong> al <strong>{{ $finSemana->format('d/m') }}</strong>. 
-                @if($pendientes > 0)
-                    Tienes <strong>{{ $pendientes }}</strong> pedidos esperando preparación.
-                @else
-                    ¡Perfecto! No tienes pedidos pendientes por ahora.
-                @endif
-            </p>
         </div>
     </div>
 

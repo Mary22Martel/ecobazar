@@ -756,4 +756,57 @@ class AgricultorController extends Controller
             abort(403, 'No tienes autorización para acceder a esta página.');
         }
     }
+
+    /**
+     * Muestra el formulario para editar el perfil del agricultor
+     */
+    public function editarPerfil()
+    {
+        $this->authorizeRoles(['agricultor']);
+        
+        $agricultor = Auth::user();
+        
+        return view('agricultor.perfil', compact('agricultor'));
+    }
+
+   
+    /**
+     * Actualiza los datos del perfil del agricultor
+     */
+    public function actualizarPerfil(Request $request)
+    {
+        $this->authorizeRoles(['agricultor']);
+        
+        $agricultor = Auth::user();
+        
+        // Validación
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $agricultor->id,
+            'telefono' => 'nullable|string|max:20',
+        ], [
+            'name.required' => 'El nombre es obligatorio',
+            'email.required' => 'El correo electrónico es obligatorio',
+            'email.email' => 'El correo debe ser una dirección válida',
+            'email.unique' => 'Este correo ya está registrado',
+        ]);
+        
+        try {
+            // Actualizar datos usando User model
+            $user = User::find($agricultor->id);
+            $user->name = $request->name;
+            $user->email = $request->email;
+            $user->telefono = $request->telefono;
+            $user->save();
+            
+            return redirect()->route('agricultor.perfil')
+                ->with('success', '¡Perfil actualizado exitosamente!');
+                
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar perfil: ' . $e->getMessage());
+            
+            return redirect()->route('agricultor.perfil')
+                ->with('error', 'Error al actualizar el perfil. Inténtalo de nuevo.');
+        }
+    }
 }
