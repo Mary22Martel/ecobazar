@@ -935,48 +935,6 @@ if (!document.querySelector('#cart-animation-styles')) {
 }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('pedido-status-modal');
-    const modalContent = document.getElementById('modal-content');
-    
-    if (modal) {
-        // Animar entrada del modal
-        setTimeout(() => {
-            modalContent.classList.remove('scale-95', 'opacity-0');
-            modalContent.classList.add('scale-100', 'opacity-100');
-        }, 100);
-    }
-});
-
-function closeModal() {
-    const modal = document.getElementById('pedido-status-modal');
-    const modalContent = document.getElementById('modal-content');
-    
-    if (modal && modalContent) {
-        // Animar salida
-        modalContent.classList.add('scale-95', 'opacity-0');
-        modalContent.classList.remove('scale-100', 'opacity-100');
-        
-        setTimeout(() => {
-            modal.style.display = 'none';
-        }, 300);
-    }
-}
-
-// Cerrar con Escape
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeModal();
-    }
-});
-
-// Cerrar al hacer clic fuera del modal
-document.getElementById('pedido-status-modal')?.addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
-
 // Mostrar modal al cargar la página
        window.addEventListener('DOMContentLoaded', (event) => {
         setTimeout(() => {
